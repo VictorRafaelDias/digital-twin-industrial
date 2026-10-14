@@ -1,0 +1,10 @@
+# dependências e builds de desenvolvimento
+node_modules/
+app/dist/
+*.local
+
+# sistema operacional e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

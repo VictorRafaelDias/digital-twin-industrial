@@ -1,0 +1,7 @@
+# Normaliza quebras de linha (evita diferenças entre Windows, macOS e Linux)
+* text=auto
+
+# Binários
+*.png binary
+*.jpg binary
+*.jpeg binary
