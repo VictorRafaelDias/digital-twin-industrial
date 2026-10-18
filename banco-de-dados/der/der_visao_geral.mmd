@@ -1,0 +1,139 @@
+erDiagram
+    categorias {
+        int id PK
+        string codigo
+        string nome
+    }
+    etapas {
+        int id PK
+        string nome
+    }
+    fontes {
+        int id PK
+        string titulo
+    }
+    glossario_termos {
+        int id PK
+        string termo
+    }
+    usuarios {
+        int id PK
+        string nome_usuario
+    }
+    fabricas {
+        int id PK
+        int usuario_id FK
+        string nome
+    }
+    glossario_palavras {
+        int id PK
+        int termo_id FK
+    }
+    maquinas_catalogo {
+        int id PK
+        string codigo
+        string nome
+        int categoria_id FK
+        int etapa_id FK
+    }
+    fabrica_maquinas {
+        int id PK
+        int fabrica_id FK
+        int maquina_id FK
+    }
+    manuais_maquina {
+        int maquina_id PK,FK
+    }
+    maquina_fontes {
+        int maquina_id PK,FK
+        int fonte_id PK,FK
+        string finalidade PK
+    }
+    mensagens_chat {
+        int id PK
+        int usuario_id FK
+        int fabrica_id FK
+    }
+    modelos_reais {
+        int id PK
+        int maquina_id FK
+        int fonte_id FK
+    }
+    planos_objetivo {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+    }
+    precos_maquina {
+        int id PK
+        int maquina_id FK
+    }
+    simulacoes {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+        int gargalo_maquina_id FK
+    }
+    cenarios {
+        int id PK
+        int fabrica_id FK
+        string nome
+        int gargalo_id FK
+    }
+    conexoes {
+        int id PK
+        int fabrica_id FK
+        int origem_id FK
+        int destino_id FK
+    }
+    eventos_registro {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+        int simulacao_id FK
+    }
+    plano_passos {
+        int id PK
+        int plano_id FK
+        int fabrica_maquina_id FK
+        int maquina_id FK
+    }
+    cenario_maquinas {
+        int id PK
+        int cenario_id FK
+        int maquina_id FK
+        int fabrica_maquina_id FK
+    }
+    usuarios ||--o{ fabricas : "possui"
+    glossario_termos ||--o{ glossario_palavras : "é chamado por"
+    categorias ||--o{ maquinas_catalogo : "agrupa"
+    etapas ||--o{ maquinas_catalogo : "contém"
+    fabricas ||--o{ fabrica_maquinas : "contém"
+    maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
+    maquinas_catalogo ||--|| manuais_maquina : "tem manual"
+    fontes ||--o{ maquina_fontes : "sustenta"
+    maquinas_catalogo ||--o{ maquina_fontes : "usa"
+    fabricas |o--o{ mensagens_chat : "trata de"
+    usuarios ||--o{ mensagens_chat : "escreve"
+    fontes ||--o{ modelos_reais : "documenta"
+    maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"
+    usuarios ||--o{ planos_objetivo : "pede"
+    fabricas ||--o{ planos_objetivo : "recebe"
+    maquinas_catalogo ||--o{ precos_maquina : "tem preço"
+    fabricas ||--o{ simulacoes : "é simulada em"
+    usuarios ||--o{ simulacoes : "roda"
+    maquinas_catalogo |o--o{ simulacoes : "limitou"
+    fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
+    fabricas ||--o{ cenarios : "gera"
+    fabrica_maquinas ||--o{ conexoes : "recebe por"
+    fabricas ||--o{ conexoes : "liga dentro de"
+    fabrica_maquinas ||--o{ conexoes : "envia por"
+    usuarios |o--o{ eventos_registro : "causa"
+    simulacoes |o--o{ eventos_registro : "ocorre em"
+    fabricas |o--o{ eventos_registro : "registra"
+    fabrica_maquinas |o--o{ plano_passos : "mexe em"
+    planos_objetivo ||--o{ plano_passos : "é feito de"
+    maquinas_catalogo ||--o{ plano_passos : "afeta tipo"
+    fabrica_maquinas |o--o{ cenario_maquinas : "registra"
+    cenarios ||--o{ cenario_maquinas : "detalha"
+    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"

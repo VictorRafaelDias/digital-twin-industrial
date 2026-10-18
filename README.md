@@ -1,8 +1,8 @@
-# Digital Twin Industrial: front-end
+# Digital Twin Industrial: front-end e base de dados
 
 Simulador de fábrica de bebidas no estilo **Cisco Packet Tracer**: você monta o mapa da fábrica arrastando máquinas, liga uma na outra, ajusta o ritmo de cada uma e vê, em números e em palavras simples, a produção, o **gargalo**, o risco de falha, o consumo de energia e como melhorar o desempenho (e quanto custaria).
 
-Este repositório tem **só o front-end** (React + TypeScript). A simulação roda no próprio navegador, então não precisa de servidor.
+Este repositório tem o **front-end** (React + TypeScript, Sprint 0) e a **base de dados** (21 tabelas, DER e CRUD, Sprint 1). A simulação do front roda no próprio navegador, então não precisa de servidor.
 
 ---
 
@@ -20,10 +20,24 @@ Não precisa instalar nada (sem Node, sem Docker, sem servidor).
 
 Dica para começar: no menu **Exemplos**, carregue "Bebidas em geral", clique em **Iniciar** (caixa Simulação) e depois abra a aba **Resultados**. O menu **Ajuda › Guia da plataforma** explica cada tela, com imagens.
 
+## Professor, para ver a base de dados (Sprint 1)
+
+Tudo está na pasta **[`banco-de-dados/`](banco-de-dados/)**. O [README dela](banco-de-dados/README.md) tem o passo a passo; em resumo:
+
+| O que | Onde |
+|---|---|
+| **DER** (diagrama entidade-relacionamento) | [`banco-de-dados/der/`](banco-de-dados/der/): comece por `DER-visao-geral.png` |
+| **Banco pronto, com as 21 tabelas criadas e populadas** | [`banco-de-dados/digital_twin.db`](banco-de-dados/digital_twin.db) (abre no [DB Browser for SQLite](https://sqlitebrowser.org/)) e scripts em [`banco-de-dados/sql/`](banco-de-dados/sql/) |
+| **CRUD** (Create, Read, Update, Delete) | `python banco-de-dados/scripts/crud_demo.py` mostra os comandos e os resultados em todas as tabelas |
+| Dicionário de dados e decisões de modelagem | [`banco-de-dados/docs/`](banco-de-dados/docs/) |
+
+![DER: visão geral da base de dados](banco-de-dados/der/DER-visao-geral.png)
+
 ## Sumário
 
 - [Sobre o projeto](#sobre-o-projeto)
 - [Funcionalidades](#funcionalidades)
+- [Base de dados](#professor-para-ver-a-base-de-dados-sprint-1)
 - [Telas](#telas)
 - [Rodar o código (desenvolvimento)](#rodar-o-código-desenvolvimento)
 - [Scripts](#scripts)
@@ -105,6 +119,7 @@ Execute dentro da pasta `app/`:
 │       ├── data/      catálogo de máquinas, preços, fontes, glossário, textos
 │       ├── components/, views/, modals/    interface
 │       └── styles/
+├── banco-de-dados/    base de dados: DER, banco SQLite pronto, scripts SQL, CRUD e testes (Sprint 1)
 ├── docs/              mapa de telas, decisões do código e preços estimados
 └── index.html         redireciona para ABRIR_AQUI (usado na página publicada)
 ```
@@ -134,6 +149,7 @@ São 18 testes: motor de simulação (gargalo, risco, falha em cascata, paralelo
 
 - A simulação é **didática**: os degraus de risco e os percentuais de temperatura são hipóteses (estão marcados assim no sistema). Os **preços são estimativas** de anúncios de fornecedores, não cotações ([docs/precos-maquinas.md](docs/precos-maquinas.md)).
 - O assistente de conversa responde com base na fábrica atual; a leitura de manuais em PDF ainda é de demonstração.
+- O front-end ainda não grava no banco: ele calcula tudo no navegador. O próximo passo é a API (FastAPI) que lê e grava nas tabelas de `banco-de-dados/`.
 - Próximos passos: integrar com o backend (API FastAPI), salvar fábricas por usuário, leitura real de manuais (RAG) e dados reais de máquinas.
 
 ## Equipe e contexto

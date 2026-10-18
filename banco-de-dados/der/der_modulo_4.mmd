@@ -1,0 +1,70 @@
+erDiagram
+    fabricas {
+        int id PK
+        int usuario_id FK
+        string nome
+        string exemplo_origem
+        int temperatura_ambiente
+        decimal tarifa_energia
+        boolean parada_emergencia
+        datetime criada_em
+        datetime atualizada_em
+    }
+    fabrica_maquinas {
+        int id PK
+        int fabrica_id FK
+        int maquina_id FK
+        int pos_x
+        int pos_y
+        decimal ritmo
+        int unidades_paralelo
+        boolean desligada
+    }
+    conexoes {
+        int id PK
+        int fabrica_id FK
+        int origem_id FK
+        int destino_id FK
+    }
+    usuarios {
+        int id PK
+        string nome_usuario
+        string nome_exibicao
+        string senha_hash
+        boolean ativo
+        datetime criado_em
+        datetime ultimo_acesso_em
+    }
+    maquinas_catalogo {
+        int id PK
+        string codigo
+        string nome
+        int categoria_id FK
+        int etapa_id FK
+        string fluxo
+        string icone
+        string parametro
+        string unidade
+        decimal valor_min
+        decimal valor_otimo
+        decimal valor_atencao
+        decimal valor_falha
+        decimal valor_max
+        decimal capacidade_otima
+        decimal consumo_parado_kw
+        decimal consumo_variavel_kw
+        int ordem_processo
+        string sensibilidade_termica
+        boolean aceita_varias_entradas
+        boolean etapa_final
+        text descricao
+        text risco_fisico
+        text base_dos_numeros
+        boolean ativa
+    }
+    usuarios ||--o{ fabricas : "possui"
+    fabricas ||--o{ fabrica_maquinas : "contém"
+    maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
+    fabrica_maquinas ||--o{ conexoes : "recebe por"
+    fabricas ||--o{ conexoes : "liga dentro de"
+    fabrica_maquinas ||--o{ conexoes : "envia por"

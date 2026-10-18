@@ -1,0 +1,91 @@
+erDiagram
+    categorias {
+        int id PK
+        string codigo
+        string nome
+        text descricao
+        string icone
+        boolean ativa
+        int ordem
+    }
+    etapas {
+        int id PK
+        string nome
+        string zona
+    }
+    maquinas_catalogo {
+        int id PK
+        string codigo
+        string nome
+        int categoria_id FK
+        int etapa_id FK
+        string fluxo
+        string icone
+        string parametro
+        string unidade
+        decimal valor_min
+        decimal valor_otimo
+        decimal valor_atencao
+        decimal valor_falha
+        decimal valor_max
+        decimal capacidade_otima
+        decimal consumo_parado_kw
+        decimal consumo_variavel_kw
+        int ordem_processo
+        string sensibilidade_termica
+        boolean aceita_varias_entradas
+        boolean etapa_final
+        text descricao
+        text risco_fisico
+        text base_dos_numeros
+        boolean ativa
+    }
+    manuais_maquina {
+        int maquina_id PK,FK
+        text o_que_faz
+        text como_funciona_ritmo
+        text dicas
+    }
+    fontes {
+        int id PK
+        string titulo
+        string url
+        string tipo
+        string confianca
+        boolean na_base_conhecimento
+    }
+    maquina_fontes {
+        int maquina_id PK,FK
+        int fonte_id PK,FK
+        string finalidade PK
+    }
+    precos_maquina {
+        int id PK
+        int maquina_id FK
+        decimal preco_min
+        decimal preco_max
+        string moeda
+        text observacao
+        boolean editado_pelo_usuario
+        datetime vigente_desde
+    }
+    modelos_reais {
+        int id PK
+        int maquina_id FK
+        string fabricante
+        string modelo
+        string aplicacao
+        decimal capacidade_min
+        decimal capacidade_max
+        string unidade_capacidade
+        int fonte_id FK
+        text observacao
+    }
+    categorias ||--o{ maquinas_catalogo : "agrupa"
+    etapas ||--o{ maquinas_catalogo : "contém"
+    maquinas_catalogo ||--|| manuais_maquina : "tem manual"
+    fontes ||--o{ maquina_fontes : "sustenta"
+    maquinas_catalogo ||--o{ maquina_fontes : "usa"
+    maquinas_catalogo ||--o{ precos_maquina : "tem preço"
+    fontes ||--o{ modelos_reais : "documenta"
+    maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"

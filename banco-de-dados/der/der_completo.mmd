@@ -1,0 +1,254 @@
+erDiagram
+    categorias {
+        int id PK
+        string codigo
+        string nome
+        text descricao
+        string icone
+        boolean ativa
+        int ordem
+    }
+    etapas {
+        int id PK
+        string nome
+        string zona
+    }
+    fontes {
+        int id PK
+        string titulo
+        string url
+        string tipo
+        string confianca
+        boolean na_base_conhecimento
+    }
+    glossario_termos {
+        int id PK
+        string grupo
+        string termo
+        text definicao
+    }
+    usuarios {
+        int id PK
+        string nome_usuario
+        string nome_exibicao
+        string senha_hash
+        boolean ativo
+        datetime criado_em
+        datetime ultimo_acesso_em
+    }
+    fabricas {
+        int id PK
+        int usuario_id FK
+        string nome
+        string exemplo_origem
+        int temperatura_ambiente
+        decimal tarifa_energia
+        boolean parada_emergencia
+        datetime criada_em
+        datetime atualizada_em
+    }
+    glossario_palavras {
+        int id PK
+        int termo_id FK
+        string palavra
+    }
+    maquinas_catalogo {
+        int id PK
+        string codigo
+        string nome
+        int categoria_id FK
+        int etapa_id FK
+        string fluxo
+        string icone
+        string parametro
+        string unidade
+        decimal valor_min
+        decimal valor_otimo
+        decimal valor_atencao
+        decimal valor_falha
+        decimal valor_max
+        decimal capacidade_otima
+        decimal consumo_parado_kw
+        decimal consumo_variavel_kw
+        int ordem_processo
+        string sensibilidade_termica
+        boolean aceita_varias_entradas
+        boolean etapa_final
+        text descricao
+        text risco_fisico
+        text base_dos_numeros
+        boolean ativa
+    }
+    fabrica_maquinas {
+        int id PK
+        int fabrica_id FK
+        int maquina_id FK
+        int pos_x
+        int pos_y
+        decimal ritmo
+        int unidades_paralelo
+        boolean desligada
+    }
+    manuais_maquina {
+        int maquina_id PK,FK
+        text o_que_faz
+        text como_funciona_ritmo
+        text dicas
+    }
+    maquina_fontes {
+        int maquina_id PK,FK
+        int fonte_id PK,FK
+        string finalidade PK
+    }
+    mensagens_chat {
+        int id PK
+        int usuario_id FK
+        int fabrica_id FK
+        string autor
+        text texto
+        datetime criada_em
+    }
+    modelos_reais {
+        int id PK
+        int maquina_id FK
+        string fabricante
+        string modelo
+        string aplicacao
+        decimal capacidade_min
+        decimal capacidade_max
+        string unidade_capacidade
+        int fonte_id FK
+        text observacao
+    }
+    planos_objetivo {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+        datetime criado_em
+        string tipo_objetivo
+        decimal valor_meta
+        boolean aceita_zona_atencao
+        boolean aceita_paralelo
+        decimal producao_antes
+        decimal producao_depois
+        decimal risco_antes
+        decimal risco_depois
+        decimal investimento_min
+        decimal investimento_max
+        boolean atingiu_meta
+        boolean aplicado
+    }
+    precos_maquina {
+        int id PK
+        int maquina_id FK
+        decimal preco_min
+        decimal preco_max
+        string moeda
+        text observacao
+        boolean editado_pelo_usuario
+        datetime vigente_desde
+    }
+    simulacoes {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+        datetime iniciada_em
+        int velocidade
+        int duracao_min
+        boolean concluida
+        decimal garrafas_produzidas
+        decimal energia_kwh
+        decimal fila_total
+        decimal pct_do_maximo
+        decimal risco_max
+        int gargalo_maquina_id FK
+    }
+    cenarios {
+        int id PK
+        int fabrica_id FK
+        string nome
+        datetime criado_em
+        int temperatura_ambiente
+        decimal producao_h
+        decimal risco_max
+        decimal energia_kw
+        int gargalo_id FK
+    }
+    conexoes {
+        int id PK
+        int fabrica_id FK
+        int origem_id FK
+        int destino_id FK
+    }
+    eventos_registro {
+        int id PK
+        int fabrica_id FK
+        int usuario_id FK
+        int simulacao_id FK
+        datetime ocorrido_em
+        string tipo
+        text mensagem
+    }
+    plano_passos {
+        int id PK
+        int plano_id FK
+        int ordem
+        string acao
+        int fabrica_maquina_id FK
+        int maquina_id FK
+        decimal ritmo_antes
+        decimal ritmo_depois
+        int unidades_antes
+        int unidades_depois
+        text motivo
+        decimal custo_min
+        decimal custo_max
+    }
+    cenario_maquinas {
+        int id PK
+        int cenario_id FK
+        int maquina_id FK
+        int fabrica_maquina_id FK
+        decimal ritmo
+        int unidades_paralelo
+        boolean desligada
+        decimal capacidade_h
+        decimal saida_h
+        decimal fila_h
+        decimal risco
+        string estado
+        decimal energia_kw
+    }
+    usuarios ||--o{ fabricas : "possui"
+    glossario_termos ||--o{ glossario_palavras : "é chamado por"
+    categorias ||--o{ maquinas_catalogo : "agrupa"
+    etapas ||--o{ maquinas_catalogo : "contém"
+    fabricas ||--o{ fabrica_maquinas : "contém"
+    maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
+    maquinas_catalogo ||--|| manuais_maquina : "tem manual"
+    fontes ||--o{ maquina_fontes : "sustenta"
+    maquinas_catalogo ||--o{ maquina_fontes : "usa"
+    fabricas |o--o{ mensagens_chat : "trata de"
+    usuarios ||--o{ mensagens_chat : "escreve"
+    fontes ||--o{ modelos_reais : "documenta"
+    maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"
+    usuarios ||--o{ planos_objetivo : "pede"
+    fabricas ||--o{ planos_objetivo : "recebe"
+    maquinas_catalogo ||--o{ precos_maquina : "tem preço"
+    fabricas ||--o{ simulacoes : "é simulada em"
+    usuarios ||--o{ simulacoes : "roda"
+    maquinas_catalogo |o--o{ simulacoes : "limitou"
+    fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
+    fabricas ||--o{ cenarios : "gera"
+    fabrica_maquinas ||--o{ conexoes : "recebe por"
+    fabricas ||--o{ conexoes : "liga dentro de"
+    fabrica_maquinas ||--o{ conexoes : "envia por"
+    usuarios |o--o{ eventos_registro : "causa"
+    simulacoes |o--o{ eventos_registro : "ocorre em"
+    fabricas |o--o{ eventos_registro : "registra"
+    fabrica_maquinas |o--o{ plano_passos : "mexe em"
+    planos_objetivo ||--o{ plano_passos : "é feito de"
+    maquinas_catalogo ||--o{ plano_passos : "afeta tipo"
+    fabrica_maquinas |o--o{ cenario_maquinas : "registra"
+    cenarios ||--o{ cenario_maquinas : "detalha"
+    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"

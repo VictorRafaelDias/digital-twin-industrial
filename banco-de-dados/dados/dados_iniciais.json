@@ -1,0 +1,1790 @@
+{
+  "gerado_por": "banco-de-dados/scripts/exportar_dados_do_front.ts",
+  "categorias": [
+    {
+      "codigo": "insumos",
+      "nome": "Insumos",
+      "descricao": "Onde a matéria-prima entra na fábrica (água, frutas…). Se o insumo não chega, nada do resto funciona.",
+      "icone": "truck",
+      "ordem": 1
+    },
+    {
+      "codigo": "preparo",
+      "nome": "Preparo",
+      "descricao": "Transformam o insumo bruto no produto: lavar, espremer, filtrar, dosar o xarope e misturar com a água.",
+      "icone": "mixer",
+      "ordem": 2
+    },
+    {
+      "codigo": "termico",
+      "nome": "Térmico e gás",
+      "descricao": "Tratam a bebida com calor (para eliminar micro-organismos e durar mais) ou colocam gás (CO₂), como no refrigerante.",
+      "icone": "pasteur",
+      "ordem": 3
+    },
+    {
+      "codigo": "envase",
+      "nome": "Envase",
+      "descricao": "Colocam a bebida dentro das garrafas. São máquinas delicadas e, com frequência, o gargalo da fábrica.",
+      "icone": "filler",
+      "ordem": 4
+    },
+    {
+      "codigo": "pos",
+      "nome": "Pós-envase",
+      "descricao": "Depois que a garrafa está cheia: colar o rótulo e levar a garrafa de uma máquina para a outra.",
+      "icone": "label",
+      "ordem": 5
+    },
+    {
+      "codigo": "frio",
+      "nome": "Refrigeração",
+      "descricao": "Mantêm o produto gelado. Quando o produto não é pasteurizado, é o frio que garante a segurança.",
+      "icone": "fridge",
+      "ordem": 6
+    }
+  ],
+  "etapas": [
+    {
+      "nome": "Insumos",
+      "zona": "Recepção e preparo"
+    },
+    {
+      "nome": "Preparo",
+      "zona": "Recepção e preparo"
+    },
+    {
+      "nome": "Tratamento térmico",
+      "zona": "Tratamento térmico e gás"
+    },
+    {
+      "nome": "Carbonatação",
+      "zona": "Tratamento térmico e gás"
+    },
+    {
+      "nome": "Envase",
+      "zona": "Envase e expedição"
+    },
+    {
+      "nome": "Transporte",
+      "zona": "Envase e expedição"
+    },
+    {
+      "nome": "Pós-envase",
+      "zona": "Envase e expedição"
+    },
+    {
+      "nome": "Extração",
+      "zona": "Recepção e preparo"
+    },
+    {
+      "nome": "Filtragem",
+      "zona": "Recepção e preparo"
+    },
+    {
+      "nome": "Refrigeração",
+      "zona": "Câmara fria"
+    }
+  ],
+  "maquinas": [
+    {
+      "codigo": "tanque_agua",
+      "nome": "Tanque de água",
+      "categoria": "insumos",
+      "etapa": "Insumos",
+      "fluxo": "geral",
+      "icone": "tank",
+      "parametro": "Vazão de saída",
+      "unidade": "m³/h",
+      "valor_min": 2,
+      "valor_max": 12,
+      "valor_otimo": 8,
+      "valor_atencao": 10,
+      "valor_falha": 11.5,
+      "capacidade_otima": 16000,
+      "consumo_parado_kw": 0.2,
+      "consumo_variavel_kw": 0.8,
+      "ordem_processo": 0,
+      "sensibilidade_termica": "tanque",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Guarda a água usada na bebida. A vazão é quanto de água sai por hora.",
+      "risco_fisico": "Vazão acima do limite sobrecarrega a bomba e as tubulações (pressão alta) e pode causar vazamento ou transbordamento do tanque.",
+      "base_dos_numeros": "Valores didáticos, escolhidos para uma linha de cerca de 12 mil garrafas/h. Não vêm de ficha de fabricante.",
+      "manual": {
+        "o_que_faz": "Reservatório que guarda a água usada na bebida. Ele alimenta as máquinas seguintes numa vazão controlada.",
+        "como_funciona_ritmo": "A vazão é o quanto de água sai por hora. Aumentar a vazão entrega mais água às máquinas seguintes, mas só ajuda a produção se elas conseguirem usar.",
+        "dicas": "Raramente é o gargalo. Cuidado com o nível muito baixo (falta de água) ou muito alto (risco de transbordar)."
+      },
+      "fontes_numeros": [],
+      "preco": {
+        "min": 20000,
+        "max": 80000,
+        "observacao": "Um tanque inox de 1.000 L custa de US$ 1,7 mil (usado) a US$ 5–7 mil (novo). Para 12 m³/h precisamos de tanque e bomba bem maiores: a faixa é uma estimativa por escala.",
+        "fontes": [
+          {
+            "titulo": "GW Kent — tanque misturador de 1.000 L em inox (US$ 4.995)",
+            "url": "https://www.gwkent.com/mixing-blending-tank-1000-l-265-gal.html",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "tanque_xarope",
+      "nome": "Tanque de xarope",
+      "categoria": "preparo",
+      "etapa": "Preparo",
+      "fluxo": "geral",
+      "icone": "tank",
+      "parametro": "Dosagem",
+      "unidade": "L/h",
+      "valor_min": 400,
+      "valor_max": 1600,
+      "valor_otimo": 1200,
+      "valor_atencao": 1450,
+      "valor_falha": 1550,
+      "capacidade_otima": 14400,
+      "consumo_parado_kw": 0.3,
+      "consumo_variavel_kw": 1,
+      "ordem_processo": 1,
+      "sensibilidade_termica": "viscosidade",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Guarda o xarope (açúcar e sabor). A dosagem é quanto xarope sai por hora.",
+      "risco_fisico": "Dosagem forçada pode causar cavitação na bomba (bolhas que desgastam o metal) e dosar errado, mudando o sabor.",
+      "base_dos_numeros": "Didático. Proporção de referência: 1 parte de xarope para 3 a 6 de água (Tetra Pak, blending — a conferir).",
+      "manual": {
+        "o_que_faz": "Reservatório do xarope, a mistura concentrada de açúcar e sabor que será diluída na água.",
+        "como_funciona_ritmo": "A dosagem é quantos litros de xarope saem por hora. A proporção com a água define o sabor e a doçura (Brix) da bebida.",
+        "dicas": "O xarope é grosso: a temperatura certa evita dosagem irregular."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Tetra Pak — blending (xarope e água)",
+          "url": "https://www.tetrapak.com/solutions/integrated-solutions-equipment/processing-equipment/blending",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 20000,
+        "max": 80000,
+        "observacao": "Mesma base do tanque de água (tanque inox com agitador: US$ 2,5 a 7 mil por 1.000 L). Estimativa por escala.",
+        "fontes": [
+          {
+            "titulo": "GW Kent — tanque misturador de 1.000 L em inox (US$ 4.995)",
+            "url": "https://www.gwkent.com/mixing-blending-tank-1000-l-265-gal.html",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "misturador",
+      "nome": "Misturador",
+      "categoria": "preparo",
+      "etapa": "Preparo",
+      "fluxo": "geral",
+      "icone": "mixer",
+      "parametro": "Rotação",
+      "unidade": "RPM",
+      "valor_min": 30,
+      "valor_max": 90,
+      "valor_otimo": 60,
+      "valor_atencao": 75,
+      "valor_falha": 85,
+      "capacidade_otima": 15000,
+      "consumo_parado_kw": 0.5,
+      "consumo_variavel_kw": 2.5,
+      "ordem_processo": 2,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": true,
+      "etapa_final": false,
+      "descricao": "Mistura a água com o xarope. Girar mais rápido mistura mais, mas desgasta mais.",
+      "risco_fisico": "Rotação alta aumenta a vibração e a sobrecarga do motor: ele superaquece, eixo e rolamentos se desgastam e pode travar.",
+      "base_dos_numeros": "Capacidade didática. Para comparação: o In-line Blender B da Tetra Pak (20 a 60 mil L/h, ficha real) é bem maior que a nossa linha.",
+      "manual": {
+        "o_que_faz": "Mistura a água com o xarope até a bebida ficar uniforme.",
+        "como_funciona_ritmo": "A rotação (RPM) é a velocidade da pá. Girar mais rápido mistura mais rápido, mas aumenta o desgaste e a vibração.",
+        "dicas": "Vibração alta é sinal de desgaste. Perto do limite de rotação, a máquina pode falhar."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Tetra Pak In-line Blender B (ficha técnica)",
+          "url": "https://www.tetrapak.com/en-us/solutions/processing/main-technology-area/blending/in-line-blender-b",
+          "confianca": "real"
+        }
+      ],
+      "preco": {
+        "min": 30000,
+        "max": 150000,
+        "observacao": "Tanque misturador de 1.000 L com agitador: US$ 2,5 a 7 mil. Um misturador contínuo com dosagem custa bem mais; faixa estimada.",
+        "fontes": [
+          {
+            "titulo": "GW Kent — tanque misturador de 1.000 L em inox (US$ 4.995)",
+            "url": "https://www.gwkent.com/mixing-blending-tank-1000-l-265-gal.html",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "pasteurizador",
+      "nome": "Pasteurizador",
+      "categoria": "termico",
+      "etapa": "Tratamento térmico",
+      "fluxo": "geral",
+      "icone": "pasteur",
+      "parametro": "Vazão",
+      "unidade": "m³/h",
+      "valor_min": 3,
+      "valor_max": 9,
+      "valor_otimo": 6.5,
+      "valor_atencao": 7.5,
+      "valor_falha": 8.5,
+      "capacidade_otima": 13000,
+      "consumo_parado_kw": 1,
+      "consumo_variavel_kw": 6,
+      "ordem_processo": 4,
+      "sensibilidade_termica": "nenhuma",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Aquece a bebida para eliminar micro-organismos. A vazão é quanto líquido passa por hora.",
+      "risco_fisico": "Vazão alta passa o líquido rápido demais pelo calor (tratamento incompleto) e força bombas e trocador de calor. Pressão ou temperatura fora da faixa podem parar a linha.",
+      "base_dos_numeros": "Didático. Para comparação: o Pasteurizer BF da Tetra Pak faz 3.000 a 55.000 L/h (ficha real). Os limites de risco são hipótese nossa.",
+      "manual": {
+        "o_que_faz": "Aquece a bebida por um tempo controlado para eliminar micro-organismos e aumentar a validade.",
+        "como_funciona_ritmo": "A vazão é quanto líquido passa por hora. Acima do ótimo o líquido passa rápido demais pelo calor, e o tratamento pode ficar incompleto.",
+        "dicas": "A temperatura precisa ficar numa faixa segura: abaixo dela o lote pode ser reprovado; acima dela aumenta o gasto de energia e o desgaste. Suco natural não passa por esta etapa."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Tetra Pak Pasteurizer BF (ficha técnica)",
+          "url": "https://www.tetrapak.com/en-us/solutions/integrated-solutions-equipment/processing-equipment/pasteurization/tetra-pak-pasteurizer-bf",
+          "confianca": "real"
+        }
+      ],
+      "preco": {
+        "min": 150000,
+        "max": 600000,
+        "observacao": "Só achei anúncios de porte pequeno (35 L por US$ 4 mil; 1.000 L/h por ~US$ 3,5 mil). Para 13 mil L/h a faixa é estimada por escala. Peça cotação.",
+        "fontes": [
+          {
+            "titulo": "TradeIndia — pasteurizador flash pequeno (35 L, US$ 4.000)",
+            "url": "https://www.tradeindia.com/products/small-juice-flash-pasteurizer-3735975.html",
+            "confianca": "estimado"
+          },
+          {
+            "titulo": "IndiaMART — pasteurizador de suco de 1.000 L/h",
+            "url": "https://m.indiamart.com/proddetail/juice-pasteurizer-machine-pasteurizer-machine-for-juice-22062476288.html",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "carbonatador",
+      "nome": "Carbonatador",
+      "categoria": "termico",
+      "etapa": "Carbonatação",
+      "fluxo": "geral",
+      "icone": "carbon",
+      "parametro": "Vazão",
+      "unidade": "m³/h",
+      "valor_min": 3,
+      "valor_max": 9,
+      "valor_otimo": 7,
+      "valor_atencao": 8,
+      "valor_falha": 8.8,
+      "capacidade_otima": 14000,
+      "consumo_parado_kw": 0.5,
+      "consumo_variavel_kw": 1.5,
+      "ordem_processo": 5,
+      "sensibilidade_termica": "nenhuma",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Coloca gás (CO₂) na bebida, como no refrigerante.",
+      "risco_fisico": "Pressão de CO₂ acima do limite pode estourar tubulação ou garrafa; abaixo dela, a bebida fica sem gás.",
+      "base_dos_numeros": "Didático. O equipamento de referência (Tetra Pak) mistura e carbonata. Pressões e limites são hipótese.",
+      "manual": {
+        "o_que_faz": "Dissolve gás carbônico (CO₂) na bebida para torná-la gaseificada.",
+        "como_funciona_ritmo": "A vazão é quanto líquido recebe gás por hora. Pressão de CO₂ baixa deixa a bebida sem gás; alta demais traz risco de estouro.",
+        "dicas": "Só existe em bebidas com gás."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Tetra Pak — blender com carbonatação",
+          "url": "https://www.tetrapak.com/solutions/processing/main-technology-area/carbonization/tetra-alblend-carboblender",
+          "confianca": "real"
+        }
+      ],
+      "preco": {
+        "min": 60000,
+        "max": 200000,
+        "observacao": "Carbonatador em linha: US$ 29,95 mil novo (Padovan) e £ 4,5 mil usado (Carbotech 500, 500 L/h, £ 9 mil novo). Fabricantes grandes não publicam preço.",
+        "fontes": [
+          {
+            "titulo": "BrewBids — carbonatador em linha Padovan, novo (US$ 29.950)",
+            "url": "https://brewbids.com/?p=58539",
+            "confianca": "estimado"
+          },
+          {
+            "titulo": "SIBA — carbonatador Carbotech 500 (£ 4.500 usado; £ 9.000 novo)",
+            "url": "https://siba.co.uk/awpcp/show-ad/?id=49149",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "enchedora",
+      "nome": "Enchedora",
+      "categoria": "envase",
+      "etapa": "Envase",
+      "fluxo": "geral",
+      "icone": "filler",
+      "parametro": "Cadência",
+      "unidade": "gf/min",
+      "valor_min": 100,
+      "valor_max": 260,
+      "valor_otimo": 200,
+      "valor_atencao": 225,
+      "valor_falha": 245,
+      "capacidade_otima": 12000,
+      "consumo_parado_kw": 2.02,
+      "consumo_variavel_kw": 0.53,
+      "ordem_processo": 6,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Coloca a bebida dentro das garrafas. A cadência é quantas garrafas por minuto.",
+      "risco_fisico": "Cadência alta aumenta a vibração e o desgaste das válvulas; pode derramar produto ou falhar na hora de encher.",
+      "base_dos_numeros": "Consumo de energia calculado a partir de dado real medido (Osterroth & Voigt, 2021) e adaptado à nossa escala. Capacidade e limites: didáticos (referência: Krones Modulfill VFJ, até 81.000 garrafas/h).",
+      "manual": {
+        "o_que_faz": "Coloca a bebida dentro das garrafas, uma a uma, em alta velocidade.",
+        "como_funciona_ritmo": "A cadência é quantas garrafas por minuto. Mais cadência produz mais, mas aumenta a vibração e o risco de falha.",
+        "dicas": "Costuma ser o coração e o gargalo da linha. Mesmo parada, consome energia."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Krones Modulfill VFJ (página do fabricante)",
+          "url": "https://www.krones.com/en/products/machines/modulfill-vfj-water.php",
+          "confianca": "real"
+        },
+        {
+          "titulo": "Osterroth & Voigt (2021), artigo científico sobre consumo de energia",
+          "url": "https://doi.org/10.3390/su13179880",
+          "confianca": "real"
+        }
+      ],
+      "preco": {
+        "min": 1500000,
+        "max": 4000000,
+        "observacao": "Enchedoras pequenas: US$ 7 mil (240–400 garrafas/h) a US$ 52 mil (800/h, com tampadora). Uma de 12 mil/h é de outra escala (a de 6.000/h usada tem preço sob consulta). Faixa estimada.",
+        "fontes": [
+          {
+            "titulo": "Zonesun ZS-CF4 — enchedora isobárica de 4 bicos (US$ 6.980)",
+            "url": "https://zonesunautopack.com/products/zs-cf4-carbonated-drinks-liquid-filling-machine",
+            "confianca": "estimado"
+          },
+          {
+            "titulo": "Zonesun ZS-CFC4 — enchedora e tampadora, 800 garrafas/h (US$ 51.999)",
+            "url": "https://www.zonesuntech.com/products/automatic-4-heads-beer-soda-carbonated-drinks-glass-bottle-crown-caps-bottling-isobaric-filling-capping-machine",
+            "confianca": "estimado"
+          },
+          {
+            "titulo": "Exapro — ICS multiFILL de 6.000 garrafas/h, usada (preço sob consulta)",
+            "url": "https://www.exapro.com/ics-multifill-960-24-240-6kk-6sv-p251028072/",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "esteira",
+      "nome": "Esteira",
+      "categoria": "pos",
+      "etapa": "Transporte",
+      "fluxo": "geral",
+      "icone": "conveyor",
+      "parametro": "Velocidade",
+      "unidade": "m/s",
+      "valor_min": 0.2,
+      "valor_max": 1.2,
+      "valor_otimo": 0.8,
+      "valor_atencao": 1,
+      "valor_falha": 1.15,
+      "capacidade_otima": 15000,
+      "consumo_parado_kw": 0.3,
+      "consumo_variavel_kw": 1.2,
+      "ordem_processo": null,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Leva as garrafas de uma máquina para a outra.",
+      "risco_fisico": "Velocidade ou corrente alta superaquece o motor e pode derrubar ou prender garrafas.",
+      "base_dos_numeros": "Didático. Referências de mercado: Dorner e Krones; sem dados de consumo.",
+      "manual": {
+        "o_que_faz": "Leva as garrafas de uma máquina para a outra.",
+        "como_funciona_ritmo": "A velocidade (m/s) define o ritmo do transporte. Rápida demais derruba garrafas; lenta demais forma fila.",
+        "dicas": "Corrente do motor acima do limite superaquece. Raramente é o gargalo."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Dorner — esteiras para envase",
+          "url": "https://www.dornerconveyors.com/industries/canning-bottling",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 20000,
+        "max": 80000,
+        "observacao": "Só a correia modular custa US$ 144 a 270 por metro. Com motor, estrutura e instalação de uma linha, estimamos esta faixa.",
+        "fontes": [
+          {
+            "titulo": "MROSupply — correia modular plástica (US$ 47 a 89 por pé, só a correia)",
+            "url": "https://www.mrosupply.com/products/2778890/as-markdown/",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "rotuladora",
+      "nome": "Rotuladora",
+      "categoria": "pos",
+      "etapa": "Pós-envase",
+      "fluxo": "geral",
+      "icone": "label",
+      "parametro": "Cadência",
+      "unidade": "gf/min",
+      "valor_min": 100,
+      "valor_max": 260,
+      "valor_otimo": 190,
+      "valor_atencao": 225,
+      "valor_falha": 245,
+      "capacidade_otima": 11400,
+      "consumo_parado_kw": 4.11,
+      "consumo_variavel_kw": 2.52,
+      "ordem_processo": 8,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Cola o rótulo nas garrafas. A cadência é quantas garrafas por minuto.",
+      "risco_fisico": "Cadência alta desalinha o rótulo, superaquece o motor e pode travar a máquina.",
+      "base_dos_numeros": "Energia a partir do artigo científico (adaptada à nossa escala). Capacidade de referência: Krones Contiroll (3.000 a 36.000/h na versão padrão — a confirmar).",
+      "manual": {
+        "o_que_faz": "Cola o rótulo nas garrafas já cheias.",
+        "como_funciona_ritmo": "A cadência é quantas garrafas por minuto recebem rótulo. Se for menor que a da enchedora, ela vira o gargalo da linha.",
+        "dicas": "Mesmo parada, gasta bastante energia (consumo de espera mais alto que o das outras)."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Krones Contiroll (página do fabricante)",
+          "url": "https://www.krones.com/en/products/machines/wrap-around-reel-fed-labelling.php",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Osterroth & Voigt (2021), artigo científico sobre consumo de energia",
+          "url": "https://doi.org/10.3390/su13179880",
+          "confianca": "real"
+        }
+      ],
+      "preco": {
+        "min": 40000,
+        "max": 140000,
+        "observacao": "Rotuladoras de luva termo-encolhível: US$ 7 mil a 25 mil (até 100–150 garrafas/min).",
+        "fontes": [
+          {
+            "titulo": "Zonesun ZS-STB150 — rotuladora de luva, até 150 garrafas/min (US$ 11.999)",
+            "url": "https://zonesunautopack.com/products/zs-stb150-bottle-sleeving-and-shrinking-labeling-machine",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "recepcao_fruta",
+      "nome": "Recepção de laranjas",
+      "categoria": "insumos",
+      "etapa": "Insumos",
+      "fluxo": "suco",
+      "icone": "truck",
+      "parametro": "Taxa de recepção",
+      "unidade": "kg/h",
+      "valor_min": 100,
+      "valor_max": 800,
+      "valor_otimo": 500,
+      "valor_atencao": 650,
+      "valor_falha": 750,
+      "capacidade_otima": 1400,
+      "consumo_parado_kw": 0.3,
+      "consumo_variavel_kw": 1.5,
+      "ordem_processo": 0,
+      "sensibilidade_termica": "nenhuma",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Recebe as laranjas que chegam à fábrica.",
+      "risco_fisico": "Receber além do limite entope as esteiras e acumula fruta, que estraga.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Ponto onde as laranjas chegam à fábrica, são descarregadas e seguem para a lavagem.",
+        "como_funciona_ritmo": "A taxa de recepção é quantos quilos de fruta entram por hora. Receber mais do que a lavadora e a extratora aguentam só forma fila.",
+        "dicas": "Frutas de má qualidade aumentam o descarte e reduzem o rendimento de suco."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 20000,
+        "max": 80000,
+        "observacao": "Sem preço encontrado: estimativa por analogia com esteiras e moegas de recebimento.",
+        "fontes": []
+      }
+    },
+    {
+      "codigo": "lavadora_frutas",
+      "nome": "Lavadora de frutas",
+      "categoria": "preparo",
+      "etapa": "Preparo",
+      "fluxo": "suco",
+      "icone": "drop",
+      "parametro": "Vazão de lavagem",
+      "unidade": "kg/h",
+      "valor_min": 100,
+      "valor_max": 900,
+      "valor_otimo": 550,
+      "valor_atencao": 700,
+      "valor_falha": 800,
+      "capacidade_otima": 1450,
+      "consumo_parado_kw": 0.4,
+      "consumo_variavel_kw": 2,
+      "ordem_processo": 1,
+      "sensibilidade_termica": "nenhuma",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Lava e higieniza as laranjas antes de espremer.",
+      "risco_fisico": "Passar fruta rápido demais lava mal (risco de higiene) e sobrecarrega o motor.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Lava e higieniza as laranjas antes de espremer, tirando terra e sujeira da casca.",
+        "como_funciona_ritmo": "A vazão de lavagem é quantos quilos de fruta passam por hora. Passar rápido demais lava mal.",
+        "dicas": "Lavagem ruim compromete a segurança do suco."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 25000,
+        "max": 60000,
+        "observacao": "Anúncios de lavadoras de bolhas ficam entre US$ 4,5 mil e 6 mil (300 a 5.000 kg/h), em sites de revenda: fonte fraca, sem link confiável.",
+        "fontes": []
+      }
+    },
+    {
+      "codigo": "extratora",
+      "nome": "Extratora",
+      "categoria": "preparo",
+      "etapa": "Extração",
+      "fluxo": "suco",
+      "icone": "juicer",
+      "parametro": "Velocidade",
+      "unidade": "RPM",
+      "valor_min": 100,
+      "valor_max": 500,
+      "valor_otimo": 320,
+      "valor_atencao": 400,
+      "valor_falha": 460,
+      "capacidade_otima": 1300,
+      "consumo_parado_kw": 0.6,
+      "consumo_variavel_kw": 3.5,
+      "ordem_processo": 2,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Espreme as laranjas e separa o suco.",
+      "risco_fisico": "Rotação alta sobrecarrega o motor e as lâminas, reduz o rendimento de suco e pode quebrar peças.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Espreme as laranjas e separa o suco da casca e do bagaço.",
+        "como_funciona_ritmo": "A velocidade (RPM) define quantas frutas são espremidas por hora. Muito rápido reduz o rendimento e desgasta a máquina.",
+        "dicas": "É a etapa que mais influencia o rendimento (litros de suco por quilo de fruta)."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 150000,
+        "max": 600000,
+        "observacao": "Extratoras comerciais pequenas custam US$ 0,5 a 2 mil (20–25 laranjas/min). Uma industrial de 1,3 t/h é de outra escala: estimativa.",
+        "fontes": [
+          {
+            "titulo": "Zanduco — extratora Omcan Citrus Max, 20 laranjas/min (US$ 2.030)",
+            "url": "https://www.zanduco.com/us/omcan-citrus-max-orange-juice-extractor-20-oranges-per-minute-stainless-steel.html",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "filtro_despolpadeira",
+      "nome": "Filtro/despolpadeira",
+      "categoria": "preparo",
+      "etapa": "Filtragem",
+      "fluxo": "suco",
+      "icone": "filter",
+      "parametro": "Vazão de filtragem",
+      "unidade": "L/h",
+      "valor_min": 80,
+      "valor_max": 700,
+      "valor_otimo": 420,
+      "valor_atencao": 550,
+      "valor_falha": 630,
+      "capacidade_otima": 1350,
+      "consumo_parado_kw": 0.3,
+      "consumo_variavel_kw": 1.8,
+      "ordem_processo": 3,
+      "sensibilidade_termica": "nenhuma",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Tira bagaço e sementes do suco.",
+      "risco_fisico": "Vazão acima do limite entope o filtro e aumenta a pressão, podendo romper a tela.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Retira bagaço, sementes e fiapos do suco, deixando a textura desejada.",
+        "como_funciona_ritmo": "A vazão de filtragem é quantos litros passam por hora. Forçar a vazão entope o filtro.",
+        "dicas": "Precisa de limpeza frequente; filtro entupido derruba a produção."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 20000,
+        "max": 80000,
+        "observacao": "Despolpadeiras de 0,5 a 2,5 t/h: de ~US$ 1 mil a US$ 11 mil.",
+        "fontes": [
+          {
+            "titulo": "Zonesun ZS-ZJ02 — despolpadeira de 0,5 a 2,5 t/h (US$ 11.300)",
+            "url": "https://www.zonesunautopack.com/ja/products/zonesun-zs-zj02-double-stage-fruit-vegetable-pulping-machine",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "envasadora_suco",
+      "nome": "Envasadora de suco",
+      "categoria": "envase",
+      "etapa": "Envase",
+      "fluxo": "suco",
+      "icone": "filler",
+      "parametro": "Cadência",
+      "unidade": "gf/min",
+      "valor_min": 8,
+      "valor_max": 40,
+      "valor_otimo": 20,
+      "valor_atencao": 26,
+      "valor_falha": 32,
+      "capacidade_otima": 1200,
+      "consumo_parado_kw": 0.5,
+      "consumo_variavel_kw": 2,
+      "ordem_processo": 6,
+      "sensibilidade_termica": "motor",
+      "aceita_varias_entradas": false,
+      "etapa_final": false,
+      "descricao": "Coloca o suco nas garrafas.",
+      "risco_fisico": "Cadência alta derrama suco, enche pela metade e aumenta o risco de contaminação.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Enche as garrafas de suco natural, em escala menor e geralmente mais simples que a enchedora industrial.",
+        "como_funciona_ritmo": "A cadência é quantas garrafas por minuto. Em operações pequenas ela costuma ser o gargalo.",
+        "dicas": "Precisa de higiene rigorosa, já que o suco natural não é pasteurizado."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 200000,
+        "max": 500000,
+        "observacao": "Enchedora de 4 bicos com tampadora a ~800 garrafas/h: US$ 52 mil (≈ R$ 286 mil).",
+        "fontes": [
+          {
+            "titulo": "Zonesun ZS-CFC4 — enchedora e tampadora, 800 garrafas/h (US$ 51.999)",
+            "url": "https://www.zonesuntech.com/products/automatic-4-heads-beer-soda-carbonated-drinks-glass-bottle-crown-caps-bottling-isobaric-filling-capping-machine",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    },
+    {
+      "codigo": "camara_fria",
+      "nome": "Câmara fria",
+      "categoria": "frio",
+      "etapa": "Refrigeração",
+      "fluxo": "suco",
+      "icone": "fridge",
+      "parametro": "Vazão de resfriamento",
+      "unidade": "gf/h",
+      "valor_min": 200,
+      "valor_max": 1600,
+      "valor_otimo": 1200,
+      "valor_atencao": 1400,
+      "valor_falha": 1550,
+      "capacidade_otima": 1200,
+      "consumo_parado_kw": 1.2,
+      "consumo_variavel_kw": 3,
+      "ordem_processo": 9,
+      "sensibilidade_termica": "frio",
+      "aceita_varias_entradas": false,
+      "etapa_final": true,
+      "descricao": "Guarda o suco gelado. Sem pasteurização, é o frio que mantém o suco seguro.",
+      "risco_fisico": "Carga acima do limite faz o compressor trabalhar demais: a temperatura sobe e o suco, que não é pasteurizado, fica inseguro.",
+      "base_dos_numeros": "Hipótese didática para uma operação pequena de suco natural. O fluxo (sem pasteurização e com frio crítico) tem apoio nas fontes abaixo; os números desta máquina, não.",
+      "manual": {
+        "o_que_faz": "Guarda o suco refrigerado até a expedição, mantendo-o seguro e fresco.",
+        "como_funciona_ritmo": "A vazão de resfriamento é quantas garrafas por hora conseguem ser resfriadas. Se for menor que o envase, forma fila de garrafas quentes.",
+        "dicas": "Em suco natural, o frio é o que protege o produto: a temperatura deve ficar entre 1 e 4 °C."
+      },
+      "fontes_numeros": [
+        {
+          "titulo": "Alimentos Sem Mitos — suco de laranja industrializado",
+          "url": "https://alimentossemmitos.com.br/informacao-muda-percepcao-de-consumidores-sobre-suco-de-laranja-industrializado",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ITAL/SP — sucos industrializados",
+          "url": "https://ital.agricultura.sp.gov.br/sucos/17/",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "ResearchGate — vida útil de suco fresco não pasteurizado",
+          "url": "https://www.researchgate.net/publication/230061467_Shelf_Life_and_Quality_of_Freshly_Squeezed_Unpasteurized_Polyethylene-Bottled_Citrus_Juice",
+          "confianca": "estimado"
+        },
+        {
+          "titulo": "Raw Juicery — suco pasteurizado × não pasteurizado",
+          "url": "https://rawjuicery.com/blogs/articles/pasteurized-vs-unpasteurized-juice",
+          "confianca": "estimado"
+        }
+      ],
+      "preco": {
+        "min": 120000,
+        "max": 250000,
+        "observacao": "Câmaras frias de 10 a 40 m³: US$ 14 mil a 31 mil (cerca de US$ 580 a 1.400 por m³), em compras de vacinas (UNICEF), que costumam ser mais caras que as comerciais.",
+        "fontes": [
+          {
+            "titulo": "UNICEF — câmaras frias de 10 a 40 m³ (US$ 14 mil a 31 mil)",
+            "url": "https://supply.unicef.org/all-materials/cold-chain-equipment/cold-freezer-rooms.html?p=3",
+            "confianca": "estimado"
+          }
+        ]
+      }
+    }
+  ],
+  "base_conhecimento": [
+    {
+      "titulo": "Tetra Pak Pasteurizer BF",
+      "tipo": "ficha técnica",
+      "confianca": "real"
+    },
+    {
+      "titulo": "Tetra Pak In-line Blender B",
+      "tipo": "ficha técnica",
+      "confianca": "real"
+    },
+    {
+      "titulo": "Krones Modulfill VFJ",
+      "tipo": "catálogo do fabricante",
+      "confianca": "real"
+    },
+    {
+      "titulo": "Krones Contiroll",
+      "tipo": "página do fabricante",
+      "confianca": "estimado"
+    },
+    {
+      "titulo": "Osterroth & Voigt (2021) — consumo de energia",
+      "tipo": "artigo científico",
+      "confianca": "real"
+    }
+  ],
+  "urls_base_conhecimento": [
+    "https://www.tetrapak.com/en-us/solutions/integrated-solutions-equipment/processing-equipment/pasteurization/tetra-pak-pasteurizer-bf",
+    "https://www.tetrapak.com/en-us/solutions/processing/main-technology-area/blending/in-line-blender-b",
+    "https://www.krones.com/en/products/machines/modulfill-vfj-water.php",
+    "https://www.krones.com/en/products/machines/wrap-around-reel-fed-labelling.php",
+    "https://doi.org/10.3390/su13179880"
+  ],
+  "glossario": [
+    {
+      "grupo": "Produção",
+      "termo": "Gargalo",
+      "definicao": "A máquina mais lenta da fábrica. Ela limita a produção de todas as outras, como o gargalo de uma garrafa limita a água que sai.",
+      "palavras": [
+        "gargalo"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Ritmo",
+      "definicao": "O “botão” principal da máquina: quanto líquido passa (vazão), quantas garrafas por minuto (cadência) ou quantas voltas por minuto (rotação). Depende da máquina.",
+      "palavras": [
+        "ritmo"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Capacidade",
+      "definicao": "Quantas garrafas por hora a máquina consegue entregar no ritmo em que está.",
+      "palavras": [
+        "capacidade"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Saída real",
+      "definicao": "O que realmente sai da máquina. Pode ser menor que a capacidade se ela receber pouco produto da máquina anterior.",
+      "palavras": [
+        "saída real"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Vazão",
+      "definicao": "Quantidade de líquido que passa por hora (litros ou m³ por hora).",
+      "palavras": [
+        "vazão"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Cadência",
+      "definicao": "Quantas garrafas por minuto a máquina trabalha.",
+      "palavras": [
+        "cadência"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "RPM",
+      "definicao": "Rotações por minuto: quantas voltas o eixo da máquina dá em um minuto.",
+      "palavras": [
+        "RPM"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "gf (garrafas)",
+      "definicao": "Abreviação de “garrafas”. “gf/h” = garrafas por hora; “gf/min” = garrafas por minuto.",
+      "palavras": [
+        "gf"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "m³ (metro cúbico)",
+      "definicao": "Mil litros. Uma vazão de 8 m³/h são 8.000 litros por hora.",
+      "palavras": [
+        "m³"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Eficiência (OEE)",
+      "definicao": "Quanto a fábrica produz comparado com o máximo que ela faria com tudo no ponto ótimo. 100% = aproveitamento total.",
+      "palavras": [
+        "eficiência",
+        "OEE"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Unidades em paralelo",
+      "definicao": "Usar mais de uma máquina igual lado a lado (ex.: 2 pasteurizadores) para somar a capacidade daquela etapa.",
+      "palavras": [
+        "em paralelo",
+        "paralelo",
+        "paralelas"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Fila",
+      "definicao": "O excesso que uma máquina entrega além do que a seguinte aguenta. Fica parado esperando: nada some (ideia da conservação da massa).",
+      "palavras": [
+        "fila"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Conservação da massa (Lavoisier)",
+      "definicao": "“Na natureza nada se cria, nada se perde, tudo se transforma.” No simulador: o que entra numa máquina sai dela ou fica parado na fila.",
+      "palavras": [
+        "Lavoisier",
+        "conservação da massa"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Efeito cascata",
+      "definicao": "Quando uma máquina com problema faz as seguintes sofrerem também. No quadro aparece como um rastro vermelho que vai enfraquecendo.",
+      "palavras": [
+        "cascata"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "A montante / a jusante",
+      "definicao": "Montante = as máquinas que vêm antes (de onde o produto vem). Jusante = as que vêm depois.",
+      "palavras": [
+        "a montante",
+        "jusante"
+      ]
+    },
+    {
+      "grupo": "Produção",
+      "termo": "Divisão e junção",
+      "definicao": "Divisão: uma máquina alimenta várias iguais e o fluxo se reparte. Junção: várias entram numa só (ex.: água e xarope no misturador).",
+      "palavras": [
+        "junção"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Ótimo",
+      "definicao": "O ritmo em que a máquina trabalha bem, com pouco desgaste e risco baixo (cerca de 2%).",
+      "palavras": [
+        "ótimo"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Atenção (alerta)",
+      "definicao": "Acima do ótimo: produz um pouco mais, mas o desgaste e o risco de quebra sobem (de 2% até 10%).",
+      "palavras": [
+        "atenção"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Zona crítica",
+      "definicao": "Faixa perto do limite da máquina (risco de 10% a 40%). Pequenas variações já podem fazer a máquina parar.",
+      "palavras": [
+        "zona crítica",
+        "crítico"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Falha",
+      "definicao": "Passou do limite: a máquina para e tudo o que vem depois dela fica sem produto.",
+      "palavras": [
+        "falha"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Risco de falha",
+      "definicao": "Chance estimada de a máquina parar no ritmo atual. É uma estimativa didática do simulador, não uma medição.",
+      "palavras": [
+        "risco"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Sobrecarga",
+      "definicao": "Pedir à máquina mais do que ela foi feita para entregar. Gera calor, vibração e desgaste.",
+      "palavras": [
+        "sobrecarga"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Cavitação",
+      "definicao": "Bolhas que se formam dentro de uma bomba quando ela é forçada. Ao estourar, elas “mordem” e desgastam o metal.",
+      "palavras": [
+        "cavitação"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Dilatação térmica",
+      "definicao": "Materiais e líquidos aumentam de volume com o calor. Num tanque cheio isso eleva a pressão e reduz a margem de segurança.",
+      "palavras": [
+        "dilatação",
+        "dilata"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Viscosidade",
+      "definicao": "O quanto um líquido é “grosso”. O xarope fica mais grosso no frio e escoa mais devagar.",
+      "palavras": [
+        "viscosidade",
+        "grosso"
+      ]
+    },
+    {
+      "grupo": "Risco e física",
+      "termo": "Compressor",
+      "definicao": "Peça do sistema de frio que comprime o gás refrigerante. Em ambiente quente ele trabalha mais e rende menos.",
+      "palavras": [
+        "compressor"
+      ]
+    },
+    {
+      "grupo": "Energia e dinheiro",
+      "termo": "kW e kWh",
+      "definicao": "kW é a potência (quanta energia a máquina puxa a cada instante). kWh é a energia gasta: 1 kW ligado por 1 hora = 1 kWh, que é o que aparece na conta de luz.",
+      "palavras": [
+        "kW",
+        "kWh"
+      ]
+    },
+    {
+      "grupo": "Energia e dinheiro",
+      "termo": "Consumo parado (standby)",
+      "definicao": "Mesmo sem trabalhar, a máquina ligada gasta energia. Nunca é zero.",
+      "palavras": [
+        "standby",
+        "consumo parado"
+      ]
+    },
+    {
+      "grupo": "Energia e dinheiro",
+      "termo": "Investimento estimado",
+      "definicao": "Quanto custaria comprar a máquina extra. É uma faixa de preço tirada de anúncios de fornecedores, não uma cotação.",
+      "palavras": [
+        "investimento",
+        "custo estimado"
+      ]
+    },
+    {
+      "grupo": "Processo de bebidas",
+      "termo": "Pasteurização",
+      "definicao": "Aquecer a bebida por pouco tempo para eliminar micro-organismos e ela durar mais. O suco natural não passa por isso.",
+      "palavras": [
+        "pasteuriza",
+        "pasteurização"
+      ]
+    },
+    {
+      "grupo": "Processo de bebidas",
+      "termo": "Carbonatação",
+      "definicao": "Dissolver gás carbônico (CO₂) na bebida, como no refrigerante.",
+      "palavras": [
+        "carbonatação",
+        "CO₂"
+      ]
+    },
+    {
+      "grupo": "Processo de bebidas",
+      "termo": "Brix",
+      "definicao": "Medida de açúcar da bebida (°Brix). Define a doçura.",
+      "palavras": [
+        "brix"
+      ]
+    },
+    {
+      "grupo": "Processo de bebidas",
+      "termo": "Envase",
+      "definicao": "A etapa de colocar a bebida dentro das garrafas.",
+      "palavras": [
+        "envase"
+      ]
+    },
+    {
+      "grupo": "Processo de bebidas",
+      "termo": "Insumo",
+      "definicao": "Matéria-prima que entra na fábrica (água, açúcar, frutas…).",
+      "palavras": [
+        "insumo",
+        "insumos"
+      ]
+    },
+    {
+      "grupo": "Sistema",
+      "termo": "Receita (Econômico, Padrão, Máximo seguro)",
+      "definicao": "Ritmos prontos para uma máquina: Econômico (mais leve), Padrão (ótimo) e Máximo seguro (o limite da zona de atenção).",
+      "palavras": [
+        "receita"
+      ]
+    },
+    {
+      "grupo": "Sistema",
+      "termo": "Parada de emergência",
+      "definicao": "O botão vermelho que para todas as máquinas de uma vez.",
+      "palavras": [
+        "parada de emergência"
+      ]
+    },
+    {
+      "grupo": "Sistema",
+      "termo": "Hipótese didática",
+      "definicao": "Número escolhido para o simulador mostrar o efeito, sem vir de medição ou ficha técnica. Sempre vem com uma nota dizendo em que se baseia.",
+      "palavras": [
+        "hipótese didática"
+      ]
+    },
+    {
+      "grupo": "Sistema",
+      "termo": "Real × estimado",
+      "definicao": "“Real” = vem de uma fonte com link (ficha, artigo). “Estimado” = adaptado de uma fonte, mas não igual a ela.",
+      "palavras": [
+        "estimado"
+      ]
+    }
+  ],
+  "fabricas": [
+    {
+      "usuario": "victor.dias",
+      "nome": "Bebidas em geral",
+      "exemplo_origem": "bebidas",
+      "temperatura_ambiente": 25,
+      "tarifa_energia": 0.85,
+      "maquinas": [
+        {
+          "codigo": "tanque_agua",
+          "pos_x": 40,
+          "pos_y": 60,
+          "ritmo": 8,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "tanque_xarope",
+          "pos_x": 270,
+          "pos_y": 60,
+          "ritmo": 1200,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "misturador",
+          "pos_x": 500,
+          "pos_y": 60,
+          "ritmo": 60,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "pasteurizador",
+          "pos_x": 730,
+          "pos_y": 60,
+          "ritmo": 6.5,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "carbonatador",
+          "pos_x": 730,
+          "pos_y": 250,
+          "ritmo": 7,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "enchedora",
+          "pos_x": 500,
+          "pos_y": 250,
+          "ritmo": 200,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "esteira",
+          "pos_x": 270,
+          "pos_y": 250,
+          "ritmo": 0.8,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "rotuladora",
+          "pos_x": 40,
+          "pos_y": 250,
+          "ritmo": 190,
+          "unidades_paralelo": 1,
+          "desligada": false
+        }
+      ],
+      "conexoes": [
+        {
+          "origem_indice": 0,
+          "destino_indice": 1
+        },
+        {
+          "origem_indice": 1,
+          "destino_indice": 2
+        },
+        {
+          "origem_indice": 2,
+          "destino_indice": 3
+        },
+        {
+          "origem_indice": 3,
+          "destino_indice": 4
+        },
+        {
+          "origem_indice": 4,
+          "destino_indice": 5
+        },
+        {
+          "origem_indice": 5,
+          "destino_indice": 6
+        },
+        {
+          "origem_indice": 6,
+          "destino_indice": 7
+        }
+      ],
+      "cenarios": [
+        {
+          "nome": "Situação inicial (tudo no ótimo)",
+          "producao_h": 11400,
+          "risco_max": 0.02,
+          "energia_kw": 24.533,
+          "temperatura_ambiente": 25,
+          "gargalo_indice": 7,
+          "maquinas": [
+            {
+              "indice": 0,
+              "ritmo": 8,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 16000,
+              "saida_h": 16000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1,
+              "fila_h": 0
+            },
+            {
+              "indice": 1,
+              "ritmo": 1200,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 14400,
+              "saida_h": 14400,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.3,
+              "fila_h": 1600
+            },
+            {
+              "indice": 2,
+              "ritmo": 60,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 15000,
+              "saida_h": 14400,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 2.9,
+              "fila_h": 0
+            },
+            {
+              "indice": 3,
+              "ritmo": 6.5,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 13000,
+              "saida_h": 13000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 7,
+              "fila_h": 1400
+            },
+            {
+              "indice": 4,
+              "ritmo": 7,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 14000,
+              "saida_h": 13000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.893,
+              "fila_h": 0
+            },
+            {
+              "indice": 5,
+              "ritmo": 200,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 12000,
+              "saida_h": 12000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 2.55,
+              "fila_h": 1000
+            },
+            {
+              "indice": 6,
+              "ritmo": 0.8,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 15000,
+              "saida_h": 12000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.26,
+              "fila_h": 0
+            },
+            {
+              "indice": 7,
+              "ritmo": 190,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 11400,
+              "saida_h": 11400,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 6.63,
+              "fila_h": 600
+            }
+          ]
+        },
+        {
+          "nome": "Depois do plano +10% de produção",
+          "producao_h": 12600,
+          "risco_max": 0.084,
+          "energia_kw": 28.983,
+          "temperatura_ambiente": 25,
+          "gargalo_indice": 5,
+          "maquinas": [
+            {
+              "indice": 0,
+              "ritmo": 8,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 16000,
+              "saida_h": 16000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1,
+              "fila_h": 0
+            },
+            {
+              "indice": 1,
+              "ritmo": 1200,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 14400,
+              "saida_h": 14400,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.3,
+              "fila_h": 1600
+            },
+            {
+              "indice": 2,
+              "ritmo": 60,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 15000,
+              "saida_h": 14400,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 2.9,
+              "fila_h": 0
+            },
+            {
+              "indice": 3,
+              "ritmo": 6.5,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 13000,
+              "saida_h": 13000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 7,
+              "fila_h": 1400
+            },
+            {
+              "indice": 4,
+              "ritmo": 7,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 14000,
+              "saida_h": 13000,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.893,
+              "fila_h": 0
+            },
+            {
+              "indice": 5,
+              "ritmo": 220,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 12600,
+              "saida_h": 12600,
+              "risco": 0.084,
+              "estado": "alerta",
+              "energia_kw": 2.577,
+              "fila_h": 400
+            },
+            {
+              "indice": 6,
+              "ritmo": 0.8,
+              "unidades_paralelo": 1,
+              "desligada": false,
+              "capacidade_h": 15000,
+              "saida_h": 12600,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 1.308,
+              "fila_h": 0
+            },
+            {
+              "indice": 7,
+              "ritmo": 190,
+              "unidades_paralelo": 2,
+              "desligada": false,
+              "capacidade_h": 22800,
+              "saida_h": 12600,
+              "risco": 0.02,
+              "estado": "normal",
+              "energia_kw": 11.005,
+              "fila_h": 0
+            }
+          ]
+        }
+      ],
+      "simulacoes": [
+        {
+          "velocidade": 20,
+          "duracao_min": 480,
+          "garrafas_produzidas": 87400,
+          "energia_kwh": 193.74,
+          "fila_total": 36127,
+          "pct_do_maximo": 95.83,
+          "risco_max": 0.02,
+          "gargalo_indice": 7
+        }
+      ],
+      "planos": [
+        {
+          "tipo_objetivo": "pct",
+          "valor_meta": 10,
+          "aceita_zona_atencao": true,
+          "aceita_paralelo": true,
+          "producao_antes": 11400,
+          "producao_depois": 12600,
+          "risco_antes": 0.02,
+          "risco_depois": 0.084,
+          "investimento_min": 40000,
+          "investimento_max": 140000,
+          "atingiu_meta": true,
+          "aplicado": true,
+          "passos": [
+            {
+              "acao": "ritmo",
+              "indice": 5,
+              "ritmo_antes": 200,
+              "ritmo_depois": 220,
+              "motivo": "Era o gargalo. Acima do ótimo ela rende mais, mas o risco sobe para 8,4%."
+            },
+            {
+              "acao": "paralelo",
+              "indice": 7,
+              "unidades_antes": 1,
+              "unidades_depois": 2,
+              "motivo": "Mesmo no limite seguro dela, continuava sendo o gargalo. Uma unidade a mais soma capacidade a essa etapa. Alternativa: um modelo de maior capacidade.",
+              "custo_min": 40000,
+              "custo_max": 140000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "usuario": "victor.dias",
+      "nome": "Suco de laranja natural",
+      "exemplo_origem": "suco",
+      "temperatura_ambiente": 25,
+      "tarifa_energia": 0.85,
+      "maquinas": [
+        {
+          "codigo": "recepcao_fruta",
+          "pos_x": 40,
+          "pos_y": 60,
+          "ritmo": 500,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "lavadora_frutas",
+          "pos_x": 270,
+          "pos_y": 60,
+          "ritmo": 550,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "extratora",
+          "pos_x": 500,
+          "pos_y": 60,
+          "ritmo": 320,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "filtro_despolpadeira",
+          "pos_x": 500,
+          "pos_y": 250,
+          "ritmo": 420,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "envasadora_suco",
+          "pos_x": 270,
+          "pos_y": 250,
+          "ritmo": 20,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "camara_fria",
+          "pos_x": 40,
+          "pos_y": 250,
+          "ritmo": 1200,
+          "unidades_paralelo": 1,
+          "desligada": false
+        }
+      ],
+      "conexoes": [
+        {
+          "origem_indice": 0,
+          "destino_indice": 1
+        },
+        {
+          "origem_indice": 1,
+          "destino_indice": 2
+        },
+        {
+          "origem_indice": 2,
+          "destino_indice": 3
+        },
+        {
+          "origem_indice": 3,
+          "destino_indice": 4
+        },
+        {
+          "origem_indice": 4,
+          "destino_indice": 5
+        }
+      ],
+      "cenarios": [],
+      "simulacoes": [],
+      "planos": []
+    },
+    {
+      "usuario": "enzo.fernandes",
+      "nome": "Linha de bebidas do Enzo",
+      "exemplo_origem": "bebidas",
+      "temperatura_ambiente": 25,
+      "tarifa_energia": 0.85,
+      "maquinas": [
+        {
+          "codigo": "tanque_agua",
+          "pos_x": 40,
+          "pos_y": 60,
+          "ritmo": 8,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "tanque_xarope",
+          "pos_x": 270,
+          "pos_y": 60,
+          "ritmo": 1200,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "misturador",
+          "pos_x": 500,
+          "pos_y": 60,
+          "ritmo": 60,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "pasteurizador",
+          "pos_x": 730,
+          "pos_y": 60,
+          "ritmo": 6.5,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "carbonatador",
+          "pos_x": 730,
+          "pos_y": 250,
+          "ritmo": 7,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "enchedora",
+          "pos_x": 500,
+          "pos_y": 250,
+          "ritmo": 200,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "esteira",
+          "pos_x": 270,
+          "pos_y": 250,
+          "ritmo": 0.8,
+          "unidades_paralelo": 1,
+          "desligada": false
+        },
+        {
+          "codigo": "rotuladora",
+          "pos_x": 40,
+          "pos_y": 250,
+          "ritmo": 190,
+          "unidades_paralelo": 1,
+          "desligada": false
+        }
+      ],
+      "conexoes": [
+        {
+          "origem_indice": 0,
+          "destino_indice": 1
+        },
+        {
+          "origem_indice": 1,
+          "destino_indice": 2
+        },
+        {
+          "origem_indice": 2,
+          "destino_indice": 3
+        },
+        {
+          "origem_indice": 3,
+          "destino_indice": 4
+        },
+        {
+          "origem_indice": 4,
+          "destino_indice": 5
+        },
+        {
+          "origem_indice": 5,
+          "destino_indice": 6
+        },
+        {
+          "origem_indice": 6,
+          "destino_indice": 7
+        }
+      ],
+      "cenarios": [],
+      "simulacoes": [],
+      "planos": []
+    }
+  ],
+  "exemplos": [
+    "bebidas",
+    "suco"
+  ]
+}
