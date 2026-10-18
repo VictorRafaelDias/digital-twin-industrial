@@ -68,11 +68,33 @@ Uma escolha consciente: `cenario_maquinas` e `plano_passos` guardam **valores hi
 - **Senha:** só o hash (PBKDF2-SHA256 com sal) é guardado.
 - **Fontes e confiança:** toda fonte tem `confianca` (`real`, `estimado` ou `hipotese`), seguindo a regra do projeto: dado real tem link; hipótese diz em que se baseia.
 
-## 5. Banco escolhido (SGBD)
+## 5. Banco escolhido (SGBD): PostgreSQL
 
-- **PostgreSQL** é o banco previsto para a versão final (decisão `docs/decisoes/0001-stack.md` do projeto principal); **SQLite** foi aceito para o protótipo.
-- Esta entrega traz os dois: o banco pronto em **SQLite** (abre em qualquer computador, sem instalar servidor) e os scripts para **PostgreSQL**. Os dois são gerados do mesmo modelo (`scripts/modelo.py`), então não saem diferentes. Os comandos de dados, as views e os exemplos de CRUD usam SQL padrão e rodam igual nos dois.
-- Os scripts de PostgreSQL ainda não foram executados em um servidor nesta entrega. Os testes automáticos rodam no SQLite.
+O professor deixou a escolha livre. **O banco do sistema é o PostgreSQL.** O SQLite entra só como cópia portátil para demonstração (abre com duplo clique, sem instalar servidor).
+
+| Critério | PostgreSQL | SQLite | MySQL |
+|---|---|---|---|
+| Vários usuários e a API gravando ao mesmo tempo | Sim (servidor, transações e bloqueios por linha) | Limitado (um escritor por vez) | Sim |
+| Regras de integridade que o modelo usa (chave estrangeira composta, CHECK entre colunas, ON DELETE) | Completo | Completo, mas as chaves estrangeiras precisam ser ligadas a cada conexão | CHECK e chaves compostas com limitações históricas |
+| Combina com o backend (Python, FastAPI, SQLAlchemy) | Excelente | Bom (só para protótipo) | Bom |
+| Tipos para o que o sistema guarda (NUMERIC exato, TIMESTAMP, BOOLEAN, JSON) | Completo, com JSONB | Tipos fracos (tudo vira poucos tipos internos) | Bom |
+| Busca por significado nos manuais (assistente RAG, previsto no projeto) | Extensão `pgvector` no próprio banco | Não tem | Recurso mais recente |
+| Custo e licença | Gratuito e código aberto | Gratuito e de domínio público | Gratuito (Oracle) |
+| Facilidade para o professor abrir | Precisa de servidor (Docker ou instalação) | Basta o arquivo | Precisa de servidor |
+
+**Por que PostgreSQL para esta aplicação:**
+
+1. **O sistema vai ter uma API gravando e lendo ao mesmo tempo**, com vários usuários e simulações. O SQLite trava com vários escritores; o PostgreSQL foi feito para isso.
+2. **A integridade importa**: o modelo usa chaves compostas (uma conexão só liga máquinas da mesma fábrica), regras entre colunas e apagamento em cascata. O PostgreSQL aplica tudo isso sempre, sem configuração extra.
+3. **O projeto já previa o PostgreSQL** (decisão `docs/decisoes/0001-stack.md`), então não há troca de rumo.
+4. **O assistente com leitura de manuais (RAG)**, que está no escopo, pode usar a extensão `pgvector` para buscar trechos por significado, sem outro banco.
+5. É **gratuito, aberto e padrão de mercado**, o que ajuda no futuro (hospedagem, equipe, documentação).
+
+**Como ficou a entrega:**
+
+- Os scripts de criação, dados, views e exemplos de CRUD existem para **os dois**, gerados do mesmo modelo (`scripts/modelo.py`), então nunca saem diferentes. Os dados, as views e o CRUD usam SQL padrão e rodam igual nos dois bancos.
+- O `digital_twin.db` (SQLite) é a cópia portátil: serve para o professor abrir, para a demonstração de CRUD e para os testes automáticos.
+- Os scripts de PostgreSQL (`sql/01_schema_postgres.sql` e `sql/02b_ajustar_sequencias_postgres.sql`) ainda **não foram executados em um servidor PostgreSQL**. Isso fica como a primeira tarefa da próxima etapa, junto com o `docker-compose` para subir o banco com um comando.
 
 ## 6. Ligação com o sistema
 

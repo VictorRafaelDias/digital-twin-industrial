@@ -2,6 +2,12 @@
 
 Base de dados do sistema: 21 tabelas, com o **DER** (diagrama entidade-relacionamento), o banco **já criado e populado** e exemplos de **CRUD** (Create, Read, Update, Delete) em todas as tabelas.
 
+## Banco escolhido: PostgreSQL
+
+O banco do sistema é o **PostgreSQL**: aguenta a API e vários usuários gravando ao mesmo tempo, aplica sempre as regras de integridade do modelo (chaves compostas, apagamento em cascata), combina com o backend (Python, FastAPI) e permite, no futuro, buscar nos manuais por significado com a extensão `pgvector` (assistente RAG). A comparação completa com SQLite e MySQL está em [`docs/modelagem.md`](docs/modelagem.md#5-banco-escolhido-sgbd-postgresql).
+
+Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia portátil em SQLite** (`digital_twin.db`), que abre com duplo clique no DB Browser, sem instalar nada. Os scripts de criação existem para os dois bancos e saem do mesmo modelo.
+
 ## O que foi pedido e onde está
 
 | Pedido | Onde está |
@@ -9,6 +15,7 @@ Base de dados do sistema: 21 tabelas, com o **DER** (diagrama entidade-relaciona
 | Diagrama entidade-relacionamento (DER) | [`der/`](der/): visão geral, um diagrama por módulo e o modelo completo (arquivos `DER-*.png`) |
 | A própria base de dados, com as tabelas criadas | [`digital_twin.db`](digital_twin.db) (SQLite, pronto para abrir) e os scripts de criação em [`sql/`](sql/) (SQLite e PostgreSQL) |
 | Capacidade de dar comandos de CRUD | [`sql/04_crud_exemplos.sql`](sql/04_crud_exemplos.sql) (comandos), [`scripts/crud_demo.py`](scripts/crud_demo.py) (roda e mostra tudo) e [`testes/`](testes/) (23 testes automáticos) |
+| Documentação | [`docs/Documentacao-Banco-de-Dados.docx`](docs/Documentacao-Banco-de-Dados.docx) (Word, com os DER e o dicionário), [`docs/modelagem.md`](docs/modelagem.md) e [`docs/dicionario-de-dados.md`](docs/dicionario-de-dados.md) |
 
 ## Ver rapidamente (3 passos)
 
@@ -53,12 +60,14 @@ banco-de-dados/
 │   ├── 03_views.sql                 4 consultas prontas (views)
 │   └── 04_crud_exemplos.sql         exemplos de CRUD em todas as tabelas
 ├── docs/
+│   ├── Documentacao-Banco-de-Dados.docx   documento Word com tudo (resumo, escolha do banco, DER, CRUD e dicionário)
 │   ├── dicionario-de-dados.md       todas as tabelas, colunas, tipos, chaves e regras
 │   └── modelagem.md                 decisões de modelagem, normalização e ligação com o sistema
 ├── scripts/
 │   ├── modelo.py                    única definição das tabelas (os .sql e o DER saem daqui)
 │   ├── gerar_banco.py               gera os .sql, o digital_twin.db, os .mmd e o dicionário
 │   ├── exportar_dados_do_front.ts   leva os dados do front-end para dados/dados_iniciais.json
+│   ├── gerar_documento_word.py      gera docs/Documentacao-Banco-de-Dados.docx a partir dos .md e dos DER
 │   └── crud_demo.py                 demonstração de CRUD
 ├── dados/dados_iniciais.json    dados exportados do front-end (entrada do gerador)
 └── testes/test_banco.py         testes automáticos
@@ -74,7 +83,7 @@ sqlite3 meu_banco.db < sql/02_dados_iniciais.sql
 sqlite3 meu_banco.db < sql/03_views.sql
 ```
 
-**PostgreSQL** (banco previsto para a versão final do sistema; os scripts saem do mesmo modelo, mas ainda **não foram executados em um servidor PostgreSQL** nesta entrega):
+**PostgreSQL** (banco do sistema; os scripts saem do mesmo modelo, mas ainda **não foram executados em um servidor PostgreSQL** nesta entrega):
 
 ```bash
 createdb digital_twin
