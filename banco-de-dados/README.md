@@ -6,6 +6,8 @@ Base de dados do sistema: 21 tabelas, com o **DER** (diagrama entidade-relaciona
 
 O banco do sistema é o **PostgreSQL**: aguenta a API e vários usuários gravando ao mesmo tempo, aplica sempre as regras de integridade do modelo (chaves compostas, apagamento em cascata), combina com o backend (Python, FastAPI) e permite, no futuro, buscar nos manuais por significado com a extensão `pgvector` (assistente RAG). A comparação completa com SQLite e MySQL está em [`docs/modelagem.md`](docs/modelagem.md#5-banco-escolhido-sgbd-postgresql).
 
+O texto da entrega, com o motivo da escolha e o link de acesso, está em [`docs/escolha-do-banco.md`](docs/escolha-do-banco.md).
+
 Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia portátil em SQLite** (`digital_twin.db`), que abre com duplo clique no DB Browser, sem instalar nada. Os scripts de criação existem para os dois bancos e saem do mesmo modelo.
 
 ## O que foi pedido e onde está
