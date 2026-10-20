@@ -72,7 +72,7 @@ O Sprint 1 pede a **base de dados** do sistema: o diagrama entidade-relacionamen
 | Diagrama entidade-relacionamento (DER) | Pasta `der/`: visão geral, um diagrama por módulo e o modelo completo (neste documento, na seção 5) |
 | A base de dados com as tabelas criadas | `digital_twin.db` (SQLite, cópia portátil) e os scripts em `sql/` (SQLite e PostgreSQL). 21 tabelas, 4 views e 345 linhas iniciais |
 | Comandos de CRUD | `sql/04_crud_exemplos.sql` e `scripts/crud_demo.py`, que executa Create, Read, Update e Delete em todas as tabelas |
-| Testes | `testes/test_banco.py`: 23 testes automáticos (criação, dados, CRUD e regras de integridade) |
+| Testes | `testes/test_banco.py`: 23 testes automáticos no SQLite (criação, dados, CRUD e regras de integridade) e `scripts/testar_postgres.py`: a mesma verificação num servidor PostgreSQL 16 (Docker), que passou |
 | Documentação | Este documento, `docs/modelagem.md` e `docs/dicionario-de-dados.md` |
 
 O banco foi pensado para o sistema Digital Twin Industrial, um simulador de fábrica de bebidas no estilo Cisco Packet Tracer. Ele guarda o catálogo de máquinas (com limites, capacidade, consumo, preços estimados e fontes), as fábricas montadas pelos usuários, os resultados de simulação, os planos de melhoria, o registro de eventos e a conversa com o assistente.
@@ -152,7 +152,7 @@ Cada tabela, coluna, tipo, chave e regra de integridade. O mesmo conteúdo está
 ## 9. Como executar
 **Ver o banco:** abrir `digital_twin.db` no DB Browser for SQLite (gratuito, https://sqlitebrowser.org). **Ver o CRUD:** `python scripts/crud_demo.py` (só precisa do Python). **Testes:** `python -m unittest discover -s testes -v`.
 
-Criar do zero em **SQLite**: `sqlite3 meu_banco.db < sql/01_schema_sqlite.sql`, depois `02_dados_iniciais.sql` e `03_views.sql`. Criar em **PostgreSQL**: `createdb digital_twin` e `psql digital_twin -f sql/01_schema_postgres.sql`, depois `02_dados_iniciais.sql`, `02b_ajustar_sequencias_postgres.sql` e `03_views.sql`.
+Criar do zero em **SQLite**: `sqlite3 meu_banco.db < sql/01_schema_sqlite.sql`, depois `02_dados_iniciais.sql` e `03_views.sql`. Criar em **PostgreSQL** com Docker: `docker compose up -d` (sobe o servidor e já cria tudo) e `python scripts/testar_postgres.py` (confere as tabelas, roda o CRUD completo e os testes de integridade). Num PostgreSQL já instalado: `createdb digital_twin` e `psql digital_twin -f sql/01_schema_postgres.sql`, depois `02_dados_iniciais.sql`, `02b_ajustar_sequencias_postgres.sql` e `03_views.sql`.
 
 Para regerar todos os arquivos a partir do modelo: `python scripts/gerar_banco.py`.
 """

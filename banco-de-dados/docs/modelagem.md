@@ -94,7 +94,8 @@ O professor deixou a escolha livre. **O banco do sistema é o PostgreSQL.** O SQ
 
 - Os scripts de criação, dados, views e exemplos de CRUD existem para **os dois**, gerados do mesmo modelo (`scripts/modelo.py`), então nunca saem diferentes. Os dados, as views e o CRUD usam SQL padrão e rodam igual nos dois bancos.
 - O `digital_twin.db` (SQLite) é a cópia portátil: serve para o professor abrir, para a demonstração de CRUD e para os testes automáticos.
-- Os scripts de PostgreSQL (`sql/01_schema_postgres.sql` e `sql/02b_ajustar_sequencias_postgres.sql`) ainda **não foram executados em um servidor PostgreSQL**. Isso fica como a primeira tarefa da próxima etapa, junto com o `docker-compose` para subir o banco com um comando.
+- **Os scripts de PostgreSQL foram executados num servidor PostgreSQL 16 (Docker) e passaram:** as 21 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo (`sql/04_crud_exemplos.sql`) rodou e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos de `testes/test_integridade_postgres.sql` (chaves estrangeiras, valores únicos, regras CHECK, chave composta e RESTRICT). O `docker-compose.yml` sobe o banco com um comando (`docker compose up -d`) e `scripts/testar_postgres.py` repete essa verificação.
+- A validação foi feita com o PostgreSQL 16.15 em contêiner Linux (Alpine). Os testes unitários em Python (`testes/test_banco.py`) continuam rodando no SQLite.
 
 ## 6. Ligação com o sistema
 

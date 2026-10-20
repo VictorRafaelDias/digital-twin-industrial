@@ -31,9 +31,12 @@ Escolhemos o **PostgreSQL** como banco de dados do sistema Digital Twin Industri
 - **DER** (diagrama entidade-relacionamento): visão geral e um diagrama por módulo, com todas as colunas.
 - **Base de dados:** 21 tabelas em 5 módulos, 4 views e 345 linhas iniciais (o catálogo de 14 máquinas com fontes e preços, o glossário e fábricas de exemplo).
 - **CRUD** (Create, Read, Update, Delete) demonstrado em todas as tabelas: `python scripts/crud_demo.py` executa os comandos e mostra os resultados.
-- **23 testes automáticos**, que cobrem a criação, os dados, o CRUD em cada tabela e a recusa de dados inválidos.
+- **23 testes automáticos** (SQLite) e **a verificação no PostgreSQL** (`scripts/testar_postgres.py`), que cobrem a criação, os dados, o CRUD em cada tabela e a recusa de dados inválidos.
+- **`docker-compose.yml`**, que sobe o PostgreSQL com tudo criado em um comando.
 - **Documentação:** documento Word, dicionário de dados e texto de modelagem.
 
-## Situação dos scripts do PostgreSQL
+## O PostgreSQL foi testado num servidor de verdade
 
-Os testes automáticos e a demonstração de CRUD foram executados na cópia SQLite. Os scripts do PostgreSQL são gerados do mesmo modelo e usam SQL padrão, mas ainda **não foram executados em um servidor PostgreSQL**. Isso é a primeira tarefa da próxima etapa, junto com um `docker-compose` para subir o banco com um comando.
+Os scripts de criação foram executados num servidor **PostgreSQL 16 (Docker)** e passaram: as 21 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo rodou em todas as tabelas e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos do teste de integridade (chaves estrangeiras, valores únicos, regras entre colunas, chave composta e apagamento restrito).
+
+Para repetir a verificação: `docker compose up -d` (sobe o banco já criado) e `python scripts/testar_postgres.py`, dentro da pasta `banco-de-dados/`. A cópia SQLite (`digital_twin.db`) continua disponível para abrir sem instalar nada e é usada nos testes unitários em Python.

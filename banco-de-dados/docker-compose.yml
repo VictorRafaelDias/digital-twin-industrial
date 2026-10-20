@@ -1,0 +1,34 @@
+# Sobe o banco PostgreSQL do Digital Twin Industrial com um comando:
+#
+#     docker compose up -d
+#
+# Na primeira vez, o PostgreSQL cria o banco "digital_twin" e executa sozinho os scripts de /docker-entrypoint-initdb.d
+# (esquema, dados iniciais, ajuste dos contadores e views). Para recomeçar do zero: docker compose down -v
+#
+# Conexão (somente para desenvolvimento local; troque a senha em qualquer outro ambiente):
+#     servidor: localhost   porta: 5432   banco: digital_twin   usuário: digital_twin   senha: digital_twin
+#     docker compose exec banco psql -U digital_twin -d digital_twin
+services:
+  banco:
+    image: postgres:16-alpine
+    container_name: digital-twin-postgres
+    environment:
+      POSTGRES_DB: digital_twin
+      POSTGRES_USER: digital_twin
+      POSTGRES_PASSWORD: digital_twin
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/01_schema_postgres.sql:/docker-entrypoint-initdb.d/01_esquema.sql:ro
+      - ./sql/02_dados_iniciais.sql:/docker-entrypoint-initdb.d/02_dados_iniciais.sql:ro
+      - ./sql/02b_ajustar_sequencias_postgres.sql:/docker-entrypoint-initdb.d/03_ajustar_sequencias.sql:ro
+      - ./sql/03_views.sql:/docker-entrypoint-initdb.d/04_views.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digital_twin -d digital_twin"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

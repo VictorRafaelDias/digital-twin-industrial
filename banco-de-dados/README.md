@@ -8,6 +8,8 @@ O banco do sistema é o **PostgreSQL**: aguenta a API e vários usuários gravan
 
 O texto da entrega, com o motivo da escolha e o link de acesso, está em [`docs/escolha-do-banco.md`](docs/escolha-do-banco.md).
 
+**Testado de verdade no PostgreSQL 16 (Docker):** os scripts criam as 21 tabelas, as 4 views e os 345 registros iniciais sem erro; o CRUD completo roda e devolve o banco ao estado inicial; e o banco recusa os 14 comandos inválidos do teste de integridade. Para repetir: `docker compose up -d` e depois `python scripts/testar_postgres.py` (veja abaixo).
+
 Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia portátil em SQLite** (`digital_twin.db`), que abre com duplo clique no DB Browser, sem instalar nada. Os scripts de criação existem para os dois bancos e saem do mesmo modelo.
 
 ## O que foi pedido e onde está
@@ -70,9 +72,13 @@ banco-de-dados/
 │   ├── gerar_banco.py               gera os .sql, o digital_twin.db, os .mmd e o dicionário
 │   ├── exportar_dados_do_front.ts   leva os dados do front-end para dados/dados_iniciais.json
 │   ├── gerar_documento_word.py      gera docs/Documentacao-Banco-de-Dados.docx a partir dos .md e dos DER
-│   └── crud_demo.py                 demonstração de CRUD
+│   ├── testar_postgres.py           testa o banco no PostgreSQL (Docker): estrutura, dados, CRUD e integridade
+│   └── crud_demo.py                 demonstração de CRUD (SQLite)
+├── docker-compose.yml           sobe o PostgreSQL 16 com tudo criado (docker compose up -d)
 ├── dados/dados_iniciais.json    dados exportados do front-end (entrada do gerador)
-└── testes/test_banco.py         testes automáticos
+└── testes/
+    ├── test_banco.py                testes automáticos no SQLite (23 testes)
+    └── test_integridade_postgres.sql   14 comandos inválidos que o PostgreSQL precisa recusar
 ```
 
 ## Criar o banco do zero
@@ -85,7 +91,21 @@ sqlite3 meu_banco.db < sql/02_dados_iniciais.sql
 sqlite3 meu_banco.db < sql/03_views.sql
 ```
 
-**PostgreSQL** (banco do sistema; os scripts saem do mesmo modelo, mas ainda **não foram executados em um servidor PostgreSQL** nesta entrega):
+**PostgreSQL** (banco do sistema).
+
+*Opção 1, com Docker (mais simples):* um comando sobe o servidor e já cria tudo (esquema, dados e views):
+
+```bash
+cd banco-de-dados
+docker compose up -d                      # sobe o PostgreSQL 16 e executa os scripts de sql/
+python scripts/testar_postgres.py         # confere as tabelas, roda o CRUD completo e os testes de integridade
+docker compose exec banco psql -U digital_twin -d digital_twin     # abre o terminal do banco (ex.: SELECT * FROM vw_fabricas_resumo;)
+docker compose down -v                    # apaga o banco para recomeçar do zero
+```
+
+Para usar um programa gráfico (DBeaver, pgAdmin): servidor `localhost`, porta `5432`, banco `digital_twin`, usuário `digital_twin`, senha `digital_twin` (apenas para uso local).
+
+*Opção 2, num PostgreSQL já instalado:*
 
 ```bash
 createdb digital_twin
@@ -94,6 +114,8 @@ psql digital_twin -f sql/02_dados_iniciais.sql
 psql digital_twin -f sql/02b_ajustar_sequencias_postgres.sql
 psql digital_twin -f sql/03_views.sql
 ```
+
+Os comandos de CRUD (`sql/04_crud_exemplos.sql`) rodam igual nos dois bancos: `psql digital_twin -f sql/04_crud_exemplos.sql`.
 
 ## Regras que o próprio banco garante
 
