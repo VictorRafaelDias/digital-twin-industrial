@@ -19,7 +19,7 @@ Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia po
 | Diagrama entidade-relacionamento (DER) | [`der/`](der/): visão geral, um diagrama por módulo e o modelo completo (arquivos `DER-*.png`) |
 | A própria base de dados, com as tabelas criadas | [`digital_twin.db`](digital_twin.db) (SQLite, pronto para abrir) e os scripts de criação em [`sql/`](sql/) (SQLite e PostgreSQL) |
 | Capacidade de dar comandos de CRUD | [`sql/04_crud_exemplos.sql`](sql/04_crud_exemplos.sql) (comandos), [`scripts/crud_demo.py`](scripts/crud_demo.py) (roda e mostra tudo) e [`testes/`](testes/) (23 testes automáticos) |
-| Documentação | [`docs/Documentacao-Banco-de-Dados.docx`](docs/Documentacao-Banco-de-Dados.docx) (Word, com os DER e o dicionário), [`docs/modelagem.md`](docs/modelagem.md) e [`docs/dicionario-de-dados.md`](docs/dicionario-de-dados.md) |
+| Documentação | [`docs/Documentacao-Banco-de-Dados.pdf`](docs/Documentacao-Banco-de-Dados.pdf) (PDF) e [`.docx`](docs/Documentacao-Banco-de-Dados.docx) (Word), com os DER e o dicionário, [`docs/modelagem.md`](docs/modelagem.md) e [`docs/dicionario-de-dados.md`](docs/dicionario-de-dados.md) |
 
 ## Ver rapidamente (3 passos)
 
@@ -55,7 +55,7 @@ Usuários de demonstração: `victor.dias` e `enzo.fernandes` (senha de demonstr
 ```
 banco-de-dados/
 ├── digital_twin.db              banco SQLite pronto (esquema + views + dados)
-├── der/                         DER: imagens (.png) e o texto-fonte dos diagramas (.mmd, Mermaid)
+├── der/                         DER: imagens (.png, linhas retas) e o mesmo diagrama em texto Mermaid (.mmd)
 ├── sql/
 │   ├── 01_schema_sqlite.sql         CREATE TABLE (SQLite)
 │   ├── 01_schema_postgres.sql       CREATE TABLE (PostgreSQL, com comentários nas tabelas e colunas)
@@ -64,12 +64,15 @@ banco-de-dados/
 │   ├── 03_views.sql                 4 consultas prontas (views)
 │   └── 04_crud_exemplos.sql         exemplos de CRUD em todas as tabelas
 ├── docs/
+│   ├── Documentacao-Banco-de-Dados.pdf    o mesmo documento em PDF (30 páginas)
 │   ├── Documentacao-Banco-de-Dados.docx   documento Word com tudo (resumo, escolha do banco, DER, CRUD e dicionário)
 │   ├── dicionario-de-dados.md       todas as tabelas, colunas, tipos, chaves e regras
 │   └── modelagem.md                 decisões de modelagem, normalização e ligação com o sistema
 ├── scripts/
 │   ├── modelo.py                    única definição das tabelas (os .sql e o DER saem daqui)
 │   ├── gerar_banco.py               gera os .sql, o digital_twin.db, os .mmd e o dicionário
+│   ├── gerar_der.py                 desenha os DER (.png) com linhas retas, a partir do modelo
+│   ├── layouts_der.py               onde fica cada tabela em cada diagrama (edite para reorganizar)
 │   ├── exportar_dados_do_front.ts   leva os dados do front-end para dados/dados_iniciais.json
 │   ├── gerar_documento_word.py      gera docs/Documentacao-Banco-de-Dados.docx a partir dos .md e dos DER
 │   ├── testar_postgres.py           testa o banco no PostgreSQL (Docker): estrutura, dados, CRUD e integridade
@@ -137,4 +140,4 @@ cd ../app && npx vite-node ../banco-de-dados/scripts/exportar_dados_do_front.ts 
 cd ../banco-de-dados && python scripts/gerar_banco.py
 ```
 
-Os diagramas (.png) são feitos a partir dos `.mmd` (texto Mermaid, que também abre em https://mermaid.live).
+Depois, `python scripts/gerar_der.py` redesenha os diagramas (.png) com linhas retas a partir do mesmo modelo; a posição de cada tabela fica em `scripts/layouts_der.py`. Os `.mmd` (texto Mermaid) são uma versão alternativa que abre em https://mermaid.live.

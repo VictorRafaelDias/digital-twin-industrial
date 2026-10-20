@@ -33,7 +33,7 @@ Escolhemos o **PostgreSQL** como banco de dados do sistema Digital Twin Industri
 - **CRUD** (Create, Read, Update, Delete) demonstrado em todas as tabelas: `python scripts/crud_demo.py` executa os comandos e mostra os resultados.
 - **23 testes automáticos** (SQLite) e **a verificação no PostgreSQL** (`scripts/testar_postgres.py`), que cobrem a criação, os dados, o CRUD em cada tabela e a recusa de dados inválidos.
 - **`docker-compose.yml`**, que sobe o PostgreSQL com tudo criado em um comando.
-- **Documentação:** documento Word, dicionário de dados e texto de modelagem.
+- **Documentação:** documento em PDF e Word, dicionário de dados e texto de modelagem.
 
 ## O PostgreSQL foi testado num servidor de verdade
 

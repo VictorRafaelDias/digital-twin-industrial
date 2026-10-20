@@ -25,7 +25,7 @@ from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent.parent
 SAIDA = RAIZ / "docs" / "Documentacao-Banco-de-Dados.docx"
-NAVY, TEAL = RGBColor(0x17, 0x23, 0x2E), RGBColor(0x1C, 0x72, 0x93)
+NAVY = RGBColor(0, 0, 0)  # documento todo em preto (sem cor), como no TCC anterior
 
 
 # =====================================================================================================
@@ -150,11 +150,13 @@ Cada tabela, coluna, tipo, chave e regra de integridade. O mesmo conteúdo está
 
 {rebaixar(dic_modulos, 1)}
 ## 9. Como executar
-**Ver o banco:** abrir `digital_twin.db` no DB Browser for SQLite (gratuito, https://sqlitebrowser.org). **Ver o CRUD:** `python scripts/crud_demo.py` (só precisa do Python). **Testes:** `python -m unittest discover -s testes -v`.
-
-Criar do zero em **SQLite**: `sqlite3 meu_banco.db < sql/01_schema_sqlite.sql`, depois `02_dados_iniciais.sql` e `03_views.sql`. Criar em **PostgreSQL** com Docker: `docker compose up -d` (sobe o servidor e já cria tudo) e `python scripts/testar_postgres.py` (confere as tabelas, roda o CRUD completo e os testes de integridade). Num PostgreSQL já instalado: `createdb digital_twin` e `psql digital_twin -f sql/01_schema_postgres.sql`, depois `02_dados_iniciais.sql`, `02b_ajustar_sequencias_postgres.sql` e `03_views.sql`.
-
-Para regerar todos os arquivos a partir do modelo: `python scripts/gerar_banco.py`.
+- **Ver o banco:** abrir `digital_twin.db` no DB Browser for SQLite (gratuito, https://sqlitebrowser.org).
+- **Ver o CRUD:** `python scripts/crud_demo.py` (só precisa do Python).
+- **Rodar os testes:** `python -m unittest discover -s testes -v`.
+- **Criar do zero em SQLite:** `sqlite3 meu_banco.db < sql/01_schema_sqlite.sql`, depois `02_dados_iniciais.sql` e `03_views.sql`.
+- **Criar em PostgreSQL com Docker:** `docker compose up -d` (sobe o servidor e já cria tudo) e `python scripts/testar_postgres.py` (confere as tabelas, roda o CRUD completo e os testes de integridade).
+- **Criar num PostgreSQL já instalado:** `createdb digital_twin` e `psql digital_twin -f sql/01_schema_postgres.sql`, depois `02_dados_iniciais.sql`, `02b_ajustar_sequencias_postgres.sql` e `03_views.sql`.
+- **Regerar os arquivos a partir do modelo:** `python scripts/gerar_banco.py` (SQL, banco e dicionário) e `python scripts/gerar_der.py` (diagramas).
 """
     return md
 
@@ -242,7 +244,7 @@ def tabela(linhas: list[list[str]]) -> None:
         larg = [16.0 / len(cab)] * len(cab)
     for j, h in enumerate(cab):
         c = t.rows[0].cells[j]; c.text = ""
-        shd = OxmlElement("w:shd"); shd.set(qn("w:val"), "clear"); shd.set(qn("w:color"), "auto"); shd.set(qn("w:fill"), "E3F0F4"); c._tc.get_or_add_tcPr().append(shd)
+        shd = OxmlElement("w:shd"); shd.set(qn("w:val"), "clear"); shd.set(qn("w:color"), "auto"); shd.set(qn("w:fill"), "E7E7E7"); c._tc.get_or_add_tcPr().append(shd)
         p = c.paragraphs[0]; p.paragraph_format.space_after = Pt(2); runs(p, h.strip(), 9, True)
     for linha in corpo:
         cels = t.add_row().cells
@@ -288,7 +290,7 @@ def converter(md: str) -> None:
         if m:
             caminho = (RAIZ / "docs" / m.group(2)).resolve()
             w, h = Image.open(caminho).size
-            largura = min(25.5, 15.5 * w / h) if paisagem else min(16.0, 21.5 * w / h)
+            largura = min(25.5, 12.8 * w / h) if paisagem else min(16.0, 21.5 * w / h)
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER; p.paragraph_format.keep_with_next = True
             p.add_run().add_picture(str(caminho), width=Cm(largura)); i += 1; continue
         if re.match(r"^Figura \d+ [–-] ", s):
@@ -321,14 +323,20 @@ def main() -> None:
     sec = doc.sections[0]
     sec.page_width, sec.page_height = Cm(21), Cm(29.7)
     sec.left_margin, sec.right_margin, sec.top_margin, sec.bottom_margin = Cm(3), Cm(2), Cm(3), Cm(2)
-    centralizado("FACULDADE DE TECNOLOGIA DE COTIA", 13, True, NAVY, 4)
-    centralizado("Disciplina de PLN · Prof. Braz Izaias da Silva Junior", 11, False, None, 90)
-    centralizado("DIGITAL TWIN INDUSTRIAL", 30, True, TEAL, 10)
-    centralizado("Base de dados: DER, modelagem e CRUD", 18, True, NAVY, 6)
-    centralizado("Sprint 1 · Documentação da base de dados", 12, False, None, 110, True)
-    centralizado("Victor Rafael de Oliveira Dias", 12, False, None, 2)
-    centralizado("Enzo Fernandes", 12, False, None, 90)
-    centralizado("Cotia - SP · 2026", 11, False, None, 0)
+    # Capa no padrão do TCC anterior: Arial 12 negrito, preto, centralizada, em maiúsculas (sem número de página)
+    sec.different_first_page_header_footer = True
+    def capa_linha(texto, antes=0, depois=0):
+        p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before, p.paragraph_format.space_after, p.paragraph_format.line_spacing = Pt(antes), Pt(depois), 1.5
+        r = p.add_run(texto); r.font.name, r.font.size, r.bold = "Arial", Pt(12), True
+        r._r.get_or_add_rPr().rFonts.set(qn("w:eastAsia"), "Arial")
+    capa_linha("FACULDADE DE TECNOLOGIA DE COTIA")
+    capa_linha("ENZO FERNANDES", 109)
+    capa_linha("VICTOR RAFAEL DE OLIVEIRA DIAS")
+    capa_linha("DIGITAL TWIN INDUSTRIAL", 173)
+    capa_linha("BASE DE DADOS: DER, MODELAGEM E CRUD")
+    capa_linha("Cotia - SP", 239)
+    capa_linha("2026")
     p = doc.add_paragraph(); p.paragraph_format.page_break_before = True
     r = p.add_run("Sumário"); r.bold, r.font.size, r.font.color.rgb = True, Pt(15), NAVY
     campo(doc.add_paragraph(), 'TOC \\o "1-2" \\h \\z \\u', "Atualize o campo para ver o sumário (clique com o botão direito > Atualizar campo).")
