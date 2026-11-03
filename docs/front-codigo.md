@@ -29,3 +29,17 @@ Mesmas telas, mesmas regras, mesmo visual (o CSS foi reaproveitado). Pequenas me
 2. Salvar fábricas por usuário no banco.
 3. Assistente com leitura real de manuais (RAG).
 4. Avaliar React Flow e Recharts se o quadro e os gráficos crescerem.
+
+
+## Novidades no código (modo servidor, Dash, desgaste e ficha técnica)
+| Arquivo | O que faz |
+|---|---|
+| `src/api/client.ts` | Cliente do back-end (login, chamadas com token, mensagens de erro legíveis) |
+| `src/store/useStore.ts` | Estado do modo servidor: sessão, catálogo do servidor, abrir e guardar fábricas, desgaste, Play guardado |
+| `src/engine/thermal.ts` | Temperatura estimada da máquina (hipótese didática; porte do back-end) |
+| `src/engine/simulate.ts` | A capacidade e o risco passam a considerar o desgaste (`wearCap`, `wearRisk`; neutro sem servidor) |
+| `src/components/Charts.tsx`, `DashTab.tsx` | Gráficos em SVG e a aba Dash |
+| `src/components/SidePanel.tsx` | Gráficos da máquina e bloco de desgaste e manutenção |
+| `src/modals/FactoriesModal.tsx`, `ImportDatasheet.tsx` | Minhas fábricas (servidor) e importação de ficha técnica |
+
+Testes novos: `src/engine/novidades.test.ts` (temperatura e desgaste) e `src/store/server.test.ts` (modo servidor com servidor de mentira). Total: 30.

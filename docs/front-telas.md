@@ -35,9 +35,30 @@ fluxo do processo no topo, valores e botões grandes).
 | **Fábrica vista de cima** | Planta baixa | Cada máquina na sua área. Camadas: por onde o produto passa e quem gasta mais energia |
 | **Painel da máquina** | Configurar como o operador faz | Faixa do processo, ritmo com ▲▼ grandes, receitas, ligar/desligar, unidades em paralelo, parada de emergência |
 | **Resultados** | Entender o que acontece | Produção, eficiência, risco, energia (kW e R$); **Avisos: por que existe o gargalo, como melhorar e quanto custa** (com "Explorar no chat" e "Aplicar"); capacidade × saída (fila); antes × depois; quem gasta mais |
+| **Guia rápido (balão no canto do quadro)** | Passo a passo que se marca sozinho | Aba **Montar a fábrica** (5 passos) e, só quando está no servidor, aba **No servidor** (7 passos: guardar a fábrica, Play, Resultados, desgaste, importar ficha, cadastrar usuários), com atalhos para cada tela |
+| **Configurações › Usuários** (só no servidor) | Ver quem está cadastrado, cadastrar gente nova, ativar/desativar | Sem perfis por enquanto: quem está dentro pode tudo |
 | **Ajuda › Guia da plataforma** | Ensinar a usar | 13 passos com imagens reais (`ABRIR_AQUI/guia/`) |
 | **Ajuda › Manual das máquinas** | Explorar o catálogo | Tipo → máquinas → detalhe (o que faz, limites, risco, ambiente, **preço estimado**, fontes, imagem da tela de configuração, adicionar à fábrica) |
 | **Ajuda › Glossário** | Explicar palavras | ~38 termos em grupos (produção, risco e física, energia e dinheiro, processo, sistema), com busca |
+
+## Relatório com versões (V1, V2...) e uso das máquinas
+
+O caminho de uma melhoria, do começo ao fim:
+
+1. Em **Resultados**, o relatório aponta o gargalo e as opções. **Simular** mostra a conta (inclusive o efeito cascata: "só isso não basta, o novo gargalo é a Rotuladora") sem mexer em nada.
+2. **Aplicar no quadro** (ou do plano completo) guarda sozinho a **V1** (a fábrica *antes* da mudança), **volta para a aba Montar** e mostra uma faixa com o que foi mudado, em lista (`+1 Rotuladora (1 → 2 em paralelo)`, `Enchedora: ritmo 200 → 225 gf/min`), com os botões **Rodar a simulação (V2)** e **Desfazer as mudanças**.
+3. Quando o Play termina, o resultado vira a **V2**. Repetir o Play sem mexer na fábrica só anota o Play na mesma versão.
+4. **Resultados** tem duas sub-abas: **Relatório** (o que está acontecendo agora: produção, gargalo, avisos, capacidade × o que sai em garrafas/h, uso das máquinas, rosca de energia, risco de falha, temperatura, filas e desgaste: os mesmos gráficos do Dash) e **Comparações**. Depois do Play que gera a segunda versão, a tela abre direto em Comparações. Lá o painel **Versões do relatório** lista as versões e compara duas lado a lado: produção, risco, energia, energia por garrafa, gargalo, o que foi mudado e, máquina por máquina, unidades, ritmo e uso da capacidade. O botão **Salvar versão agora** cria uma versão manual quando a pessoa quiser.
+5. Na faixa de cima de Resultados ficam **Salvar versão agora** e **Exportar PDF** (só o relatório, só a comparação das versões escolhidas, ou os dois). O PDF é uma página própria para impressão: na janela que abre, escolha “Salvar como PDF”. Cada versão tem o botão **Voltar a esta versão**, que devolve ritmo, unidades e liga/desliga ao quadro (guarda antes a situação de agora e dá para desfazer com Ctrl+Z).
+6. Ainda em Comparações, o gráfico **Uso das máquinas em cada versão** mostra, para cada máquina, uma barra por versão (V1, V2, V3...), com chips para esconder/mostrar versões. O painel resumido também está na aba **Dash**.
+7. **Valor estimado dos equipamentos** (Comparações): unidades × preço estimado de cada máquina nas duas versões, a diferença e quanto custou cada 1.000 garrafas/h de ganho. Faixas de anúncios de fornecedores, nunca cotação; máquinas sem preço ficam de fora e são listadas.
+8. No modo servidor as versões também ficam guardadas no banco (como "cenários") e voltam ao abrir a fábrica.
+
+**Uso das máquinas** (Resultados, Dash e Painel da máquina): quanto da capacidade de cada máquina está sendo usado, isto é, o fluxo que realmente passa por ela ÷ o que ela consegue entregar. A fábrica anda no ritmo da máquina mais lenta, então as outras mostram folga e o gargalo mostra ~100%. Faixas: abaixo de 50% "sobra muita capacidade", 50 a 85% "tem folga", 85 a 98% "bem aproveitada", acima disso "no limite". Se uma máquina em paralelo está ociosa, a tela avisa que talvez não valha pagar pelas unidades extras.
+
+## Dash ampliado
+
+Na aba **Dash** do painel lateral, o botão **⤢ Ampliar** faz o Dash ocupar a tela toda (gráficos em várias colunas, para ver tudo sem rolar e acompanhar a simulação). **⤡ Reduzir** ou a tecla **Esc** voltam ao normal.
 
 ## Gargalo explicado (Resultados › Avisos)
 - **Por que isso acontece:** ela entrega menos que as outras (e quanto), ritmo abaixo/no/acima do ótimo, efeito do ambiente, se é uma só unidade, fila de excesso.
@@ -91,3 +112,12 @@ Chance estimada de parar: ~2% (ótimo) → ~10% (atenção) → ~40% (crítico) 
 - Objetivos de custo (R$ por garrafa) e campos como horas por dia?
 - Ambiente variando ao longo do dia durante o play?
 - Validar com o professor de física: coeficientes de temperatura e conservação da massa (Lavoisier).
+
+
+## Novidades (modo servidor, Dash, desgaste e ficha técnica)
+
+- **Login com servidor:** na tela de login, marque **Usar o servidor** (endereço padrão `http://127.0.0.1:8000`, ver `backend/README.md`). Sem servidor tudo funciona como antes, no navegador.
+- **Arquivo › Minhas fábricas no servidor / Guardar no servidor:** abrir, apagar e guardar fábricas na sua conta. Ao iniciar o Play a fábrica é guardada; ao terminar, o resultado é guardado e as máquinas que trabalharam envelhecem.
+- **Painel lateral › Dash:** 9 gráficos que acompanham a simulação (medidor, linha do tempo, capacidade × saída, filas, energia, risco, temperatura estimada, desgaste, simulações guardadas).
+- **Painel lateral › Máquina:** gráficos da máquina (temperatura estimada, o que sai, risco) e **desgaste e manutenção** (horas de uso, vida útil gasta, depreciação, previsão; botões "+ 1.000 h de uso", Manutenção e Corretiva). Temperatura e desgaste são hipóteses didáticas.
+- **Configurações › Dados reais:** anexar a ficha técnica de uma máquina (PDF ou .txt), conferir os campos lidos, comparar com máquinas parecidas lado a lado e escolher atualizar, nova versão ou criar; lista de máquinas importadas (excluir) e de documentos anexados.
