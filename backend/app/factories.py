@@ -14,7 +14,7 @@ from .engine.connect import can_connect
 from .engine.format import fmt
 from .engine.simulate import simulate
 from .engine.types import Catalog, Edge, Node, SimContext
-from .engine.wear import Wear, wear_of
+from .engine.wear import Wear, hours_from_inputs, inputs_from_hours, wear_of
 from .schema import T
 
 # exemplos prontos (mesmas máquinas e posições do front-end): cada uma ligada à seguinte
@@ -59,7 +59,8 @@ def load_graph(conn: Connection, fid: int, catalog: Catalog, with_wear: bool = F
         t = catalog[r.codigo]
         w = wear_of(float(r.horas_desgaste), float(r.manutencao_em_h), float(r.horas_operacao), t.life_h, t.maintenance_interval_h)
         wears[r.id] = w
-        nodes.append(Node(r.id, r.codigo, r.pos_x, r.pos_y, float(r.ritmo), int(r.unidades_paralelo), bool(r.desligada), w.capacity_factor, w.risk_add))
+        idade, meses = inputs_from_hours(float(r.horas_desgaste), float(r.manutencao_em_h))
+        nodes.append(Node(r.id, r.codigo, r.pos_x, r.pos_y, float(r.ritmo), int(r.unidades_paralelo), bool(r.desligada), w.capacity_factor, w.risk_add, w.temp_add, idade, meses))
     edges = [Edge(r.id, r.origem_id, r.destino_id) for r in conn.execute(select(co).where(co.c.fabrica_id == fid).order_by(co.c.id)).all()]
     return (nodes, edges, wears) if with_wear else (nodes, edges)
 
@@ -158,10 +159,13 @@ def delete_factory(conn: Connection, fid: int) -> None:
 # ------------------------------------------------------------------------------------------------------------
 # máquinas
 # ------------------------------------------------------------------------------------------------------------
-def _insert_machine(conn: Connection, fid: int, t, x: int, y: int, value: Optional[float], qty: int, off: bool) -> int:
+def _insert_machine(conn: Connection, fid: int, t, x: int, y: int, value: Optional[float], qty: int, off: bool,
+                    age_years: float = 0.0, maint_months: float = 0.0) -> int:
+    desgaste, manutencao = hours_from_inputs(age_years, maint_months)
     return conn.execute(insert(T["fabrica_maquinas"]).values(
         fabrica_id=fid, maquina_id=t.db_id, pos_x=max(0, int(x)), pos_y=max(0, int(y)),
-        ritmo=t.opt if value is None else value, unidades_paralelo=qty, desligada=off)).inserted_primary_key[0]
+        ritmo=t.opt if value is None else value, unidades_paralelo=qty, desligada=off,
+        horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)).inserted_primary_key[0]
 
 
 def _check_value(t, value: float) -> None:
@@ -169,7 +173,8 @@ def _check_value(t, value: float) -> None:
         raise invalid(f"O ritmo da {t.name} vai de {t.min:g} a {t.max:g} {t.unit}.", min=t.min, max=t.max)
 
 
-def add_machine(conn: Connection, row, uid: int, code: str, x: int = 0, y: int = 0, value: Optional[float] = None, qty: int = 1, off: bool = False) -> int:
+def add_machine(conn: Connection, row, uid: int, code: str, x: int = 0, y: int = 0, value: Optional[float] = None, qty: int = 1, off: bool = False,
+                age_years: float = 0.0, maint_months: float = 0.0) -> int:
     catalog = load_catalog(conn)
     t = catalog.get(code)
     if t is None:
@@ -179,7 +184,7 @@ def add_machine(conn: Connection, row, uid: int, code: str, x: int = 0, y: int =
         raise invalid(f"{t.name} está desativada no catálogo.")
     if value is not None:
         _check_value(t, value)
-    mid = _insert_machine(conn, row.id, t, x, y, value, qty, off)
+    mid = _insert_machine(conn, row.id, t, x, y, value, qty, off, age_years, maint_months)
     log_event(conn, row.id, uid, f"Adicionou: {t.name}")
     touch(conn, row.id)
     return mid
@@ -224,6 +229,13 @@ def update_machine(conn: Connection, row, uid: int, mid: int, patch: dict) -> No
     if patch.get("off") is not None and patch["off"] != n.off:
         values["desligada"] = patch["off"]
         log_event(conn, row.id, uid, f"{t.name}: {'desligada' if patch['off'] else 'ligada'}", "warn" if patch["off"] else "ok")
+    if patch.get("age_years") is not None or patch.get("maint_months") is not None:
+        idade = n.age_years if patch.get("age_years") is None else patch["age_years"]
+        meses = n.maint_months if patch.get("maint_months") is None else patch["maint_months"]
+        if abs(idade - n.age_years) > 1e-9 or abs(meses - n.maint_months) > 1e-9:
+            desgaste, manutencao = hours_from_inputs(idade, meses)
+            values.update(horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)
+            log_event(conn, row.id, uid, f"{t.name}: idade {fmt(idade, 1)} ano(s), {fmt(meses, 1)} mês(es) desde a última manutenção", "info")
     if patch.get("x") is not None:
         values["pos_x"] = max(0, int(patch["x"]))
     if patch.get("y") is not None:
@@ -285,7 +297,7 @@ def replace_layout(conn: Connection, row, uid: int, machines: list[dict], connec
     """Troca todas as máquinas e conexões. Cada máquina traz um `ref` (nome que o cliente dá) usado pelas conexões.
 
     Se a máquina traz também o `id` de uma máquina que já existe nesta fábrica (e do mesmo tipo), ela é ATUALIZADA no lugar:
-    as horas de uso, o desgaste e o histórico de manutenção ficam. As que não aparecem na lista são removidas."""
+    a idade, o tempo desde a manutenção e o histórico de manutenção ficam (a menos que a máquina traga valores novos). As que não aparecem na lista são removidas."""
     catalog = load_catalog(conn)
     refs = [m["ref"] for m in machines]
     if len(set(refs)) != len(refs):
@@ -324,10 +336,16 @@ def replace_layout(conn: Connection, row, uid: int, machines: list[dict], connec
             valores = {"pos_x": max(0, int(m.get("x", 0))), "pos_y": max(0, int(m.get("y", 0))), "unidades_paralelo": m.get("qty", 1), "desligada": m.get("off", False)}
             if m.get("value") is not None:
                 valores["ritmo"] = m["value"]
+            if m.get("age_years") is not None or m.get("maint_months") is not None:
+                atual = conn.execute(select(fm.c.horas_desgaste, fm.c.manutencao_em_h).where(fm.c.id == m["id"])).first()
+                idade0, meses0 = inputs_from_hours(float(atual.horas_desgaste), float(atual.manutencao_em_h))
+                desgaste, manutencao = hours_from_inputs(idade0 if m.get("age_years") is None else m["age_years"], meses0 if m.get("maint_months") is None else m["maint_months"])
+                valores.update(horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)
             conn.execute(update(fm).where(fm.c.id == m["id"]).values(**valores))
             ids[m["ref"]] = m["id"]
         else:
-            ids[m["ref"]] = _insert_machine(conn, row.id, t, m.get("x", 0), m.get("y", 0), m.get("value"), m.get("qty", 1), m.get("off", False))
+            ids[m["ref"]] = _insert_machine(conn, row.id, t, m.get("x", 0), m.get("y", 0), m.get("value"), m.get("qty", 1), m.get("off", False),
+                                           m.get("age_years") or 0.0, m.get("maint_months") or 0.0)
     for c in connections:
         conn.execute(insert(T["conexoes"]).values(fabrica_id=row.id, origem_id=ids[c["from_ref"]], destino_id=ids[c["to_ref"]]))
     log_event(conn, row.id, uid, f"Fábrica salva: {len(machines)} máquina(s) e {len(connections)} conexão(ões)", "ok")

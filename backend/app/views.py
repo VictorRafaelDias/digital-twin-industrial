@@ -31,7 +31,8 @@ def machine_type_dict(t: MachineType, detail: bool = True) -> dict:
 
 
 def node_dict(n: Node, t: MachineType) -> dict:
-    return {"id": n.id, "type": n.type, "name": t.name, "x": n.x, "y": n.y, "value": n.value, "units_in_parallel": n.qty, "off": n.off}
+    return {"id": n.id, "type": n.type, "name": t.name, "x": n.x, "y": n.y, "value": n.value, "units_in_parallel": n.qty, "off": n.off,
+            "age_years": n.age_years, "months_since_maintenance": n.maint_months}
 
 
 def graph_dict(nodes: list[Node], edges: list[Edge], catalog: Catalog) -> dict:

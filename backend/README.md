@@ -28,7 +28,7 @@ Na primeira vez o servidor cria sozinho o banco `backend/data/digital_twin.db` (
 5. `POST /factories/{id}/plans` com `{"type":"pct","value":10}`, depois `POST /factories/{id}/plans/{plan_id}/apply`.
 6. `POST /factories/{id}/play` para ver o resultado final da simulação com tempo e a linha do tempo.
 7. `GET /factories/{id}/dashboard` (dados dos gráficos) e `GET /factories/{id}/wear` (desgaste de cada máquina).
-8. `POST /factories/{id}/machines/{mid}/age` com `{"hours":1000}` e depois `.../maintenance`: a máquina envelhece, rende menos e a manutenção recupera parte do desgaste.
+8. `PATCH /factories/{id}/machines/{mid}` com `{"age_years": 3.75, "months_since_maintenance": 12}` e depois `GET .../simulate`: a máquina velha e sem manutenção rende menos e tem mais risco. `POST .../maintenance` zera o tempo sem manutenção.
 
 ## O que ele faz de novo (versão 2)
 
@@ -37,14 +37,15 @@ Na primeira vez o servidor cria sozinho o banco `backend/data/digital_twin.db` (
 
 A **temperatura da máquina** é uma **hipótese didática**: ambiente mais um aquecimento proporcional à carga em que ela trabalha, maior acima do ritmo ótimo (motor 40 °C a plena carga, tanque 12 °C, etc.; câmara fria perto de 4 °C). Não vem de ficha de fabricante (`app/engine/thermal.py`).
 
-### Desgaste, depreciação e previsão de manutenção
-Cada máquina da fábrica acumula **horas de uso** e **horas de desgaste** (1 h de uso = 1 h de desgaste no ritmo ótimo; até 4 h acima do ótimo; parada ou em falha, não desgasta). Depois de cada Play guardado as máquinas que trabalharam envelhecem. Efeitos (todos **hipótese didática**, em `app/engine/wear.py`):
+### Idade, manutenção e depreciação das máquinas
+A **idade da máquina** (anos de uso) e os **meses desde a última manutenção** são **dados de entrada**, informados por quem monta a fábrica (campos `age_years` e `months_since_maintenance` ao criar, salvar o desenho ou alterar uma máquina). O padrão é **máquina nova e manutenção em dia**. A simulação e o Play **não gastam** a máquina: o mesmo desenho dá sempre o mesmo resultado (por isso dá para comparar versões). Por dentro, idade e meses viram horas (4.000 h de uso por ano) e usam as colunas de horas que já existiam no banco. Efeitos (todos **hipótese didática**, em `app/engine/wear.py`):
 - até **−20%** de rendimento no fim da vida útil e até **−5%** com manutenção muito atrasada;
 - o risco base (2%) sobe até **+8 pontos** pela idade e **+4** pela manutenção atrasada;
+- a máquina **esquenta** até **+8 °C** pela idade (curva quadrática) e **+4 °C** pela manutenção atrasada;
 - **depreciação** linear até 10% do preço de nova; previsão de "manutenção em N horas" e de "fim da vida útil em N horas";
-- a **manutenção** recupera 60% (preventiva) ou 80% (corretiva) do desgaste e fica no histórico.
+- a **manutenção** (`POST .../maintenance`) zera o tempo desde a última manutenção e fica no histórico; ela **não rejuvenesce** a máquina.
 
-O desgaste entra no mesmo motor da simulação: a produção, o gargalo, os planos e o dashboard já consideram máquinas gastas. Os números do exemplo (11.400 garrafas/h) só mudam quando as máquinas envelhecem.
+A vida útil e o intervalo de manutenção vêm da categoria da máquina (ex.: envase 25.000 h e 800 h; as mesmas tabelas do banco e do front-end, conferidas por teste). O efeito entra no mesmo motor da simulação: a produção, o gargalo, os planos e o dashboard já consideram máquinas velhas. Os números do exemplo (11.400 garrafas/h) só mudam quando a idade é informada.
 
 ### Importar a ficha técnica de uma máquina
 `POST /catalog/imports` recebe um PDF (com texto) ou `.txt`. O servidor lê o documento **por regras** (palavras-chave e padrões de texto; **sem IA e sem custo**), extrai fabricante, modelo, ano, capacidade, potência e uma sugestão de tipo, e devolve cada campo com o **trecho do documento e a página** de onde veio. O usuário confere e edita (`/preview`), e o sistema avisa se **já existe uma máquina parecida** (mesmo fabricante e modelo, ou nome parecido), mostrando os dois **lado a lado**. Então o usuário decide (`/confirm`):
@@ -70,7 +71,7 @@ python -m uvicorn app.main:app
 
 Para rodar os testes contra um PostgreSQL de teste (**apaga as tabelas dele**): `DT_TEST_DATABASE_URL=postgresql+psycopg2://... python -m pytest`.
 
-> **Validado no PostgreSQL 16.15 (Docker):** os **426 testes** da API passam também contra o PostgreSQL (`DT_TEST_DATABASE_URL`), e o pacote `docker compose up --build` sobe a API e o banco juntos (`/health` responde `postgresql`, 25 tabelas, 345 linhas, login funcionando). A validação achou um defeito que só o PostgreSQL mostra (a carga dos dados iniciais, por causa do símbolo "%" nos textos), já corrigido. Os testes do dia a dia rodam no SQLite, que é mais rápido.
+> **Validado no PostgreSQL 16.15 (Docker):** os **430 testes** da API passam também contra o PostgreSQL (`DT_TEST_DATABASE_URL`), e o pacote `docker compose up --build` sobe a API e o banco juntos (`/health` responde `postgresql`, 25 tabelas, 345 linhas, login funcionando). A validação achou um defeito que só o PostgreSQL mostra (a carga dos dados iniciais, por causa do símbolo "%" nos textos), já corrigido. Os testes do dia a dia rodam no SQLite, que é mais rápido.
 
 ## Como é por dentro
 
@@ -96,7 +97,7 @@ backend/
 │   ├── routers/           as rotas, agrupadas (auth, catalog, factories, system)
 │   └── engine/            MOTOR DE SIMULAÇÃO (funções puras, sem banco): simulate, connect, goal,
 │                          bottleneck, run, cost, water, wear, thermal, format, types
-├── tests/                 426 testes automáticos (ver abaixo)
+├── tests/                 430 testes automáticos (ver abaixo)
 ├── scripts/gerar_golden.ts  gera os casos de referência a partir do código do front-end
 ├── Dockerfile, docker-compose.yml
 └── requirements.txt, requirements-dev.txt
@@ -131,7 +132,7 @@ backend/
 
 O servidor manda um quadro (`"type":"tick"`) a cada 0,25 s com o minuto simulado, as garrafas produzidas, a energia, a fila e o estado e a temperatura de cada máquina; no fim manda `"type":"result"` (e guarda no histórico, com a linha do tempo e o desgaste). O cliente pode mandar `{"cmd":"pause"}`, `{"cmd":"resume"}` ou `{"cmd":"stop"}`. Com `&realtime=false` o servidor não espera os 0,25 s (útil em testes). Velocidades: 1, 5, 20 e 60; em ×1, 1 segundo real = 1 minuto simulado, e o produto leva 3 minutos por etapa para chegar a cada máquina. (O front-end calcula o Play no navegador, com a mesma conta, e manda ao servidor só o pedido de guardar o resultado ao terminar.)
 
-## Todas as rotas (70 + o WebSocket)
+## Todas as rotas (69 + o WebSocket)
 
 **Sistema**
 
@@ -219,12 +220,11 @@ O servidor manda um quadro (`"type":"tick"`) a cada 0,25 s com o minuto simulado
 | GET | `/factories/{fid}/scenarios/compare` | Antes × depois: compara dois cenários |
 | GET | `/factories/{fid}/scenarios/{sid}` | Um cenário, máquina por máquina |
 | DELETE | `/factories/{fid}/scenarios/{sid}` | Apagar um cenário |
-| POST | `/factories/{fid}/play` | Roda a simulação inteira de uma vez, devolve o resultado final e a linha do tempo, e guarda tudo (e envelhece as máquinas) |
+| POST | `/factories/{fid}/play` | Roda a simulação inteira de uma vez, devolve o resultado final e a linha do tempo, e guarda tudo (não gasta as máquinas) |
 | GET | `/factories/{fid}/simulations` | Histórico dos resultados finais de simulação |
 | GET | `/factories/{fid}/simulations/{sid}` | Uma simulação guardada, com a linha do tempo da fábrica e de cada máquina |
 | GET | `/factories/{fid}/dashboard` | Dados para os gráficos: a fábrica agora, cada máquina, energia, desgaste e a última simulação |
 | GET | `/factories/{fid}/wear` | Desgaste, depreciação e previsão de manutenção de cada máquina |
-| POST | `/factories/{fid}/machines/{mid}/age` | Acrescentar horas de uso a uma máquina (para demonstrar o desgaste) |
 | POST | `/factories/{fid}/machines/{mid}/maintenance` | Registrar uma manutenção (recupera parte do desgaste) |
 | GET | `/factories/{fid}/maintenance` | Histórico de manutenções da fábrica |
 | GET | `/factories/{fid}/events` | Registro (log) do que aconteceu na fábrica |
@@ -242,7 +242,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-**426 testes** (mais 1 que só roda com o PDF real, ver abaixo), em grupos:
+**430 testes** (mais 1 que só roda com o PDF real, ver abaixo), em grupos:
 
 | Arquivo | O que prova |
 |---|---|

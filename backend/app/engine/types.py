@@ -82,9 +82,12 @@ class Node:
     # desgaste (neutro por padrão: 1,0 e 0,0 não mudam nenhuma conta; ver engine/wear.py)
     wear_cap: float = 1.0
     wear_risk: float = 0.0
+    wear_temp: float = 0.0      # °C a mais por idade/manutenção atrasada (só a temperatura estimada usa)
+    age_years: float = 0.0      # o que a pessoa informou: idade da máquina (anos)
+    maint_months: float = 0.0   # e meses desde a última manutenção
 
     def copy(self) -> "Node":
-        return Node(self.id, self.type, self.x, self.y, self.value, self.qty, self.off, self.wear_cap, self.wear_risk)
+        return Node(self.id, self.type, self.x, self.y, self.value, self.qty, self.off, self.wear_cap, self.wear_risk, self.wear_temp, self.age_years, self.maint_months)
 
 
 @dataclass(frozen=True)

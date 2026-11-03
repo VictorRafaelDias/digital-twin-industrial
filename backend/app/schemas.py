@@ -57,6 +57,8 @@ class MachineIn(BaseModel):
     value: Optional[float] = Field(default=None, ge=0, le=1e9, description="Ritmo inicial (vazio = ritmo ótimo)")
     units_in_parallel: int = Field(default=1, ge=1, le=6)
     off: bool = False
+    age_years: float = Field(default=0, ge=0, le=60, description="Idade da máquina em anos de uso (0 = nova)")
+    months_since_maintenance: float = Field(default=0, ge=0, le=720, description="Meses desde a última manutenção (0 = em dia)")
 
 
 class MachinePatch(BaseModel):
@@ -65,6 +67,8 @@ class MachinePatch(BaseModel):
     off: Optional[bool] = None
     x: Optional[int] = Field(default=None, ge=0, le=MAX_POS)
     y: Optional[int] = Field(default=None, ge=0, le=MAX_POS)
+    age_years: Optional[float] = Field(default=None, ge=0, le=60, description="Idade da máquina em anos de uso")
+    months_since_maintenance: Optional[float] = Field(default=None, ge=0, le=720, description="Meses desde a última manutenção")
 
 
 class ConnectionIn(BaseModel):
@@ -81,6 +85,8 @@ class LayoutMachine(BaseModel):
     value: Optional[float] = Field(default=None, ge=0)
     units_in_parallel: int = Field(default=1, ge=1, le=6)
     off: bool = False
+    age_years: Optional[float] = Field(default=None, ge=0, le=60, description="Idade em anos (vazio = mantém o que já estava; máquina nova = 0)")
+    months_since_maintenance: Optional[float] = Field(default=None, ge=0, le=720, description="Meses desde a última manutenção (vazio = mantém)")
 
 
 class LayoutConnection(BaseModel):
@@ -125,15 +131,11 @@ class PlayIn(BaseModel):
     speed: int = Field(default=20, description="Velocidade: 1, 5, 20 ou 60 vezes")
     duration_min: int = Field(default=60, description="Duração simulada em minutos (ex.: 30, 60 ou 480)")
     save: bool = Field(default=True, description="Guardar o resultado no histórico de simulações")
-    apply_wear: bool = Field(default=True, description="As máquinas que trabalharam ganham horas de uso e de desgaste (só quando `save` é verdadeiro)")
-
-
-class AgeIn(BaseModel):
-    hours: float = Field(gt=0, le=200000, description="Horas de uso a acrescentar (como se a máquina tivesse trabalhado no ritmo ótimo)")
+    apply_wear: bool = Field(default=False, description="IGNORADO (mantido só para não quebrar quem já chamava): a simulação não gasta mais as máquinas; a idade é informada por quem monta a fábrica")
 
 
 class MaintenanceIn(BaseModel):
-    kind: Literal["preventiva", "corretiva"] = Field(default="preventiva", description="preventiva recupera 60% do desgaste; corretiva (depois de falha) recupera 80%")
+    kind: Literal["preventiva", "corretiva"] = Field(default="preventiva", description="preventiva (planejada) ou corretiva (depois de falha): as duas zeram o tempo desde a última manutenção")
     note: Optional[str] = Field(default=None, max_length=500, description="O que foi feito")
 
 

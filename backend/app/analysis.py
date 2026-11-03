@@ -345,9 +345,6 @@ def finish_play(conn: Connection, row, uid: int, nodes, edges, ctx, frames: list
     if save:
         summary["id"] = save_simulation(conn, row, uid, nodes, edges, ctx, summary)
         _save_series(conn, summary["id"], sample)
-        if apply_wear:
-            static = simulate(nodes, edges, ctx.without_run())
-            summary["wear_added"] = maintenance.accrue_play_wear(conn, row, uid, nodes, ctx.catalog, {k: r.state for k, r in static.res.items()}, last.t)
     return summary
 
 

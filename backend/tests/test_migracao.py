@@ -60,6 +60,6 @@ def test_a_api_sobe_num_banco_antigo_e_funciona(tmp_path):
         fid = c.post("/factories", json={"name": "Num banco migrado", "template": "bebidas"}, headers=h).json()["id"]
         assert c.get(f"/factories/{fid}/simulate", headers=h).json()["production_per_hour"] == 11400
         r = c.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 60}, headers=h).json()
-        assert r["id"] and len(r["wear_added"]) == 8
-        assert all(m["operating_hours"] == 1 for m in c.get(f"/factories/{fid}/wear", headers=h).json()["machines"])
+        assert r["id"] and r["wear_added"] == []
+        assert all(m["age_years"] == 0 and m["capacity_factor"] == 1 for m in c.get(f"/factories/{fid}/wear", headers=h).json()["machines"])
         assert c.get("/catalog/machines/enchedora").json()["life_hours"] == 30000

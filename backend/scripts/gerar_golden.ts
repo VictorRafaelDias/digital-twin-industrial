@@ -13,6 +13,7 @@ import { clock, fmt, fv } from '../../app/src/engine/format';
 import { advanceRun, computeArrivals, newRun } from '../../app/src/engine/run';
 import { bestProduction, bnName, explainNow, simulate, troubleMaps } from '../../app/src/engine/simulate';
 import { betaAt, waterExpansionL } from '../../app/src/engine/water';
+import { HORAS_USO_ANO, hoursFromInputs, LIFE_H_BY_CAT, lifeHOf, MAINT_H_BY_CAT, maintHOf, wearEffects } from '../../app/src/engine/wear';
 import type { FEdge, FNode, GoalInput, LogEvent, RunState, SimContext } from '../../app/src/types';
 
 const catalog = buildCatalog();
@@ -120,6 +121,18 @@ const runs = [runWhole('bebidas', 20, 60), runWhole('bebidas', 60, 480), runWhol
 const formats = [0, 1, 1.005, 2.5, 1234.5678, 12345678.9, -3.2, 0.049, 11400, 99.95].map((v) => ({ v, d0: fmt(v, 0), d1: fmt(v, 1), d2: fmt(v, 2), fv: fv(v) }));
 const water = [0, 4, 10, 20, 25, 33.3, 45, 60].map((T) => ({ T, beta: betaAt(T), l: waterExpansionL(T) }));
 
-writeFileSync(new URL('../tests/golden/engine_cases.json', import.meta.url), JSON.stringify({ cases, runs, formats, water }));
+/* Idade e manutenção: cada tipo de máquina x idades x meses desde a manutenção */
+const wear: object[] = [];
+for (const [code, t] of Object.entries(catalog)) {
+  for (const age of [0, 0.5, 1, 3.125, 6.25, 10, 25, 60]) {
+    for (const months of [0, 1, 3, 12, 100, 720]) {
+      const w = wearEffects(t, age, months), [wearH, maintAtH] = hoursFromInputs(age, months);
+      wear.push({ code, cat: t.cat, lifeH: lifeHOf(t), maintH: maintHOf(t), age, months, wearH, maintAtH, cap: w.cap, risk: w.risk, temp: w.temp, status: w.status,
+        lifeUsed: w.lifeUsed, overdue: w.overdue, hoursToMaint: w.hoursToMaintenance, hoursLeft: w.hoursOfLifeLeft, residual: w.residual });
+    }
+  }
+}
+const wearConsts = { horasUsoAno: HORAS_USO_ANO, lifeByCat: LIFE_H_BY_CAT, maintByCat: MAINT_H_BY_CAT };
+writeFileSync(new URL('../tests/golden/engine_cases.json', import.meta.url), JSON.stringify({ cases, runs, formats, water, wear, wearConsts }));
 writeFileSync(new URL('../tests/golden/front_catalog.json', import.meta.url), JSON.stringify(catalog));
-console.log(`ok: ${cases.length} casos, ${runs.length} execuções do play`);
+console.log(`ok: ${cases.length} casos, ${runs.length} execuções do play, ${wear.length} casos de idade`);

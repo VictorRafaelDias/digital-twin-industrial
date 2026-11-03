@@ -1,4 +1,4 @@
-"""Dashboard (dados dos gráficos, linha do tempo guardada), temperatura estimada, desgaste, depreciação e manutenção."""
+"""Dashboard (dados dos gráficos, linha do tempo guardada), temperatura estimada, idade e manutenção das máquinas, depreciação."""
 from __future__ import annotations
 
 import pytest
@@ -15,37 +15,39 @@ def machine(s, code):
     return next(m for m in s["machines"] if m["type"] == code)
 
 
+def estado(client, auth, fid, code):
+    return next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == code)
+
+
 # ------------------------------------------------------------------------------------- motor: desgaste
 def test_sem_horas_o_desgaste_nao_muda_nada():
     w = W.wear_of(0, 0, 0, 25000, 800)
-    assert (w.capacity_factor, w.risk_add, w.status) == (1.0, 0.0, "ok") and w.residual_fraction == 1.0
+    assert (w.capacity_factor, w.risk_add, w.status, w.temp_add) == (1.0, 0.0, "ok", 0.0) and w.residual_fraction == 1.0
 
 
 def test_curva_de_desgaste_da_idade_e_da_manutencao_atrasada():
     meio = W.wear_of(12500, 12500, 12500, 25000, 800)                 # metade da vida, manutenção em dia
     assert abs(meio.capacity_factor - 0.90) < 1e-12 and abs(meio.risk_add - 0.02) < 1e-12 and meio.status == "ok"
+    assert abs(meio.temp_add - 2.0) < 1e-12                           # 8 °C x 0,5^2
     fim = W.wear_of(25000, 25000, 25000, 25000, 800)
     assert abs(fim.capacity_factor - 0.80) < 1e-12 and abs(fim.risk_add - 0.08) < 1e-12 and fim.status == "fim_de_vida"
-    assert abs(fim.residual_fraction - 0.10) < 1e-12 and fim.hours_of_life_left == 0
+    assert abs(fim.residual_fraction - 0.10) < 1e-12 and fim.hours_of_life_left == 0 and abs(fim.temp_add - 8.0) < 1e-12
     atrasada = W.wear_of(1700, 0, 1700, 25000, 800)                   # 900 h acima do intervalo: mais de um intervalo de atraso
     assert atrasada.status == "manutencao_atrasada" and atrasada.maintenance_overdue > 1 and atrasada.hours_to_maintenance < 0
-    assert atrasada.capacity_factor < 1 and atrasada.risk_add > 0.04
+    assert atrasada.capacity_factor < 1 and atrasada.risk_add > 0.04 and atrasada.temp_add >= 4.0
     assert W.wear_of(700, 0, 700, 25000, 800).status == "atencao"       # a 80% do intervalo
-    assert W.wear_of(1e9, 0, 1e9, 25000, 800).capacity_factor == 0.75                          # perda máxima: 20% pela idade + 5% pelo atraso
+    ruim = W.wear_of(1e9, 0, 1e9, 25000, 800)
+    assert ruim.capacity_factor == 0.75 and abs(ruim.temp_add - 12.0) < 1e-12                  # perda máxima: 20% pela idade + 5% pelo atraso
 
 
-def test_desgaste_anda_mais_rapido_acima_do_otimo_e_para_quando_desligada_ou_falhada():
-    cat = catalog_from_front()
-    enchedora = cat["enchedora"]
-    assert W.wear_speed(enchedora, 200, False, False) == 1.0 and W.wear_speed(enchedora, 150, False, False) == 1.0
-    assert 1.0 < W.wear_speed(enchedora, 225, False, False) < 4.0
-    assert abs(W.wear_speed(enchedora, 244.999, False, False) - 4.0) < 0.01
-    assert W.wear_speed(enchedora, 250, False, False) == 0.0           # falhou: parada
-    assert W.wear_speed(enchedora, 200, True, False) == 0.0            # desligada
-
-
-def test_manutencao_recupera_parte_do_desgaste():
-    assert W.after_maintenance(1000, "preventiva") == 400 and W.after_maintenance(1000, "corretiva") == 200
+def test_idade_e_meses_viram_horas_e_voltam():
+    assert W.hours_from_inputs(0, 0) == (0.0, 0.0)
+    assert W.hours_from_inputs(2.5, 0) == (10000.0, 10000.0)           # manutenção em dia: a última foi agora
+    assert W.hours_from_inputs(2.5, 6) == (10000.0, 8000.0)            # 6 meses = 2.000 h sem manutenção
+    assert W.hours_from_inputs(1, 100) == (4000.0, 0.0)                # nunca fez manutenção: os meses não passam da idade
+    assert W.hours_from_inputs(-3, -3) == (0.0, 0.0)
+    for idade, meses in ((0, 0), (3.125, 0), (6.5, 7.5), (10, 120)):
+        assert W.inputs_from_hours(*W.hours_from_inputs(idade, meses)) == (idade, meses)
 
 
 def test_desgaste_entra_na_simulacao_e_nao_estraga_o_calculo_sem_desgaste():
@@ -82,6 +84,27 @@ def test_temperatura_estimada():
     falha = nodes[1].copy()
     falha.value = 250
     assert machine_temperature(cat["enchedora"], falha, simulate([falha], [], SimContext(cat, 25)).res["b"], 25) == 25 + 40 * 1.5
+
+
+def test_maquina_velha_esquenta_mais():
+    cat = catalog_from_front()
+    nova = Node("b", "enchedora", value=200)
+    velha = nova.copy()
+    velha.wear_temp = 8.0
+    sim = simulate([nova], [], SimContext(cat, 25))
+    assert machine_temperature(cat["enchedora"], velha, sim.res["b"], 25) == machine_temperature(cat["enchedora"], nova, sim.res["b"], 25) + 8.0
+    velha.off = True
+    assert machine_temperature(cat["enchedora"], velha, sim.res["b"], 25) == 25.0       # desligada não esquenta, qualquer que seja a idade
+
+
+def test_maquina_velha_rende_menos_mas_nao_esfria():
+    cat = catalog_from_front()
+    nova = Node("b", "enchedora", value=200)
+    velha = nova.copy()
+    velha.wear_cap, velha.wear_temp = 0.8, 8.0
+    t_nova = machine_temperature(cat["enchedora"], nova, simulate([nova], [], SimContext(cat, 25)).res["b"], 25)
+    t_velha = machine_temperature(cat["enchedora"], velha, simulate([velha], [], SimContext(cat, 25)).res["b"], 25)
+    assert t_velha == t_nova + 8.0                                      # a carga é sobre a capacidade real: só a idade soma
 
 
 # ------------------------------------------------------------------------------------- API: dashboard
@@ -125,90 +148,93 @@ def test_linha_do_tempo_da_simulacao_fica_guardada_por_fabrica_e_por_maquina(cli
 
 
 def test_amostragem_limita_os_pontos(client, auth, factory):
-    r = client.post(f"/factories/{factory['id']}/play", json={"speed": 5, "duration_min": 480, "apply_wear": False}, headers=auth).json()
+    r = client.post(f"/factories/{factory['id']}/play", json={"speed": 5, "duration_min": 480}, headers=auth).json()
     assert len(r["timeline"]) <= 121 and r["timeline"][-1]["t"] == 480
 
 
-def test_nao_salvar_nao_grava_a_linha_do_tempo_nem_envelhece(client, auth, factory):
+def test_nao_salvar_nao_grava_a_linha_do_tempo(client, auth, factory):
     fid = factory["id"]
     antes = client.get("/health").json()["rows_by_table"]
     r = client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 60, "save": False}, headers=auth).json()
     assert r["id"] is None and r["timeline"] and r["wear_added"] == []
     assert client.get("/health").json()["rows_by_table"]["simulacao_pontos"] == antes["simulacao_pontos"]
-    assert all(m["operating_hours"] == 0 for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"])
 
 
-# ------------------------------------------------------------------------------------- API: desgaste e manutenção
-def test_o_play_envelhece_as_maquinas_que_trabalharam(client, auth, factory):
+# ------------------------------------------------------------------------------------- API: idade, manutenção e depreciação
+def test_maquina_nova_por_padrao_e_o_play_nao_envelhece_nada(client, auth, factory):
     fid = factory["id"]
-    r = client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 480}, headers=auth).json()
-    assert len(r["wear_added"]) == 8
-    w = client.get(f"/factories/{fid}/wear", headers=auth).json()
-    assert all(m["operating_hours"] == 8 and m["wear_hours"] == 8 for m in w["machines"])       # ritmo ótimo: 1 h de uso = 1 h de desgaste
-    assert all(m["status"] == "ok" for m in w["machines"])
+    for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"]:
+        assert m["age_years"] == 0 and m["months_since_maintenance"] == 0 and m["status"] == "ok" and m["capacity_factor"] == 1
+    antes = client.get(f"/factories/{fid}/simulate", headers=auth).json()["production_per_hour"]
+    for _ in range(2):
+        client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 480, "apply_wear": True}, headers=auth)   # apply_wear é ignorado
+    depois = client.get(f"/factories/{fid}/wear", headers=auth).json()
+    assert all(m["age_years"] == 0 and m["wear_hours"] == 0 and m["operating_hours"] == 0 for m in depois["machines"])
+    assert client.get(f"/factories/{fid}/simulate", headers=auth).json()["production_per_hour"] == antes          # simular não gasta a fábrica
 
 
-def test_operar_acima_do_otimo_desgasta_mais_rapido(client, auth, factory):
-    fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"value": 235}, headers=auth)
-    client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 600}, headers=auth)
-    w = client.get(f"/factories/{fid}/wear", headers=auth).json()
-    r = next(m for m in w["machines"] if m["type"] == "rotuladora")
-    outra = next(m for m in w["machines"] if m["type"] == "esteira")
-    assert r["operating_hours"] == outra["operating_hours"] == 10 and r["wear_hours"] > 2 * outra["wear_hours"]
-
-
-def test_maquina_desligada_ou_falhada_nao_envelhece(client, auth, factory):
-    fid = factory["id"]
-    client.patch(f"/factories/{fid}/machines/{by_type(factory, 'esteira')['id']}", json={"off": True}, headers=auth)
-    client.patch(f"/factories/{fid}/machines/{by_type(factory, 'enchedora')['id']}", json={"value": 250}, headers=auth)
-    client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 240}, headers=auth)
-    w = client.get(f"/factories/{fid}/wear", headers=auth).json()
-    for code in ("esteira", "enchedora"):
-        assert next(m for m in w["machines"] if m["type"] == code)["operating_hours"] == 0
-    assert next(m for m in w["machines"] if m["type"] == "rotuladora")["operating_hours"] == 4
-
-
-def test_envelhecer_uma_maquina_baixa_o_rendimento_e_sobe_o_risco(client, auth, factory):
+def test_idade_e_manutencao_atrasada_baixam_o_rendimento_e_sobem_o_risco(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
     antes = client.get(f"/factories/{fid}/simulate", headers=auth).json()
-    r = client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 15000}, headers=auth)
-    # metade da vida útil (-10%) e manutenção muito atrasada (-5%)
-    assert r.status_code == 200 and r.json()["life_used_pct"] == 50 and abs(r.json()["capacity_factor"] - 0.85) < 1e-9 and abs(r.json()["risk_added"] - 0.06) < 1e-9
-    assert r.json()["status"] == "manutencao_atrasada"                      # 15.000 h sem manutenção, intervalo de 1.000 h
+    # metade da vida útil (a rotuladora é pós-envase: 30.000 h = 7,5 anos, então 3,75 anos) e 12 meses sem manutenção (intervalo de 1.000 h = 3 meses)
+    r = client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 3.75, "months_since_maintenance": 12}, headers=auth)
+    assert r.status_code == 200
+    w = estado(client, auth, fid, "rotuladora")
+    assert w["age_years"] == 3.75 and w["months_since_maintenance"] == 12 and w["life_used_pct"] == 50
+    assert abs(w["capacity_factor"] - 0.85) < 1e-9 and abs(w["risk_added"] - 0.06) < 1e-9 and w["status"] == "manutencao_atrasada"
+    assert abs(w["temperature_added_c"] - 6.0) < 1e-9                       # 8 x 0,25 + 4 x 1
     depois = client.get(f"/factories/{fid}/simulate", headers=auth).json()
     assert depois["production_per_hour"] < antes["production_per_hour"]
     assert machine(depois, "rotuladora")["wear"]["capacity_factor"] == 0.85 and abs(machine(depois, "rotuladora")["risk"] - 0.08) < 1e-9
-    assert abs(depois["production_per_hour"] - 11400 * 0.85) < 1e-6
-    assert depois["bottleneck"]["type"] == "rotuladora"
-    assert client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 0}, headers=auth).status_code == 422
-    assert client.post(f"/factories/{fid}/machines/99999/age", json={"hours": 5}, headers=auth).status_code == 404
+    assert abs(depois["production_per_hour"] - 11400 * 0.85) < 1e-6 and depois["bottleneck"]["type"] == "rotuladora"
+    quente = next(m for m in client.get(f"/factories/{fid}/dashboard", headers=auth).json()["machines"] if m["type"] == "rotuladora")["temperature_c"]
+    assert quente > 25 + 6                                                  # esquenta pelo trabalho e mais 6 °C pela idade/manutenção
 
 
-def test_manutencao_recupera_e_fica_no_historico(client, auth, factory):
+def test_valores_invalidos_de_idade_sao_recusados(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 5000}, headers=auth)
+    for corpo in ({"age_years": -1}, {"age_years": 61}, {"months_since_maintenance": -2}, {"months_since_maintenance": 721}, {"age_years": "velha"}):
+        assert client.patch(f"/factories/{fid}/machines/{rot['id']}", json=corpo, headers=auth).status_code == 422, corpo
+    assert estado(client, auth, fid, "rotuladora")["age_years"] == 0
+
+
+def test_maquina_pode_nascer_velha_e_os_meses_nao_passam_da_idade(client, auth, factory):
+    fid = factory["id"]
+    r = client.post(f"/factories/{fid}/machines", json={"type": "esteira", "age_years": 1, "months_since_maintenance": 100}, headers=auth)
+    assert r.status_code == 201 and r.json()["age_years"] == 1
+    w = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["id"] == r.json()["id"])
+    assert w["age_years"] == 1 and w["months_since_maintenance"] == 12          # nunca fez manutenção: no máximo a idade da máquina
+
+
+def test_manutencao_zera_os_meses_mas_nao_rejuvenesce_e_fica_no_historico(client, auth, factory):
+    fid, rot = factory["id"], by_type(factory, "rotuladora")
+    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 6.25, "months_since_maintenance": 24}, headers=auth)   # 25.000 h de 30.000 h
     r = client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "preventiva", "note": "troca de rolamentos"}, headers=auth)
-    assert r.status_code == 201 and r.json()["wear_hours"] == 2000 and r.json()["status"] == "ok"
-    assert r.json()["hours_since_maintenance"] == 0 and r.json()["operating_hours"] == 5000       # horas de uso reais não zeram
-    corretiva = client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "corretiva"}, headers=auth).json()
-    assert corretiva["wear_hours"] == 400
+    assert r.status_code == 201 and r.json()["months_since_maintenance"] == 0 and r.json()["age_years"] == 6.25
+    assert r.json()["maintenance_overdue"] is False and r.json()["status"] == "atencao"      # em dia, mas 80% da vida útil gasta
+    assert abs(r.json()["capacity_factor"] - (1 - 0.2 * 25000 / 30000)) < 1e-9                        # a idade continua pesando
+    client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "corretiva"}, headers=auth)
     hist = client.get(f"/factories/{fid}/maintenance", headers=auth).json()
-    assert [(h["kind"], h["wear_before"], h["wear_after"]) for h in hist] == [("corretiva", 2000, 400), ("preventiva", 5000, 2000)] and hist[1]["note"] == "troca de rolamentos"
+    assert [(h["kind"], h["wear_before"], h["wear_after"]) for h in hist] == [("corretiva", 25000, 25000), ("preventiva", 25000, 25000)] and hist[1]["note"] == "troca de rolamentos"
     assert len(client.get(f"/factories/{fid}/maintenance?machine_id={rot['id']}", headers=auth).json()) == 2
     assert client.get(f"/factories/{fid}/maintenance?machine_id=99999", headers=auth).json() == []
     assert client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "magica"}, headers=auth).status_code == 422
     textos = [e["text"] for e in client.get(f"/factories/{fid}/events", headers=auth).json()]
-    assert any("manutenção preventiva registrada" in t for t in textos) and any("+5000 h de uso" in t for t in textos)
+    assert any("manutenção preventiva registrada" in t for t in textos) and any("24 mês" in t for t in textos)
+
+
+def test_o_botao_de_horas_de_uso_deixou_de_existir(client, auth, factory):
+    rot = by_type(factory, "rotuladora")
+    assert client.post(f"/factories/{factory['id']}/machines/{rot['id']}/age", json={"hours": 100}, headers=auth).status_code in (404, 405)
 
 
 def test_depreciacao_e_valor_residual(client, auth, factory):
     fid, enc = factory["id"], by_type(factory, "enchedora")
-    novo = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == "enchedora")
+    novo = estado(client, auth, fid, "enchedora")
     preco = client.get("/catalog/machines/enchedora", headers=auth).json()["price"]
     meio = (preco["min"] + preco["max"]) / 2
     assert abs(novo["replacement_cost"] - meio) < 1e-6 and novo["residual_value"] == novo["replacement_cost"] and novo["depreciation_per_hour"] > 0
-    client.post(f"/factories/{fid}/machines/{enc['id']}/age", json={"hours": 12500}, headers=auth)        # metade da vida útil (25.000 h)
+    client.patch(f"/factories/{fid}/machines/{enc['id']}", json={"age_years": 3.125, "months_since_maintenance": 12}, headers=auth)   # metade da vida útil (25.000 h) e manutenção atrasada
     w = client.get(f"/factories/{fid}/wear", headers=auth).json()
     m = next(x for x in w["machines"] if x["type"] == "enchedora")
     assert abs(m["residual_value_fraction"] - 0.55) < 1e-9 and abs(m["residual_value"] - meio * 0.55) < 1e-6
@@ -220,24 +246,25 @@ def test_depreciacao_e_valor_residual(client, auth, factory):
 
 def test_unidades_em_paralelo_contam_no_custo_de_reposicao(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    um = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == "rotuladora")["replacement_cost"]
+    um = estado(client, auth, fid, "rotuladora")["replacement_cost"]
     client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"units_in_parallel": 3}, headers=auth)
-    tres = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == "rotuladora")["replacement_cost"]
+    tres = estado(client, auth, fid, "rotuladora")["replacement_cost"]
     assert abs(tres - 3 * um) < 1e-6
 
 
 def test_desgaste_e_privado_de_cada_usuario(client, auth, other_auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
     for chamada, url, corpo in ((client.get, f"/factories/{fid}/wear", None), (client.get, f"/factories/{fid}/dashboard", None),
-                                (client.post, f"/factories/{fid}/machines/{rot['id']}/age", {"hours": 5}),
+                                (client.patch, f"/factories/{fid}/machines/{rot['id']}", {"age_years": 5}),
                                 (client.post, f"/factories/{fid}/machines/{rot['id']}/maintenance", {"kind": "preventiva"})):
         r = chamada(url, headers=other_auth, **({"json": corpo} if corpo else {}))
         assert r.status_code == 404, url
+    assert estado(client, auth, fid, "rotuladora")["age_years"] == 0
 
 
 def test_apagar_maquina_com_manutencao_e_simulacao_nao_quebra(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 100}, headers=auth)
+    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 1}, headers=auth)
     client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "preventiva"}, headers=auth)
     sim = client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 60}, headers=auth).json()
     assert client.delete(f"/factories/{fid}/machines/{rot['id']}", headers=auth).status_code == 204
@@ -246,9 +273,9 @@ def test_apagar_maquina_com_manutencao_e_simulacao_nao_quebra(client, auth, fact
     assert client.get(f"/factories/{fid}/maintenance", headers=auth).json() == []        # o histórico vai junto com a máquina
 
 
-def test_salvar_o_desenho_mantem_o_desgaste_das_maquinas_que_ja_existiam(client, auth, factory):
+def test_salvar_o_desenho_mantem_a_idade_das_maquinas_que_ja_existiam_e_aceita_valores_novos(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 700}, headers=auth)
+    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 2, "months_since_maintenance": 5}, headers=auth)
     client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "preventiva"}, headers=auth)
     atual = client.get(f"/factories/{fid}", headers=auth).json()
     maquinas = [{"ref": f"m{m['id']}", "id": m["id"], "type": m["type"], "x": m["x"] + 5, "y": m["y"], "value": m["value"], "units_in_parallel": m["units_in_parallel"]}
@@ -258,14 +285,19 @@ def test_salvar_o_desenho_mantem_o_desgaste_das_maquinas_que_ja_existiam(client,
     r = client.put(f"/factories/{fid}/layout", json={"machines": maquinas, "connections": ligacoes}, headers=auth)
     assert r.status_code == 200 and r.json()["ids_by_ref"][f"m{rot['id']}"] == rot["id"]                  # mesma máquina, mesmo id
     assert len(r.json()["machines"]) == 7 and next(m for m in r.json()["machines"] if m["id"] == rot["id"])["x"] == rot["x"] + 5
-    w = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["id"] == rot["id"])
-    assert w["wear_hours"] == 280 and w["operating_hours"] == 700                                          # o desgaste ficou
+    w = estado(client, auth, fid, "rotuladora")
+    assert w["age_years"] == 2 and w["months_since_maintenance"] == 0                                      # a idade ficou (sem valor novo no pedido)
     assert len(client.get(f"/factories/{fid}/maintenance", headers=auth).json()) == 1                      # e o histórico também
+    # com valores novos no pedido, a máquina é atualizada no lugar
+    maquinas[[m["id"] for m in atual["machines"] if m["type"] != "esteira"].index(rot["id"])].update({"age_years": 4, "months_since_maintenance": 3})
+    client.put(f"/factories/{fid}/layout", json={"machines": maquinas, "connections": ligacoes}, headers=auth)
+    w = estado(client, auth, fid, "rotuladora")
+    assert w["age_years"] == 4 and w["months_since_maintenance"] == 3
     # uma máquina nova no desenho (sem id) entra do zero; id de outra fábrica é recusado
     nova = client.put(f"/factories/{fid}/layout", json={"machines": maquinas + [{"ref": "n", "type": "esteira"}]}, headers=auth).json()
     assert nova["ids_by_ref"]["n"] not in [m["id"] for m in factory["machines"]]
     outro = client.post("/factories", json={"name": "Outra"}, headers=auth).json()["id"]
     assert client.put(f"/factories/{outro}/layout", json={"machines": [{"ref": "x", "id": rot["id"], "type": "rotuladora"}]}, headers=auth).status_code == 404
-    # trocar o tipo de uma máquina existente cria uma nova (não reaproveita o desgaste)
+    # trocar o tipo de uma máquina existente cria uma nova (não reaproveita a idade)
     trocado = client.put(f"/factories/{fid}/layout", json={"machines": [{"ref": "t", "id": rot["id"], "type": "enchedora"}]}, headers=auth).json()
     assert trocado["ids_by_ref"]["t"] != rot["id"]

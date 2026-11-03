@@ -99,15 +99,14 @@ def test_fabrica_grande_60_maquinas_e_layout_de_200(client, auth):
 
 def test_desgaste_extremo_nao_quebra_nada(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    for _ in range(6):
-        assert client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 200000}, headers=auth).status_code == 200
+    assert client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 60, "months_since_maintenance": 720}, headers=auth).status_code == 200
     w = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == "rotuladora")
     assert w["capacity_factor"] == 0.75 and w["status"] == "fim_de_vida" and w["life_left_hours"] == 0   # a perda para em 25%
     s = client.get(f"/factories/{fid}/simulate", headers=auth).json()
     assert s["production_per_hour"] == pytest.approx(11400 * 0.75) and 0.1 <= s["max_risk"] <= 1
     r = client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "corretiva"}, headers=auth)
-    assert r.status_code == 201 and r.json()["wear_hours"] == pytest.approx(240000, rel=1e-3)
-    assert client.post(f"/factories/{fid}/machines/{rot['id']}/age", json={"hours": 0.05}, headers=auth).status_code == 200
+    assert r.status_code == 201 and r.json()["months_since_maintenance"] == 0 and r.json()["age_years"] == 60
+    assert client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 0.0001}, headers=auth).status_code == 200
 
 
 def test_varios_usuarios_ao_mesmo_tempo_nao_se_atrapalham(client, auth):
@@ -130,7 +129,7 @@ def test_varios_usuarios_ao_mesmo_tempo_nao_se_atrapalham(client, auth):
     [t.join() for t in ths]
     assert erros == []
     rot = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["type"] == "rotuladora")
-    assert rot["operating_hours"] == pytest.approx(0.5 * 5 * 4)           # 20 plays de 30 min: nenhum se perdeu
+    assert rot["age_years"] == 0 and rot["operating_hours"] == 0           # 20 plays ao mesmo tempo: a simulação não gasta a máquina
 
 
 def test_ficha_enorme_e_caracteres_estranhos(client, auth):

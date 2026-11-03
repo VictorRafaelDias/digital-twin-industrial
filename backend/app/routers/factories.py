@@ -16,7 +16,7 @@ from ..chat import SUGGESTIONS
 from ..db import get_conn
 from ..deps import current_user, owned_factory, user_from_token
 from ..engine.types import GoalInput
-from ..schemas import (AgeIn, ApplyChangesIn, AskIn, MaintenanceIn, ConnectionIn, FactoryIn, FactoryPatch, GoalIn, LayoutIn, MachineIn, MachinePatch, PlayIn,
+from ..schemas import (ApplyChangesIn, AskIn, MaintenanceIn, ConnectionIn, FactoryIn, FactoryPatch, GoalIn, LayoutIn, MachineIn, MachinePatch, PlayIn,
                        ScenarioIn, WhatIfIn)
 from ..views import graph_dict, simulation_dict
 
@@ -64,7 +64,8 @@ def delete_factory(row=Depends(owned_factory), conn: Connection = Depends(get_co
 
 @router.put("/factories/{fid}/layout", summary="Salvar o desenho inteiro de uma vez (substitui máquinas e conexões)")
 def put_layout(body: LayoutIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
-    machines = [{"ref": m.ref, "id": m.id, "type": m.type, "x": m.x, "y": m.y, "value": m.value, "qty": m.units_in_parallel, "off": m.off} for m in body.machines]
+    machines = [{"ref": m.ref, "id": m.id, "type": m.type, "x": m.x, "y": m.y, "value": m.value, "qty": m.units_in_parallel, "off": m.off,
+                 "age_years": m.age_years, "maint_months": m.months_since_maintenance} for m in body.machines]
     result = fa.replace_layout(conn, row, user.id, machines, [c.model_dump() for c in body.connections])
     return {**_full(conn, fa.get_factory(conn, row.id, user.id)), "ids_by_ref": result["machines"]}
 
@@ -72,7 +73,7 @@ def put_layout(body: LayoutIn, row=Depends(owned_factory), user=Depends(current_
 # ---------------------------------------------------------------- máquinas
 @router.post("/factories/{fid}/machines", status_code=201, summary="Colocar uma máquina do catálogo na fábrica")
 def add_machine(body: MachineIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
-    mid = fa.add_machine(conn, row, user.id, body.type, body.x, body.y, body.value, body.units_in_parallel, body.off)
+    mid = fa.add_machine(conn, row, user.id, body.type, body.x, body.y, body.value, body.units_in_parallel, body.off, body.age_years, body.months_since_maintenance)
     catalog = load_catalog(conn)
     from ..views import node_dict
     n = fa.get_node(conn, row.id, mid, catalog)
@@ -81,7 +82,8 @@ def add_machine(body: MachineIn, row=Depends(owned_factory), user=Depends(curren
 
 @router.patch("/factories/{fid}/machines/{mid}", summary="Mudar ritmo, unidades em paralelo, ligar/desligar ou posição")
 def patch_machine(mid: Annotated[int, Path(ge=1, le=2_147_483_647)], body: MachinePatch, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
-    fa.update_machine(conn, row, user.id, mid, {"value": body.value, "qty": body.units_in_parallel, "off": body.off, "x": body.x, "y": body.y})
+    fa.update_machine(conn, row, user.id, mid, {"value": body.value, "qty": body.units_in_parallel, "off": body.off, "x": body.x, "y": body.y,
+                                                         "age_years": body.age_years, "maint_months": body.months_since_maintenance})
     catalog = load_catalog(conn)
     nodes, edges = fa.load_graph(conn, row.id, catalog)
     fresh = fa.get_factory(conn, row.id, user.id)
@@ -213,17 +215,12 @@ def dashboard(row=Depends(owned_factory), conn: Connection = Depends(get_conn)):
 
 
 # ---------------------------------------------------------------- desgaste e manutenção
-@router.get("/factories/{fid}/wear", summary="Desgaste, depreciação e previsão de manutenção de cada máquina")
+@router.get("/factories/{fid}/wear", summary="Estado de cada máquina: idade, manutenção, efeito no rendimento e no risco, depreciação")
 def wear(row=Depends(owned_factory), conn: Connection = Depends(get_conn)):
     return mt.wear_report(conn, row)
 
 
-@router.post("/factories/{fid}/machines/{mid}/age", summary="Acrescentar horas de uso a uma máquina (para demonstrar o desgaste)")
-def age_machine(mid: Annotated[int, Path(ge=1, le=2_147_483_647)], body: AgeIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
-    return mt.age_machine(conn, row, user.id, mid, body.hours)
-
-
-@router.post("/factories/{fid}/machines/{mid}/maintenance", status_code=201, summary="Registrar uma manutenção (recupera parte do desgaste)")
+@router.post("/factories/{fid}/machines/{mid}/maintenance", status_code=201, summary="Registrar uma manutenção (zera o tempo desde a última manutenção)")
 def do_maintenance(mid: Annotated[int, Path(ge=1, le=2_147_483_647)], body: MaintenanceIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
     return mt.do_maintenance(conn, row, user.id, mid, body.kind, body.note)
 

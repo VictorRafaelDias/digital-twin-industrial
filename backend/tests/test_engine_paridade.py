@@ -172,3 +172,31 @@ def test_formatacao_pt_br():
 def test_dilatacao_da_agua():
     for w in DATA["water"]:
         assert close(beta_at(w["T"]), w["beta"]) and close(water_expansion_l(w["T"]), w["l"])
+
+
+# ------------------------------------------------------------------------------------- idade e manutenção
+def test_idade_e_manutencao_dao_os_mesmos_numeros_do_front():
+    from app.engine.wear import HORAS_USO_ANO, hours_from_inputs, wear_of
+    assert HORAS_USO_ANO == DATA["wearConsts"]["horasUsoAno"] and len(DATA["wear"]) >= 600
+    for c in DATA["wear"]:
+        wear_h, maint_at = hours_from_inputs(c["age"], c["months"])
+        assert close(wear_h, c["wearH"]) and close(maint_at, c["maintAtH"]), c
+        w = wear_of(wear_h, maint_at, wear_h, c["lifeH"], c["maintH"])
+        assert close(w.capacity_factor, c["cap"]) and close(w.risk_add, c["risk"]) and close(w.temp_add, c["temp"]), c
+        assert w.status == c["status"] and close(w.life_used, c["lifeUsed"]) and close(w.maintenance_overdue, c["overdue"]), c
+        assert close(w.hours_to_maintenance, c["hoursToMaint"]) and close(w.hours_of_life_left, c["hoursLeft"]) and close(w.residual_fraction, c["residual"]), c
+
+
+def test_vida_util_e_intervalo_por_categoria_sao_os_mesmos_do_banco_e_do_front():
+    import importlib.util
+    import sys
+    from pathlib import Path
+    pasta = Path(__file__).resolve().parents[2] / "banco-de-dados" / "scripts"
+    sys.path.insert(0, str(pasta))                      # o gerar_banco importa o "modelo" que está ao lado dele
+    try:
+        spec = importlib.util.spec_from_file_location("gerar_banco_ref", pasta / "gerar_banco.py")
+        gb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gb)
+    finally:
+        sys.path.remove(str(pasta))
+    assert DATA["wearConsts"]["lifeByCat"] == gb.VIDA_UTIL_H and DATA["wearConsts"]["maintByCat"] == gb.INTERVALO_MANUTENCAO_H
