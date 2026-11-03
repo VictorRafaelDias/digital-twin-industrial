@@ -127,6 +127,12 @@ def tipo_da_fonte(url: str | None, titulo: str, confianca: str, finalidade: str)
     return "anúncio de fornecedor" if finalidade == "preco" else "página de fornecedor"
 
 
+# Vida útil e intervalo de manutenção por tipo de máquina (HIPÓTESE DIDÁTICA: não vêm de ficha de fabricante;
+# servem para o simulador mostrar desgaste, depreciação e previsão de manutenção).
+VIDA_UTIL_H = {"insumos": 60000, "preparo": 40000, "termico": 30000, "envase": 25000, "pos": 30000, "frio": 35000}
+INTERVALO_MANUTENCAO_H = {"insumos": 2000, "preparo": 1500, "termico": 1000, "envase": 800, "pos": 1000, "frio": 1500}
+
+
 def montar_sementes() -> Semente:
     s = Semente()
     t = lambda minutos: BASE_TEMPO + timedelta(minutes=minutos)  # noqa: E731
@@ -161,7 +167,9 @@ def montar_sementes() -> Semente:
             valor_falha=m["valor_falha"], valor_max=m["valor_max"], capacidade_otima=m["capacidade_otima"], consumo_parado_kw=m["consumo_parado_kw"],
             consumo_variavel_kw=m["consumo_variavel_kw"], ordem_processo=m["ordem_processo"], sensibilidade_termica=m["sensibilidade_termica"],
             aceita_varias_entradas=m["aceita_varias_entradas"], etapa_final=m["etapa_final"], descricao=m["descricao"], risco_fisico=m["risco_fisico"],
-            base_dos_numeros=m["base_dos_numeros"], ativa=True)
+            base_dos_numeros=m["base_dos_numeros"], ativa=True,
+            versao=1, grupo_codigo=m["codigo"], origem="embutida",
+            vida_util_h=VIDA_UTIL_H[m["categoria"]], intervalo_manutencao_h=INTERVALO_MANUTENCAO_H[m["categoria"]])
         maq_id[m["codigo"]] = mid
         s.add("manuais_maquina", maquina_id=mid, **m["manual"])
         vistos: set[tuple[int, str]] = set()

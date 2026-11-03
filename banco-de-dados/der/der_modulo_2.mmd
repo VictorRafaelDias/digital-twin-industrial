@@ -39,12 +39,33 @@ erDiagram
         text risco_fisico
         text base_dos_numeros
         boolean ativa
+        string fabricante
+        string modelo
+        int ano_modelo
+        int versao
+        string grupo_codigo
+        string origem
+        int vida_util_h
+        int intervalo_manutencao_h
     }
     manuais_maquina {
         int maquina_id PK,FK
         text o_que_faz
         text como_funciona_ritmo
         text dicas
+    }
+    documentos_maquina {
+        int id PK
+        int usuario_id FK
+        string nome_arquivo
+        string sha256
+        int tamanho_bytes
+        int paginas
+        text texto_extraido
+        text campos_extraidos
+        string status
+        int maquina_id FK
+        datetime enviado_em
     }
     fontes {
         int id PK
@@ -81,11 +102,22 @@ erDiagram
         int fonte_id FK
         text observacao
     }
-    categorias ||--o{ maquinas_catalogo : "agrupa"
+    usuarios {
+        int id PK
+        string nome_usuario
+        string nome_exibicao
+        string senha_hash
+        boolean ativo
+        datetime criado_em
+        datetime ultimo_acesso_em
+    }
     etapas ||--o{ maquinas_catalogo : "contém"
+    categorias ||--o{ maquinas_catalogo : "agrupa"
     maquinas_catalogo ||--|| manuais_maquina : "tem manual"
-    fontes ||--o{ maquina_fontes : "sustenta"
+    usuarios |o--o{ documentos_maquina : "usuario_id"
+    maquinas_catalogo |o--o{ documentos_maquina : "maquina_id"
     maquinas_catalogo ||--o{ maquina_fontes : "usa"
+    fontes ||--o{ maquina_fontes : "sustenta"
     maquinas_catalogo ||--o{ precos_maquina : "tem preço"
     fontes ||--o{ modelos_reais : "documenta"
     maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"

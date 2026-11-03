@@ -118,9 +118,20 @@ CREATE TABLE maquinas_catalogo (
 	risco_fisico TEXT NOT NULL, 
 	base_dos_numeros TEXT NOT NULL, 
 	ativa BOOLEAN DEFAULT true NOT NULL, 
+	fabricante VARCHAR(80), 
+	modelo VARCHAR(80), 
+	ano_modelo SMALLINT, 
+	versao SMALLINT DEFAULT '1' NOT NULL, 
+	grupo_codigo VARCHAR(40), 
+	origem VARCHAR(10) DEFAULT 'embutida' NOT NULL, 
+	vida_util_h INTEGER DEFAULT '30000' NOT NULL, 
+	intervalo_manutencao_h INTEGER DEFAULT '1000' NOT NULL, 
 	CONSTRAINT pk_maquinas_catalogo PRIMARY KEY (id), 
 	CONSTRAINT uq_maquinas_catalogo_codigo UNIQUE (codigo), 
 	CONSTRAINT ck_maquinas_catalogo_fluxo CHECK (fluxo IN ('geral', 'suco')), 
+	CONSTRAINT ck_maquinas_catalogo_origem CHECK (origem IN ('embutida', 'importada')), 
+	CONSTRAINT ck_maquinas_catalogo_versao CHECK (versao >= 1), 
+	CONSTRAINT ck_maquinas_catalogo_horas CHECK (vida_util_h > 0 AND intervalo_manutencao_h > 0), 
 	CONSTRAINT ck_maquinas_catalogo_sensibilidade CHECK (sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')), 
 	CONSTRAINT ck_maquinas_catalogo_limites CHECK (valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max), 
 	CONSTRAINT ck_maquinas_catalogo_capacidade CHECK (capacidade_otima > 0), 
@@ -130,6 +141,27 @@ CREATE TABLE maquinas_catalogo (
 	CONSTRAINT fk_maquinas_catalogo_etapa_id FOREIGN KEY(etapa_id) REFERENCES etapas (id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_maquinas_catalogo_categoria_id ON maquinas_catalogo (categoria_id);
+
+-- Fichas técnicas anexadas pelo usuário, de onde o sistema extrai os dados de uma máquina nova
+CREATE TABLE documentos_maquina (
+	id SERIAL NOT NULL, 
+	usuario_id INTEGER, 
+	nome_arquivo VARCHAR(255) NOT NULL, 
+	sha256 VARCHAR(64) NOT NULL, 
+	tamanho_bytes INTEGER NOT NULL, 
+	paginas SMALLINT, 
+	texto_extraido TEXT NOT NULL, 
+	campos_extraidos TEXT NOT NULL, 
+	status VARCHAR(12) DEFAULT 'analisado' NOT NULL, 
+	maquina_id INTEGER, 
+	enviado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	CONSTRAINT pk_documentos_maquina PRIMARY KEY (id), 
+	CONSTRAINT uq_documentos_maquina_sha256 UNIQUE (sha256), 
+	CONSTRAINT ck_documentos_maquina_status CHECK (status IN ('analisado', 'importado', 'descartado')), 
+	CONSTRAINT fk_documentos_maquina_usuario_id FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL, 
+	CONSTRAINT fk_documentos_maquina_maquina_id FOREIGN KEY(maquina_id) REFERENCES maquinas_catalogo (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_documentos_maquina_maquina_id ON documentos_maquina (maquina_id);
 
 -- Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e unidades em paralelo)
 CREATE TABLE fabrica_maquinas (
@@ -141,11 +173,16 @@ CREATE TABLE fabrica_maquinas (
 	ritmo NUMERIC(12, 3) NOT NULL, 
 	unidades_paralelo SMALLINT DEFAULT '1' NOT NULL, 
 	desligada BOOLEAN DEFAULT false NOT NULL, 
+	instalada_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	horas_operacao NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	horas_desgaste NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	manutencao_em_h NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	CONSTRAINT pk_fabrica_maquinas PRIMARY KEY (id), 
 	CONSTRAINT uq_fabrica_maquinas_fabrica_id UNIQUE (fabrica_id, id), 
 	CONSTRAINT ck_fabrica_maquinas_posicao CHECK (pos_x >= 0 AND pos_y >= 0), 
 	CONSTRAINT ck_fabrica_maquinas_ritmo CHECK (ritmo >= 0), 
 	CONSTRAINT ck_fabrica_maquinas_paralelo CHECK (unidades_paralelo >= 1 AND unidades_paralelo <= 6), 
+	CONSTRAINT ck_fabrica_maquinas_horas CHECK (horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste), 
 	CONSTRAINT fk_fabrica_maquinas_fabrica_id FOREIGN KEY(fabrica_id) REFERENCES fabricas (id) ON DELETE CASCADE, 
 	CONSTRAINT fk_fabrica_maquinas_maquina_id FOREIGN KEY(maquina_id) REFERENCES maquinas_catalogo (id) ON DELETE RESTRICT
 );
@@ -330,6 +367,24 @@ CREATE TABLE eventos_registro (
 );
 CREATE INDEX ix_eventos_registro_fabrica_ocorrido ON eventos_registro (fabrica_id, ocorrido_em);
 
+-- Histórico de manutenções de cada máquina da fábrica
+CREATE TABLE manutencoes (
+	id SERIAL NOT NULL, 
+	fabrica_maquina_id INTEGER NOT NULL, 
+	usuario_id INTEGER, 
+	realizada_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	tipo VARCHAR(10) DEFAULT 'preventiva' NOT NULL, 
+	horas_desgaste_antes NUMERIC(12, 1) NOT NULL, 
+	horas_desgaste_depois NUMERIC(12, 1) NOT NULL, 
+	observacao TEXT, 
+	CONSTRAINT pk_manutencoes PRIMARY KEY (id), 
+	CONSTRAINT ck_manutencoes_tipo CHECK (tipo IN ('preventiva', 'corretiva')), 
+	CONSTRAINT ck_manutencoes_recupera CHECK (horas_desgaste_depois <= horas_desgaste_antes), 
+	CONSTRAINT fk_manutencoes_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_manutencoes_usuario_id FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_manutencoes_maquina ON manutencoes (fabrica_maquina_id, realizada_em);
+
 -- Passos de um plano (qual máquina mexer, de quanto para quanto, por quê e quanto custa)
 CREATE TABLE plano_passos (
 	id SERIAL NOT NULL, 
@@ -355,6 +410,22 @@ CREATE TABLE plano_passos (
 );
 CREATE INDEX ix_plano_passos_plano_id ON plano_passos (plano_id);
 
+-- Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábrica)
+CREATE TABLE simulacao_pontos (
+	id SERIAL NOT NULL, 
+	simulacao_id INTEGER NOT NULL, 
+	minuto NUMERIC(8, 2) NOT NULL, 
+	garrafas_acumuladas NUMERIC(14, 2) NOT NULL, 
+	producao_h NUMERIC(12, 2) NOT NULL, 
+	energia_kwh NUMERIC(12, 3) NOT NULL, 
+	fila_total NUMERIC(14, 2) DEFAULT '0' NOT NULL, 
+	risco_max NUMERIC(5, 4) NOT NULL, 
+	CONSTRAINT pk_simulacao_pontos PRIMARY KEY (id), 
+	CONSTRAINT uq_simulacao_pontos_minuto UNIQUE (simulacao_id, minuto), 
+	CONSTRAINT ck_simulacao_pontos_risco CHECK (risco_max >= 0 AND risco_max <= 1), 
+	CONSTRAINT fk_simulacao_pontos_simulacao_id FOREIGN KEY(simulacao_id) REFERENCES simulacoes (id) ON DELETE CASCADE
+);
+
 -- Situação de cada máquina dentro de um cenário (capacidade, saída, fila, risco e energia)
 CREATE TABLE cenario_maquinas (
 	id SERIAL NOT NULL, 
@@ -378,6 +449,26 @@ CREATE TABLE cenario_maquinas (
 	CONSTRAINT fk_cenario_maquinas_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE SET NULL
 );
 CREATE INDEX ix_cenario_maquinas_cenario_id ON cenario_maquinas (cenario_id);
+
+-- Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel da máquina)
+CREATE TABLE simulacao_pontos_maquina (
+	id SERIAL NOT NULL, 
+	ponto_id INTEGER NOT NULL, 
+	fabrica_maquina_id INTEGER, 
+	saida_h NUMERIC(12, 2) NOT NULL, 
+	fila_h NUMERIC(12, 2) DEFAULT '0' NOT NULL, 
+	risco NUMERIC(5, 4) NOT NULL, 
+	estado VARCHAR(10) NOT NULL, 
+	energia_kw NUMERIC(10, 3) NOT NULL, 
+	temperatura_c NUMERIC(5, 1) NOT NULL, 
+	CONSTRAINT pk_simulacao_pontos_maquina PRIMARY KEY (id), 
+	CONSTRAINT ck_simulacao_pontos_maquina_estado CHECK (estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')), 
+	CONSTRAINT ck_simulacao_pontos_maquina_risco CHECK (risco >= 0 AND risco <= 1), 
+	CONSTRAINT fk_simulacao_pontos_maquina_ponto_id FOREIGN KEY(ponto_id) REFERENCES simulacao_pontos (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_simulacao_pontos_maquina_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_simulacao_pontos_maquina_maquina ON simulacao_pontos_maquina (fabrica_maquina_id);
+CREATE INDEX ix_simulacao_pontos_maquina_ponto ON simulacao_pontos_maquina (ponto_id);
 
 -- Comentários (documentação dentro do banco)
 COMMENT ON TABLE categorias IS 'Tipos de máquina (grupos do catálogo): Insumos, Preparo, Térmico e gás, Envase, Pós-envase, Refrigeração';
@@ -452,6 +543,26 @@ COMMENT ON COLUMN maquinas_catalogo.descricao IS 'O que a máquina faz, em palav
 COMMENT ON COLUMN maquinas_catalogo.risco_fisico IS 'O que pode dar errado fisicamente';
 COMMENT ON COLUMN maquinas_catalogo.base_dos_numeros IS 'Nota de em que os números se baseiam (hipótese didática ou fonte)';
 COMMENT ON COLUMN maquinas_catalogo.ativa IS 'Falso = máquina fora do catálogo';
+COMMENT ON COLUMN maquinas_catalogo.fabricante IS 'Fabricante, quando se sabe (ex.: Tetra Pak)';
+COMMENT ON COLUMN maquinas_catalogo.modelo IS 'Modelo comercial, quando se sabe (ex.: Pasteurizer BF)';
+COMMENT ON COLUMN maquinas_catalogo.ano_modelo IS 'Ano do modelo, quando se sabe';
+COMMENT ON COLUMN maquinas_catalogo.versao IS 'Versão da máquina dentro da família (1, 2, 3...). Versões antigas continuam no sistema';
+COMMENT ON COLUMN maquinas_catalogo.grupo_codigo IS 'Código da família: as versões de uma máquina compartilham o mesmo (vazio = o próprio código)';
+COMMENT ON COLUMN maquinas_catalogo.origem IS 'embutida = veio com o sistema; importada = criada a partir de uma ficha técnica anexada';
+COMMENT ON COLUMN maquinas_catalogo.vida_util_h IS 'Horas de operação até o fim da vida útil (base do desgaste e da depreciação; hipótese didática)';
+COMMENT ON COLUMN maquinas_catalogo.intervalo_manutencao_h IS 'De quantas em quantas horas a máquina precisa de manutenção preventiva (hipótese didática)';
+COMMENT ON TABLE documentos_maquina IS 'Fichas técnicas anexadas pelo usuário, de onde o sistema extrai os dados de uma máquina nova';
+COMMENT ON COLUMN documentos_maquina.id IS 'Identificador da linha (gerado automaticamente)';
+COMMENT ON COLUMN documentos_maquina.usuario_id IS 'Quem anexou o documento';
+COMMENT ON COLUMN documentos_maquina.nome_arquivo IS 'Nome do arquivo anexado (ex.: ficha-pasteurizador.pdf)';
+COMMENT ON COLUMN documentos_maquina.sha256 IS 'Impressão digital do arquivo: o mesmo arquivo não é anexado duas vezes';
+COMMENT ON COLUMN documentos_maquina.tamanho_bytes IS 'Tamanho do arquivo';
+COMMENT ON COLUMN documentos_maquina.paginas IS 'Número de páginas (PDF)';
+COMMENT ON COLUMN documentos_maquina.texto_extraido IS 'Texto lido do documento (base da extração por regras)';
+COMMENT ON COLUMN documentos_maquina.campos_extraidos IS 'O que o sistema entendeu do documento (JSON): cada campo com valor, trecho de origem e confiança';
+COMMENT ON COLUMN documentos_maquina.status IS 'analisado = aguardando conferência; importado = virou máquina; descartado';
+COMMENT ON COLUMN documentos_maquina.maquina_id IS 'Máquina criada ou atualizada a partir do documento';
+COMMENT ON COLUMN documentos_maquina.enviado_em IS 'Quando o documento foi anexado';
 COMMENT ON TABLE fabrica_maquinas IS 'Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e unidades em paralelo)';
 COMMENT ON COLUMN fabrica_maquinas.id IS 'Identificador da linha (gerado automaticamente)';
 COMMENT ON COLUMN fabrica_maquinas.fabrica_id IS 'Fábrica em que a máquina foi colocada';
@@ -461,6 +572,10 @@ COMMENT ON COLUMN fabrica_maquinas.pos_y IS 'Posição vertical no quadro (pixel
 COMMENT ON COLUMN fabrica_maquinas.ritmo IS 'Ritmo atual (na unidade do parâmetro da máquina)';
 COMMENT ON COLUMN fabrica_maquinas.unidades_paralelo IS 'Quantas máquinas iguais trabalham lado a lado (1 a 6)';
 COMMENT ON COLUMN fabrica_maquinas.desligada IS 'Verdadeiro = máquina desligada';
+COMMENT ON COLUMN fabrica_maquinas.instalada_em IS 'Quando a máquina foi colocada na fábrica';
+COMMENT ON COLUMN fabrica_maquinas.horas_operacao IS 'Horas em que a máquina trabalhou (tempo real de uso)';
+COMMENT ON COLUMN fabrica_maquinas.horas_desgaste IS 'Horas de desgaste: contam mais rápido quando opera acima do ótimo (hipótese didática)';
+COMMENT ON COLUMN fabrica_maquinas.manutencao_em_h IS 'Horas de desgaste que a máquina tinha na última manutenção';
 COMMENT ON TABLE manuais_maquina IS 'Texto do Manual das máquinas (relação 1 para 1 com o catálogo)';
 COMMENT ON COLUMN manuais_maquina.maquina_id IS 'Máquina a que o manual pertence (1 manual por máquina)';
 COMMENT ON COLUMN manuais_maquina.o_que_faz IS 'Descrição completa da máquina';
@@ -551,6 +666,15 @@ COMMENT ON COLUMN eventos_registro.simulacao_id IS 'Simulação em que ocorreu (
 COMMENT ON COLUMN eventos_registro.ocorrido_em IS 'Quando aconteceu';
 COMMENT ON COLUMN eventos_registro.tipo IS 'info, ok, warn ou bad (cor da linha no Registro)';
 COMMENT ON COLUMN eventos_registro.mensagem IS 'O que aconteceu';
+COMMENT ON TABLE manutencoes IS 'Histórico de manutenções de cada máquina da fábrica';
+COMMENT ON COLUMN manutencoes.id IS 'Identificador da linha (gerado automaticamente)';
+COMMENT ON COLUMN manutencoes.fabrica_maquina_id IS 'Máquina que recebeu a manutenção';
+COMMENT ON COLUMN manutencoes.usuario_id IS 'Quem registrou';
+COMMENT ON COLUMN manutencoes.realizada_em IS 'Quando a manutenção foi registrada';
+COMMENT ON COLUMN manutencoes.tipo IS 'preventiva (programada) ou corretiva (depois de falha)';
+COMMENT ON COLUMN manutencoes.horas_desgaste_antes IS 'Desgaste (horas) logo antes da manutenção';
+COMMENT ON COLUMN manutencoes.horas_desgaste_depois IS 'Desgaste (horas) logo depois: a manutenção recupera parte da vida da máquina';
+COMMENT ON COLUMN manutencoes.observacao IS 'O que foi feito';
 COMMENT ON TABLE plano_passos IS 'Passos de um plano (qual máquina mexer, de quanto para quanto, por quê e quanto custa)';
 COMMENT ON COLUMN plano_passos.id IS 'Identificador da linha (gerado automaticamente)';
 COMMENT ON COLUMN plano_passos.plano_id IS 'Plano';
@@ -565,6 +689,15 @@ COMMENT ON COLUMN plano_passos.unidades_depois IS 'Unidades em paralelo depois (
 COMMENT ON COLUMN plano_passos.motivo IS 'O porquê do passo, em palavras simples';
 COMMENT ON COLUMN plano_passos.custo_min IS 'Custo estimado mínimo do passo (R$)';
 COMMENT ON COLUMN plano_passos.custo_max IS 'Custo estimado máximo do passo (R$)';
+COMMENT ON TABLE simulacao_pontos IS 'Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábrica)';
+COMMENT ON COLUMN simulacao_pontos.id IS 'Identificador da linha (gerado automaticamente)';
+COMMENT ON COLUMN simulacao_pontos.simulacao_id IS 'Simulação a que o ponto pertence';
+COMMENT ON COLUMN simulacao_pontos.minuto IS 'Minuto simulado em que a leitura foi feita';
+COMMENT ON COLUMN simulacao_pontos.garrafas_acumuladas IS 'Garrafas produzidas até este minuto';
+COMMENT ON COLUMN simulacao_pontos.producao_h IS 'Produção naquele instante (garrafas por hora)';
+COMMENT ON COLUMN simulacao_pontos.energia_kwh IS 'Energia gasta até este minuto (kWh)';
+COMMENT ON COLUMN simulacao_pontos.fila_total IS 'Garrafas paradas na fila neste minuto';
+COMMENT ON COLUMN simulacao_pontos.risco_max IS 'Maior risco entre as máquinas neste minuto (0 a 1)';
 COMMENT ON TABLE cenario_maquinas IS 'Situação de cada máquina dentro de um cenário (capacidade, saída, fila, risco e energia)';
 COMMENT ON COLUMN cenario_maquinas.id IS 'Identificador da linha (gerado automaticamente)';
 COMMENT ON COLUMN cenario_maquinas.cenario_id IS 'Cenário';
@@ -579,3 +712,13 @@ COMMENT ON COLUMN cenario_maquinas.fila_h IS 'Excesso parado esperando esta máq
 COMMENT ON COLUMN cenario_maquinas.risco IS 'Risco de falha (0 a 1)';
 COMMENT ON COLUMN cenario_maquinas.estado IS 'normal, alerta, critico, falha ou desligada';
 COMMENT ON COLUMN cenario_maquinas.energia_kw IS 'Consumo (kW)';
+COMMENT ON TABLE simulacao_pontos_maquina IS 'Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel da máquina)';
+COMMENT ON COLUMN simulacao_pontos_maquina.id IS 'Identificador da linha (gerado automaticamente)';
+COMMENT ON COLUMN simulacao_pontos_maquina.ponto_id IS 'Ponto da linha do tempo';
+COMMENT ON COLUMN simulacao_pontos_maquina.fabrica_maquina_id IS 'Máquina (vazio se foi removida depois)';
+COMMENT ON COLUMN simulacao_pontos_maquina.saida_h IS 'O que a máquina entregava neste minuto (garrafas/h)';
+COMMENT ON COLUMN simulacao_pontos_maquina.fila_h IS 'Excesso parado esperando esta máquina (garrafas/h)';
+COMMENT ON COLUMN simulacao_pontos_maquina.risco IS 'Risco de falha (0 a 1)';
+COMMENT ON COLUMN simulacao_pontos_maquina.estado IS 'normal, alerta, critico, falha ou desligada';
+COMMENT ON COLUMN simulacao_pontos_maquina.energia_kw IS 'Consumo (kW)';
+COMMENT ON COLUMN simulacao_pontos_maquina.temperatura_c IS 'Temperatura estimada da máquina (°C; modelo didático: ambiente + aquecimento pela carga)';

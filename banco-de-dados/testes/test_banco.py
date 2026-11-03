@@ -14,12 +14,15 @@ TABELAS = [
     "usuarios", "categorias", "etapas", "maquinas_catalogo", "manuais_maquina", "fontes", "maquina_fontes", "precos_maquina", "modelos_reais",
     "glossario_termos", "glossario_palavras", "fabricas", "fabrica_maquinas", "conexoes", "cenarios", "cenario_maquinas", "simulacoes",
     "eventos_registro", "planos_objetivo", "plano_passos", "mensagens_chat",
+    # versão 2 do banco (desgaste, versões de máquina, fichas técnicas e linha do tempo do Play)
+    "documentos_maquina", "manutencoes", "simulacao_pontos", "simulacao_pontos_maquina",
 ]
 INICIAL = {  # linhas depois de 02_dados_iniciais.sql
     "usuarios": 2, "categorias": 6, "etapas": 10, "maquinas_catalogo": 14, "manuais_maquina": 14, "fontes": 39, "maquina_fontes": 65,
     "precos_maquina": 14, "modelos_reais": 18, "glossario_termos": 38, "glossario_palavras": 52, "fabricas": 3, "fabrica_maquinas": 22,
     "conexoes": 19, "cenarios": 2, "cenario_maquinas": 16, "simulacoes": 1, "eventos_registro": 5, "planos_objetivo": 1, "plano_passos": 2,
     "mensagens_chat": 2,
+    "documentos_maquina": 0, "manutencoes": 0, "simulacao_pontos": 0, "simulacao_pontos_maquina": 0,
 }
 
 
@@ -39,7 +42,7 @@ class EsquemaEDados(unittest.TestCase):
     def setUp(self):
         self.con = novo_banco()
 
-    def test_as_21_tabelas_existem(self):
+    def test_as_25_tabelas_existem(self):
         existentes = {r[0] for r in self.con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertEqual(existentes, set(TABELAS))
 
@@ -156,6 +159,76 @@ class Crud(unittest.TestCase):
         depois["mensagens_chat"] -= 1  # a mensagem fica, só perde a ligação com a fábrica (ON DELETE SET NULL)
         self.assertEqual(depois, INICIAL)
         self.assertIsNone(con.execute("SELECT fabrica_id FROM mensagens_chat WHERE texto='oi'").fetchone()[0])
+
+
+class VersaoDois(unittest.TestCase):
+    """Tabelas e colunas novas: desgaste e manutenção, versões de máquina, fichas técnicas e linha do tempo do Play."""
+
+    def setUp(self):
+        self.con = novo_banco()
+
+    def test_maquinas_ja_trazem_versao_origem_e_vida_util(self):
+        linhas = self.con.execute("SELECT versao, origem, grupo_codigo = codigo, vida_util_h > 0, intervalo_manutencao_h > 0 FROM maquinas_catalogo").fetchall()
+        self.assertEqual(set(linhas), {(1, "embutida", 1, 1, 1)})
+        self.assertEqual(self.con.execute("SELECT vida_util_h, intervalo_manutencao_h FROM maquinas_catalogo WHERE codigo='enchedora'").fetchone(), (25000, 800))
+
+    def test_maquinas_da_fabrica_comecam_sem_desgaste(self):
+        self.assertEqual(self.con.execute("SELECT DISTINCT horas_operacao, horas_desgaste, manutencao_em_h FROM fabrica_maquinas").fetchall(), [(0, 0, 0)])
+
+    def test_crud_de_manutencao_e_cascata(self):
+        c = self.con
+        c.execute("UPDATE fabrica_maquinas SET horas_desgaste = 1200, horas_operacao = 900 WHERE id = 1")
+        c.execute("INSERT INTO manutencoes (fabrica_maquina_id, tipo, horas_desgaste_antes, horas_desgaste_depois, observacao) VALUES (1, 'preventiva', 1200, 600, 'troca de vedações')")
+        c.execute("UPDATE fabrica_maquinas SET horas_desgaste = 600, manutencao_em_h = 600 WHERE id = 1")
+        self.assertEqual(c.execute("SELECT tipo, horas_desgaste_depois FROM manutencoes").fetchall(), [("preventiva", 600)])
+        c.execute("DELETE FROM fabrica_maquinas WHERE id = 1")           # a máquina some e o histórico dela vai junto
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM manutencoes").fetchone()[0], 0)
+
+    def test_regras_do_desgaste(self):
+        c = self.con
+        with self.assertRaises(sqlite3.IntegrityError):                   # manutenção não pode aumentar o desgaste
+            c.execute("INSERT INTO manutencoes (fabrica_maquina_id, tipo, horas_desgaste_antes, horas_desgaste_depois) VALUES (1, 'preventiva', 100, 200)")
+        with self.assertRaises(sqlite3.IntegrityError):                   # tipo inválido
+            c.execute("INSERT INTO manutencoes (fabrica_maquina_id, tipo, horas_desgaste_antes, horas_desgaste_depois) VALUES (1, 'magica', 100, 50)")
+        with self.assertRaises(sqlite3.IntegrityError):                   # horas negativas
+            c.execute("UPDATE fabrica_maquinas SET horas_operacao = -1 WHERE id = 1")
+        with self.assertRaises(sqlite3.IntegrityError):                   # a última manutenção não pode ser depois do desgaste atual
+            c.execute("UPDATE fabrica_maquinas SET manutencao_em_h = 50 WHERE id = 1")
+
+    def test_documentos_e_versoes_de_maquina(self):
+        c = self.con
+        c.execute("INSERT INTO documentos_maquina (nome_arquivo, sha256, tamanho_bytes, paginas, texto_extraido, campos_extraidos, status) "
+                  "VALUES ('ficha.pdf', 'abc', 1000, 2, 'texto', '{}', 'analisado')")
+        with self.assertRaises(sqlite3.IntegrityError):                   # o mesmo arquivo não entra duas vezes
+            c.execute("INSERT INTO documentos_maquina (nome_arquivo, sha256, tamanho_bytes, texto_extraido, campos_extraidos) VALUES ('outra.pdf', 'abc', 1, 't', '{}')")
+        with self.assertRaises(sqlite3.IntegrityError):
+            c.execute("UPDATE documentos_maquina SET status = 'perdido'")
+        # uma versão nova da máquina convive com a antiga
+        c.execute("INSERT INTO maquinas_catalogo (codigo, nome, categoria_id, etapa_id, parametro, unidade, valor_min, valor_otimo, valor_atencao, valor_falha, valor_max, "
+                  "capacidade_otima, consumo_parado_kw, consumo_variavel_kw, descricao, risco_fisico, base_dos_numeros, versao, grupo_codigo, origem, fabricante, modelo) "
+                  "SELECT 'enchedora_v2', 'Enchedora (v2)', categoria_id, etapa_id, parametro, unidade, valor_min, valor_otimo, valor_atencao, valor_falha, valor_max, "
+                  "capacidade_otima * 1.5, consumo_parado_kw, consumo_variavel_kw, descricao, risco_fisico, base_dos_numeros, 2, 'enchedora', 'importada', 'Krones', 'Modulfill' "
+                  "FROM maquinas_catalogo WHERE codigo = 'enchedora'")
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM maquinas_catalogo WHERE grupo_codigo = 'enchedora'").fetchone()[0], 2)
+        c.execute("UPDATE documentos_maquina SET status = 'importado', maquina_id = (SELECT id FROM maquinas_catalogo WHERE codigo = 'enchedora_v2')")
+        c.execute("DELETE FROM maquinas_catalogo WHERE codigo = 'enchedora_v2'")   # apagar a máquina não apaga o documento
+        self.assertEqual(c.execute("SELECT maquina_id FROM documentos_maquina").fetchone()[0], None)
+        with self.assertRaises(sqlite3.IntegrityError):
+            c.execute("UPDATE maquinas_catalogo SET origem = 'copiada' WHERE codigo = 'enchedora'")
+        with self.assertRaises(sqlite3.IntegrityError):
+            c.execute("UPDATE maquinas_catalogo SET versao = 0 WHERE codigo = 'enchedora'")
+
+    def test_linha_do_tempo_do_play_some_com_a_simulacao(self):
+        c = self.con
+        c.execute("INSERT INTO simulacao_pontos (simulacao_id, minuto, garrafas_acumuladas, producao_h, energia_kwh, fila_total, risco_max) VALUES (1, 15, 100, 11400, 2.5, 0, 0.02)")
+        c.execute("INSERT INTO simulacao_pontos_maquina (ponto_id, fabrica_maquina_id, saida_h, fila_h, risco, estado, energia_kw, temperatura_c) VALUES (1, 1, 11400, 0, 0.02, 'normal', 3.1, 41.5)")
+        with self.assertRaises(sqlite3.IntegrityError):                   # dois pontos no mesmo minuto da mesma simulação
+            c.execute("INSERT INTO simulacao_pontos (simulacao_id, minuto, garrafas_acumuladas, producao_h, energia_kwh, risco_max) VALUES (1, 15, 1, 1, 1, 0.02)")
+        with self.assertRaises(sqlite3.IntegrityError):
+            c.execute("UPDATE simulacao_pontos_maquina SET estado = 'quente'")
+        c.execute("DELETE FROM simulacoes WHERE id = 1")
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM simulacao_pontos").fetchone()[0], 0)
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM simulacao_pontos_maquina").fetchone()[0], 0)
 
 
 class Integridade(unittest.TestCase):

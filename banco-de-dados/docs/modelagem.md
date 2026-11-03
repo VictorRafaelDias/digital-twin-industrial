@@ -94,7 +94,7 @@ O professor deixou a escolha livre. **O banco do sistema é o PostgreSQL.** O SQ
 
 - Os scripts de criação, dados, views e exemplos de CRUD existem para **os dois**, gerados do mesmo modelo (`scripts/modelo.py`), então nunca saem diferentes. Os dados, as views e o CRUD usam SQL padrão e rodam igual nos dois bancos.
 - O `digital_twin.db` (SQLite) é a cópia portátil: serve para o professor abrir, para a demonstração de CRUD e para os testes automáticos.
-- **Os scripts de PostgreSQL foram executados num servidor PostgreSQL 16 (Docker) e passaram:** as 21 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo (`sql/04_crud_exemplos.sql`) rodou e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos de `testes/test_integridade_postgres.sql` (chaves estrangeiras, valores únicos, regras CHECK, chave composta e RESTRICT). O `docker-compose.yml` sobe o banco com um comando (`docker compose up -d`) e `scripts/testar_postgres.py` repete essa verificação.
+- **Versão 2 (25 tabelas): os scripts de PostgreSQL foram executados num servidor PostgreSQL 16 (Docker) e passaram:** as 25 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo (`sql/04_crud_exemplos.sql`) rodou e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos de `testes/test_integridade_postgres.sql` (chaves estrangeiras, valores únicos, regras CHECK, chave composta e RESTRICT). O `docker-compose.yml` sobe o banco com um comando (`docker compose up -d`) e `scripts/testar_postgres.py` repete essa verificação.
 - A validação foi feita com o PostgreSQL 16.15 em contêiner Linux (Alpine). Os testes unitários em Python (`testes/test_banco.py`) continuam rodando no SQLite.
 
 ## 6. Ligação com o sistema
@@ -103,8 +103,26 @@ O professor deixou a escolha livre. **O banco do sistema é o PostgreSQL.** O SQ
 - O **backend atual** (`backend/app/db_models.py`) tem 4 tabelas (`plants`, `machine_instances`, `connections`, `scenarios`), com nomes em inglês. Elas correspondem a `fabricas`, `fabrica_maquinas`, `conexoes` e `cenarios`, que aqui ganharam os campos que o front já usa (unidades em paralelo, máquina desligada, temperatura, tarifa) e as tabelas de catálogo, preço, resultados e registro. A migração é um mapeamento direto de nomes.
 - Os **dados iniciais** vêm do próprio código do front (`scripts/exportar_dados_do_front.ts`), para o banco e a tela nunca divergirem.
 
-## 7. Limitações conhecidas
+## 8. Versão 2 do banco (tabelas e colunas novas)
 
-- Senhas: o login do front é apenas de demonstração e ainda não consulta a tabela `usuarios`.
-- Não há ainda tabelas de telemetria contínua (leituras por segundo), previstas para quando existir simulação em tempo real no servidor.
+A versão 1 (21 tabelas) foi a entregue no Sprint 1. A versão 2 **só acrescenta**: nada do que já existia mudou. Ela nasceu de três pedidos novos (dashboard, desgaste das máquinas e importação de ficha técnica).
+
+| O que | Onde | Para quê |
+|---|---|---|
+| `simulacao_pontos` e `simulacao_pontos_maquina` | tabelas novas | Guardam a **linha do tempo** de cada simulação (um ponto por passo, no máximo 120): produção, energia, fila e risco da fábrica, e a leitura de cada máquina (saída, risco, estado, consumo e **temperatura estimada**). Alimentam os gráficos do dashboard. |
+| `manutencoes` | tabela nova | Histórico de manutenções de cada máquina da fábrica (preventiva ou corretiva, com o desgaste antes e depois). |
+| `documentos_maquina` | tabela nova | Fichas técnicas anexadas: nome, impressão digital (`sha256`, único: o mesmo arquivo não entra duas vezes), texto lido, o que o sistema entendeu (JSON) e a máquina criada a partir dele. |
+| `fabrica_maquinas`: `instalada_em`, `horas_operacao`, `horas_desgaste`, `manutencao_em_h` | colunas novas | Idade e desgaste de cada máquina colocada numa fábrica. As horas de desgaste correm mais rápido acima do ritmo ótimo. |
+| `maquinas_catalogo`: `fabricante`, `modelo`, `ano_modelo`, `versao`, `grupo_codigo`, `origem`, `vida_util_h`, `intervalo_manutencao_h` | colunas novas | **Versões** da mesma máquina (v1, v2...: as antigas continuam no sistema), origem (embutida ou importada de uma ficha) e a vida útil e o intervalo de manutenção usados no desgaste e na depreciação. |
+
+Regras novas no próprio banco: manutenção nunca aumenta o desgaste; o desgaste na última manutenção nunca passa do desgaste atual; horas nunca negativas; no máximo um ponto por minuto de cada simulação; o estado da máquina na linha do tempo só aceita os 5 valores de sempre; a origem da máquina é `embutida` ou `importada`; a versão começa em 1.
+
+**Hipótese didática:** a vida útil, o intervalo de manutenção, a perda de rendimento com a idade, a depreciação e a temperatura da máquina são valores escolhidos para o simulador mostrar o efeito (estão em `backend/app/engine/wear.py` e `thermal.py`), não vêm de fichas de fabricantes.
+
+**Como um banco antigo vira a versão 2:** o servidor (`backend/`) acrescenta sozinho as colunas que faltam ao subir (migração que só acrescenta; testada com o banco real da versão 1). Os DER em imagem (`der/*.png`) mostram as 21 tabelas da versão 1; as 4 tabelas novas e as colunas novas estão no dicionário de dados e nos arquivos de texto `der/*.mmd`.
+
+## 9. Limitações conhecidas
+
+- Senhas: o login do front sem servidor é apenas de demonstração; com o back-end (`backend/`), o login confere a senha na tabela `usuarios`.
+- A linha do tempo do Play guarda no máximo 120 pontos por simulação (não é uma leitura por segundo). Alarmes ficam nos resultados, sem tabela própria.
 - O assistente de conversa não guarda os manuais em PDF no banco; só o texto das mensagens.

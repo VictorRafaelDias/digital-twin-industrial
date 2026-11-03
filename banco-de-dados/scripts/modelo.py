@@ -102,8 +102,19 @@ maquinas_catalogo = Table(
     Column("risco_fisico", Text, nullable=False, comment="O que pode dar errado fisicamente"),
     Column("base_dos_numeros", Text, nullable=False, comment="Nota de em que os números se baseiam (hipótese didática ou fonte)"),
     Column("ativa", Boolean, nullable=False, server_default=true(), comment="Falso = máquina fora do catálogo"),
+    Column("fabricante", String(80), nullable=True, comment="Fabricante, quando se sabe (ex.: Tetra Pak)"),
+    Column("modelo", String(80), nullable=True, comment="Modelo comercial, quando se sabe (ex.: Pasteurizer BF)"),
+    Column("ano_modelo", SmallInteger, nullable=True, comment="Ano do modelo, quando se sabe"),
+    Column("versao", SmallInteger, nullable=False, server_default="1", comment="Versão da máquina dentro da família (1, 2, 3...). Versões antigas continuam no sistema"),
+    Column("grupo_codigo", String(40), nullable=True, comment="Código da família: as versões de uma máquina compartilham o mesmo (vazio = o próprio código)"),
+    Column("origem", String(10), nullable=False, server_default="embutida", comment="embutida = veio com o sistema; importada = criada a partir de uma ficha técnica anexada"),
+    Column("vida_util_h", Integer, nullable=False, server_default="30000", comment="Horas de operação até o fim da vida útil (base do desgaste e da depreciação; hipótese didática)"),
+    Column("intervalo_manutencao_h", Integer, nullable=False, server_default="1000", comment="De quantas em quantas horas a máquina precisa de manutenção preventiva (hipótese didática)"),
     UniqueConstraint("codigo"),
     CheckConstraint("fluxo IN ('geral', 'suco')", name="ck_maquinas_catalogo_fluxo"),
+    CheckConstraint("origem IN ('embutida', 'importada')", name="ck_maquinas_catalogo_origem"),
+    CheckConstraint("versao >= 1", name="ck_maquinas_catalogo_versao"),
+    CheckConstraint("vida_util_h > 0 AND intervalo_manutencao_h > 0", name="ck_maquinas_catalogo_horas"),
     CheckConstraint(
         "sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')",
         name="ck_maquinas_catalogo_sensibilidade",
@@ -118,6 +129,25 @@ maquinas_catalogo = Table(
     comment="Catálogo: os tipos de máquina que podem ser colocados numa fábrica, com limites, capacidade e consumo",
 )
 Index("ix_maquinas_catalogo_categoria_id", maquinas_catalogo.c.categoria_id)
+
+documentos_maquina = Table(
+    "documentos_maquina", metadata,
+    pk(),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, comment="Quem anexou o documento"),
+    Column("nome_arquivo", String(255), nullable=False, comment="Nome do arquivo anexado (ex.: ficha-pasteurizador.pdf)"),
+    Column("sha256", String(64), nullable=False, comment="Impressão digital do arquivo: o mesmo arquivo não é anexado duas vezes"),
+    Column("tamanho_bytes", Integer, nullable=False, comment="Tamanho do arquivo"),
+    Column("paginas", SmallInteger, nullable=True, comment="Número de páginas (PDF)"),
+    Column("texto_extraido", Text, nullable=False, comment="Texto lido do documento (base da extração por regras)"),
+    Column("campos_extraidos", Text, nullable=False, comment="O que o sistema entendeu do documento (JSON): cada campo com valor, trecho de origem e confiança"),
+    Column("status", String(12), nullable=False, server_default="analisado", comment="analisado = aguardando conferência; importado = virou máquina; descartado"),
+    Column("maquina_id", Integer, ForeignKey("maquinas_catalogo.id", ondelete="SET NULL"), nullable=True, comment="Máquina criada ou atualizada a partir do documento"),
+    agora("enviado_em", "Quando o documento foi anexado"),
+    UniqueConstraint("sha256"),
+    CheckConstraint("status IN ('analisado', 'importado', 'descartado')", name="ck_documentos_maquina_status"),
+    comment="Fichas técnicas anexadas pelo usuário, de onde o sistema extrai os dados de uma máquina nova",
+)
+Index("ix_documentos_maquina_maquina_id", documentos_maquina.c.maquina_id)
 
 manuais_maquina = Table(
     "manuais_maquina", metadata,
@@ -236,10 +266,15 @@ fabrica_maquinas = Table(
     Column("ritmo", Numeric(12, 3), nullable=False, comment="Ritmo atual (na unidade do parâmetro da máquina)"),
     Column("unidades_paralelo", SmallInteger, nullable=False, server_default="1", comment="Quantas máquinas iguais trabalham lado a lado (1 a 6)"),
     Column("desligada", Boolean, nullable=False, server_default=false(), comment="Verdadeiro = máquina desligada"),
+    Column("instalada_em", DateTime, nullable=False, server_default=func.current_timestamp(), comment="Quando a máquina foi colocada na fábrica"),
+    Column("horas_operacao", Numeric(12, 1), nullable=False, server_default="0", comment="Horas em que a máquina trabalhou (tempo real de uso)"),
+    Column("horas_desgaste", Numeric(12, 1), nullable=False, server_default="0", comment="Horas de desgaste: contam mais rápido quando opera acima do ótimo (hipótese didática)"),
+    Column("manutencao_em_h", Numeric(12, 1), nullable=False, server_default="0", comment="Horas de desgaste que a máquina tinha na última manutenção"),
     UniqueConstraint("fabrica_id", "id", name="uq_fabrica_maquinas_fabrica_id"),
     CheckConstraint("pos_x >= 0 AND pos_y >= 0", name="ck_fabrica_maquinas_posicao"),
     CheckConstraint("ritmo >= 0", name="ck_fabrica_maquinas_ritmo"),
     CheckConstraint("unidades_paralelo >= 1 AND unidades_paralelo <= 6", name="ck_fabrica_maquinas_paralelo"),
+    CheckConstraint("horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste", name="ck_fabrica_maquinas_horas"),
     comment="Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e unidades em paralelo)",
 )
 Index("ix_fabrica_maquinas_fabrica_id", fabrica_maquinas.c.fabrica_id)
@@ -260,6 +295,22 @@ conexoes = Table(
 )
 Index("ix_conexoes_fabrica_id", conexoes.c.fabrica_id)
 Index("ix_conexoes_destino_id", conexoes.c.destino_id)
+
+manutencoes = Table(
+    "manutencoes", metadata,
+    pk(),
+    Column("fabrica_maquina_id", Integer, ForeignKey("fabrica_maquinas.id", ondelete="CASCADE"), nullable=False, comment="Máquina que recebeu a manutenção"),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, comment="Quem registrou"),
+    agora("realizada_em", "Quando a manutenção foi registrada"),
+    Column("tipo", String(10), nullable=False, server_default="preventiva", comment="preventiva (programada) ou corretiva (depois de falha)"),
+    Column("horas_desgaste_antes", Numeric(12, 1), nullable=False, comment="Desgaste (horas) logo antes da manutenção"),
+    Column("horas_desgaste_depois", Numeric(12, 1), nullable=False, comment="Desgaste (horas) logo depois: a manutenção recupera parte da vida da máquina"),
+    Column("observacao", Text, nullable=True, comment="O que foi feito"),
+    CheckConstraint("tipo IN ('preventiva', 'corretiva')", name="ck_manutencoes_tipo"),
+    CheckConstraint("horas_desgaste_depois <= horas_desgaste_antes", name="ck_manutencoes_recupera"),
+    comment="Histórico de manutenções de cada máquina da fábrica",
+)
+Index("ix_manutencoes_maquina", manutencoes.c.fabrica_maquina_id, manutencoes.c.realizada_em)
 
 # =====================================================================================================
 # MÓDULO SIMULAÇÃO E RESULTADOS
@@ -324,6 +375,39 @@ simulacoes = Table(
     comment="Resultado final de cada vez que o usuário roda o Play",
 )
 Index("ix_simulacoes_fabrica_id", simulacoes.c.fabrica_id)
+
+simulacao_pontos = Table(
+    "simulacao_pontos", metadata,
+    pk(),
+    Column("simulacao_id", Integer, ForeignKey("simulacoes.id", ondelete="CASCADE"), nullable=False, comment="Simulação a que o ponto pertence"),
+    Column("minuto", Numeric(8, 2), nullable=False, comment="Minuto simulado em que a leitura foi feita"),
+    Column("garrafas_acumuladas", Numeric(14, 2), nullable=False, comment="Garrafas produzidas até este minuto"),
+    Column("producao_h", Numeric(12, 2), nullable=False, comment="Produção naquele instante (garrafas por hora)"),
+    Column("energia_kwh", Numeric(12, 3), nullable=False, comment="Energia gasta até este minuto (kWh)"),
+    Column("fila_total", Numeric(14, 2), nullable=False, server_default="0", comment="Garrafas paradas na fila neste minuto"),
+    Column("risco_max", Numeric(5, 4), nullable=False, comment="Maior risco entre as máquinas neste minuto (0 a 1)"),
+    UniqueConstraint("simulacao_id", "minuto", name="uq_simulacao_pontos_minuto"),
+    CheckConstraint("risco_max >= 0 AND risco_max <= 1", name="ck_simulacao_pontos_risco"),
+    comment="Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábrica)",
+)
+
+simulacao_pontos_maquina = Table(
+    "simulacao_pontos_maquina", metadata,
+    pk(),
+    Column("ponto_id", Integer, ForeignKey("simulacao_pontos.id", ondelete="CASCADE"), nullable=False, comment="Ponto da linha do tempo"),
+    Column("fabrica_maquina_id", Integer, ForeignKey("fabrica_maquinas.id", ondelete="SET NULL"), nullable=True, comment="Máquina (vazio se foi removida depois)"),
+    Column("saida_h", Numeric(12, 2), nullable=False, comment="O que a máquina entregava neste minuto (garrafas/h)"),
+    Column("fila_h", Numeric(12, 2), nullable=False, server_default="0", comment="Excesso parado esperando esta máquina (garrafas/h)"),
+    Column("risco", Numeric(5, 4), nullable=False, comment="Risco de falha (0 a 1)"),
+    Column("estado", String(10), nullable=False, comment="normal, alerta, critico, falha ou desligada"),
+    Column("energia_kw", Numeric(10, 3), nullable=False, comment="Consumo (kW)"),
+    Column("temperatura_c", Numeric(5, 1), nullable=False, comment="Temperatura estimada da máquina (°C; modelo didático: ambiente + aquecimento pela carga)"),
+    CheckConstraint("estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')", name="ck_simulacao_pontos_maquina_estado"),
+    CheckConstraint("risco >= 0 AND risco <= 1", name="ck_simulacao_pontos_maquina_risco"),
+    comment="Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel da máquina)",
+)
+Index("ix_simulacao_pontos_maquina_ponto", simulacao_pontos_maquina.c.ponto_id)
+Index("ix_simulacao_pontos_maquina_maquina", simulacao_pontos_maquina.c.fabrica_maquina_id)
 
 eventos_registro = Table(
     "eventos_registro", metadata,
@@ -402,8 +486,8 @@ Index("ix_mensagens_chat_usuario_criada", mensagens_chat.c.usuario_id, mensagens
 # Agrupamento usado no diagrama e na documentação
 MODULOS = {
     "Acesso": ["usuarios"],
-    "Catálogo de máquinas": ["categorias", "etapas", "maquinas_catalogo", "manuais_maquina", "fontes", "maquina_fontes", "precos_maquina", "modelos_reais"],
+    "Catálogo de máquinas": ["categorias", "etapas", "maquinas_catalogo", "manuais_maquina", "documentos_maquina", "fontes", "maquina_fontes", "precos_maquina", "modelos_reais"],
     "Apoio ao usuário": ["glossario_termos", "glossario_palavras", "mensagens_chat"],
-    "Fábricas": ["fabricas", "fabrica_maquinas", "conexoes"],
-    "Simulação e resultados": ["cenarios", "cenario_maquinas", "simulacoes", "planos_objetivo", "plano_passos", "eventos_registro"],
+    "Fábricas": ["fabricas", "fabrica_maquinas", "conexoes", "manutencoes"],
+    "Simulação e resultados": ["cenarios", "cenario_maquinas", "simulacoes", "simulacao_pontos", "simulacao_pontos_maquina", "planos_objetivo", "plano_passos", "eventos_registro"],
 }

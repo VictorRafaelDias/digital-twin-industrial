@@ -70,9 +70,9 @@ O Sprint 1 pede a **base de dados** do sistema: o diagrama entidade-relacionamen
 | Pedido | Onde está |
 |---|---|
 | Diagrama entidade-relacionamento (DER) | Pasta `der/`: visão geral, um diagrama por módulo e o modelo completo (neste documento, na seção 5) |
-| A base de dados com as tabelas criadas | `digital_twin.db` (SQLite, cópia portátil) e os scripts em `sql/` (SQLite e PostgreSQL). 21 tabelas, 4 views e 345 linhas iniciais |
+| A base de dados com as tabelas criadas | `digital_twin.db` (SQLite, cópia portátil) e os scripts em `sql/` (SQLite e PostgreSQL). 25 tabelas (21 da versão 1 e 4 da versão 2), 4 views e 345 linhas iniciais |
 | Comandos de CRUD | `sql/04_crud_exemplos.sql` e `scripts/crud_demo.py`, que executa Create, Read, Update e Delete em todas as tabelas |
-| Testes | `testes/test_banco.py`: 23 testes automáticos no SQLite (criação, dados, CRUD e regras de integridade) e `scripts/testar_postgres.py`: a mesma verificação num servidor PostgreSQL 16 (Docker), que passou |
+| Testes | `testes/test_banco.py`: 29 testes automáticos no SQLite (criação, dados, CRUD e regras de integridade, inclusive da versão 2) e `scripts/testar_postgres.py`: a mesma verificação num servidor PostgreSQL 16 (Docker), executada com sucesso na versão 2 (25 tabelas) |
 | Documentação | Este documento, `docs/modelagem.md` e `docs/dicionario-de-dados.md` |
 
 O banco foi pensado para o sistema Digital Twin Industrial, um simulador de fábrica de bebidas no estilo Cisco Packet Tracer. Ele guarda o catálogo de máquinas (com limites, capacidade, consumo, preços estimados e fontes), as fábricas montadas pelos usuários, os resultados de simulação, os planos de melhoria, o registro de eventos e a conversa com o assistente.
@@ -84,18 +84,18 @@ O banco foi pensado para o sistema Digital Twin Industrial, um simulador de fáb
 ## 4. Entidades e relacionamentos
 {secao(modelagem, "2. Entidades e relacionamentos")}
 
-O banco tem 21 tabelas, organizadas em 5 módulos:
+O banco tem 25 tabelas (21 da versão 1, entregue no Sprint 1, e 4 da versão 2), organizadas em 5 módulos:
 
 {tabela_modulos}
 
 ## 5. Diagramas entidade-relacionamento (DER)
-Os diagramas usam a notação "pé de galinha": `||` significa exatamente um, `|o` zero ou um e `o{{` zero ou muitos. PK é a chave primária e FK é a chave estrangeira. A visão geral mostra as 21 tabelas com as chaves; os diagramas por módulo mostram todas as colunas e são os mais fáceis de ler. As imagens também estão em alta resolução na pasta `der/` do repositório.
+Os diagramas usam a notação "pé de galinha": `||` significa exatamente um, `|o` zero ou um e `o{{` zero ou muitos. PK é a chave primária e FK é a chave estrangeira. A visão geral mostra as 21 tabelas da versão 1 com as chaves (as 4 tabelas da versão 2 estão na seção 6.1 e no dicionário de dados); os diagramas por módulo mostram todas as colunas e são os mais fáceis de ler. As imagens também estão em alta resolução na pasta `der/` do repositório.
 
 [[paisagem]]
 ### 5.1 Visão geral
 ![Figura 1](../der/DER-visao-geral.png)
 
-Figura 1 – DER: visão geral das 21 tabelas, com as chaves primárias e estrangeiras.
+Figura 1 – DER: visão geral das 21 tabelas da versão 1, com as chaves primárias e estrangeiras.
 
 [[retrato]]
 ### 5.2 Módulo Acesso
@@ -127,8 +127,11 @@ Figura 6 – DER do módulo Simulação e resultados (cenários, simulações, p
 {rebaixar(secao(modelagem, "3. Normalização"), 0)}
 {secao(modelagem, "4. Decisões de projeto")}
 
+### 6.1 Versão 2 do banco (tabelas e colunas novas)
+{secao(modelagem, "8. Versão 2 do banco")}
+
 ## 7. CRUD: Create, Read, Update e Delete
-O CRUD foi demonstrado em **todas as 21 tabelas** pelo arquivo `sql/04_crud_exemplos.sql`, que cria dados de exemplo, lê, altera e apaga, deixando o banco como estava (a conferência final conta as linhas de cada tabela e compara com o estado inicial). O script `scripts/crud_demo.py` executa cada comando e mostra o resultado, e os testes automáticos repetem o ciclo em cada tabela.
+O CRUD foi demonstrado em **todas as 25 tabelas** pelo arquivo `sql/04_crud_exemplos.sql`, que cria dados de exemplo, lê, altera e apaga, deixando o banco como estava (a conferência final conta as linhas de cada tabela e compara com o estado inicial). O script `scripts/crud_demo.py` executa cada comando e mostra o resultado, e os testes automáticos repetem o ciclo em cada tabela.
 
 | Operação | Comando SQL | Exemplo no banco |
 |---|---|---|

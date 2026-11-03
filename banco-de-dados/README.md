@@ -1,6 +1,6 @@
 # Digital Twin Industrial: base de dados (Sprint 1)
 
-Base de dados do sistema: 21 tabelas, com o **DER** (diagrama entidade-relacionamento), o banco **já criado e populado** e exemplos de **CRUD** (Create, Read, Update, Delete) em todas as tabelas.
+Base de dados do sistema: **25 tabelas** (21 da versão 1, entregue no Sprint 1, mais 4 da versão 2), com o **DER** (diagrama entidade-relacionamento), o banco **já criado e populado** e exemplos de **CRUD** (Create, Read, Update, Delete) em todas as tabelas.
 
 ## Banco escolhido: PostgreSQL
 
@@ -8,7 +8,7 @@ O banco do sistema é o **PostgreSQL**: aguenta a API e vários usuários gravan
 
 O texto da entrega, com o motivo da escolha e o link de acesso, está em [`docs/escolha-do-banco.md`](docs/escolha-do-banco.md).
 
-**Testado de verdade no PostgreSQL 16 (Docker):** os scripts criam as 21 tabelas, as 4 views e os 345 registros iniciais sem erro; o CRUD completo roda e devolve o banco ao estado inicial; e o banco recusa os 14 comandos inválidos do teste de integridade. Para repetir: `docker compose up -d` e depois `python scripts/testar_postgres.py` (veja abaixo).
+**Testado de verdade no PostgreSQL 16 (Docker), na versão 2 (25 tabelas):** os scripts criam as 25 tabelas, as 4 views e os 345 registros iniciais sem erro; o CRUD completo roda e devolve o banco ao estado inicial; e o banco recusa os 14 comandos inválidos do teste de integridade. Para repetir: `docker compose up -d` e depois `python scripts/testar_postgres.py` (veja abaixo).
 
 Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia portátil em SQLite** (`digital_twin.db`), que abre com duplo clique no DB Browser, sem instalar nada. Os scripts de criação existem para os dois bancos e saem do mesmo modelo.
 
@@ -41,14 +41,14 @@ O banco já vem com os mesmos dados do front-end (catálogo de máquinas, fontes
 | Módulo | Tabelas | Linhas iniciais |
 |---|---|---|
 | Acesso | `usuarios` | 2 |
-| Catálogo de máquinas | `categorias` (6), `etapas` (10), `maquinas_catalogo` (14), `manuais_maquina` (14), `fontes` (39), `maquina_fontes` (65), `precos_maquina` (14), `modelos_reais` (18) | 180 |
+| Catálogo de máquinas | `categorias` (6), `etapas` (10), `maquinas_catalogo` (14), `manuais_maquina` (14), `fontes` (39), `maquina_fontes` (65), `precos_maquina` (14), `modelos_reais` (18), `documentos_maquina` (0, versão 2) | 180 |
 | Apoio ao usuário | `glossario_termos` (38), `glossario_palavras` (52), `mensagens_chat` (2) | 92 |
-| Fábricas | `fabricas` (3), `fabrica_maquinas` (22), `conexoes` (19) | 44 |
-| Simulação e resultados | `cenarios` (2), `cenario_maquinas` (16), `simulacoes` (1), `planos_objetivo` (1), `plano_passos` (2), `eventos_registro` (5) | 27 |
+| Fábricas | `fabricas` (3), `fabrica_maquinas` (22), `conexoes` (19), `manutencoes` (0, versão 2) | 44 |
+| Simulação e resultados | `cenarios` (2), `cenario_maquinas` (16), `simulacoes` (1), `simulacao_pontos` (0, versão 2), `simulacao_pontos_maquina` (0, versão 2), `planos_objetivo` (1), `plano_passos` (2), `eventos_registro` (5) | 27 |
 
 Os números de simulação guardados (produção de 11.400 garrafas/h, gargalo na rotuladora, plano de +10%) foram **calculados pelo próprio motor do front-end**, então batem com o que o sistema mostra na tela.
 
-Usuários de demonstração: `victor.dias` e `enzo.fernandes` (senha de demonstração `senha1234`, guardada com hash PBKDF2, nunca em texto). O front-end ainda não confere senha.
+Usuários de demonstração: `victor.dias` e `enzo.fernandes` (senha de demonstração `senha1234`, guardada com hash PBKDF2, nunca em texto). Com o back-end (pasta `backend/`), o login confere a senha de verdade.
 
 ## Estrutura da pasta
 

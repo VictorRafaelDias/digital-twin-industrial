@@ -120,9 +120,20 @@ CREATE TABLE maquinas_catalogo (
 	risco_fisico TEXT NOT NULL, 
 	base_dos_numeros TEXT NOT NULL, 
 	ativa BOOLEAN DEFAULT 1 NOT NULL, 
+	fabricante VARCHAR(80), 
+	modelo VARCHAR(80), 
+	ano_modelo SMALLINT, 
+	versao SMALLINT DEFAULT '1' NOT NULL, 
+	grupo_codigo VARCHAR(40), 
+	origem VARCHAR(10) DEFAULT 'embutida' NOT NULL, 
+	vida_util_h INTEGER DEFAULT '30000' NOT NULL, 
+	intervalo_manutencao_h INTEGER DEFAULT '1000' NOT NULL, 
 	CONSTRAINT pk_maquinas_catalogo PRIMARY KEY (id), 
 	CONSTRAINT uq_maquinas_catalogo_codigo UNIQUE (codigo), 
 	CONSTRAINT ck_maquinas_catalogo_fluxo CHECK (fluxo IN ('geral', 'suco')), 
+	CONSTRAINT ck_maquinas_catalogo_origem CHECK (origem IN ('embutida', 'importada')), 
+	CONSTRAINT ck_maquinas_catalogo_versao CHECK (versao >= 1), 
+	CONSTRAINT ck_maquinas_catalogo_horas CHECK (vida_util_h > 0 AND intervalo_manutencao_h > 0), 
 	CONSTRAINT ck_maquinas_catalogo_sensibilidade CHECK (sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')), 
 	CONSTRAINT ck_maquinas_catalogo_limites CHECK (valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max), 
 	CONSTRAINT ck_maquinas_catalogo_capacidade CHECK (capacidade_otima > 0), 
@@ -132,6 +143,27 @@ CREATE TABLE maquinas_catalogo (
 	CONSTRAINT fk_maquinas_catalogo_etapa_id FOREIGN KEY(etapa_id) REFERENCES etapas (id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_maquinas_catalogo_categoria_id ON maquinas_catalogo (categoria_id);
+
+-- Fichas técnicas anexadas pelo usuário, de onde o sistema extrai os dados de uma máquina nova
+CREATE TABLE documentos_maquina (
+	id INTEGER NOT NULL, 
+	usuario_id INTEGER, 
+	nome_arquivo VARCHAR(255) NOT NULL, 
+	sha256 VARCHAR(64) NOT NULL, 
+	tamanho_bytes INTEGER NOT NULL, 
+	paginas SMALLINT, 
+	texto_extraido TEXT NOT NULL, 
+	campos_extraidos TEXT NOT NULL, 
+	status VARCHAR(12) DEFAULT 'analisado' NOT NULL, 
+	maquina_id INTEGER, 
+	enviado_em DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	CONSTRAINT pk_documentos_maquina PRIMARY KEY (id), 
+	CONSTRAINT uq_documentos_maquina_sha256 UNIQUE (sha256), 
+	CONSTRAINT ck_documentos_maquina_status CHECK (status IN ('analisado', 'importado', 'descartado')), 
+	CONSTRAINT fk_documentos_maquina_usuario_id FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL, 
+	CONSTRAINT fk_documentos_maquina_maquina_id FOREIGN KEY(maquina_id) REFERENCES maquinas_catalogo (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_documentos_maquina_maquina_id ON documentos_maquina (maquina_id);
 
 -- Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e unidades em paralelo)
 CREATE TABLE fabrica_maquinas (
@@ -143,11 +175,16 @@ CREATE TABLE fabrica_maquinas (
 	ritmo NUMERIC(12, 3) NOT NULL, 
 	unidades_paralelo SMALLINT DEFAULT '1' NOT NULL, 
 	desligada BOOLEAN DEFAULT 0 NOT NULL, 
+	instalada_em DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	horas_operacao NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	horas_desgaste NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	manutencao_em_h NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	CONSTRAINT pk_fabrica_maquinas PRIMARY KEY (id), 
 	CONSTRAINT uq_fabrica_maquinas_fabrica_id UNIQUE (fabrica_id, id), 
 	CONSTRAINT ck_fabrica_maquinas_posicao CHECK (pos_x >= 0 AND pos_y >= 0), 
 	CONSTRAINT ck_fabrica_maquinas_ritmo CHECK (ritmo >= 0), 
 	CONSTRAINT ck_fabrica_maquinas_paralelo CHECK (unidades_paralelo >= 1 AND unidades_paralelo <= 6), 
+	CONSTRAINT ck_fabrica_maquinas_horas CHECK (horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste), 
 	CONSTRAINT fk_fabrica_maquinas_fabrica_id FOREIGN KEY(fabrica_id) REFERENCES fabricas (id) ON DELETE CASCADE, 
 	CONSTRAINT fk_fabrica_maquinas_maquina_id FOREIGN KEY(maquina_id) REFERENCES maquinas_catalogo (id) ON DELETE RESTRICT
 );
@@ -332,6 +369,24 @@ CREATE TABLE eventos_registro (
 );
 CREATE INDEX ix_eventos_registro_fabrica_ocorrido ON eventos_registro (fabrica_id, ocorrido_em);
 
+-- Histórico de manutenções de cada máquina da fábrica
+CREATE TABLE manutencoes (
+	id INTEGER NOT NULL, 
+	fabrica_maquina_id INTEGER NOT NULL, 
+	usuario_id INTEGER, 
+	realizada_em DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	tipo VARCHAR(10) DEFAULT 'preventiva' NOT NULL, 
+	horas_desgaste_antes NUMERIC(12, 1) NOT NULL, 
+	horas_desgaste_depois NUMERIC(12, 1) NOT NULL, 
+	observacao TEXT, 
+	CONSTRAINT pk_manutencoes PRIMARY KEY (id), 
+	CONSTRAINT ck_manutencoes_tipo CHECK (tipo IN ('preventiva', 'corretiva')), 
+	CONSTRAINT ck_manutencoes_recupera CHECK (horas_desgaste_depois <= horas_desgaste_antes), 
+	CONSTRAINT fk_manutencoes_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_manutencoes_usuario_id FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_manutencoes_maquina ON manutencoes (fabrica_maquina_id, realizada_em);
+
 -- Passos de um plano (qual máquina mexer, de quanto para quanto, por quê e quanto custa)
 CREATE TABLE plano_passos (
 	id INTEGER NOT NULL, 
@@ -357,6 +412,22 @@ CREATE TABLE plano_passos (
 );
 CREATE INDEX ix_plano_passos_plano_id ON plano_passos (plano_id);
 
+-- Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábrica)
+CREATE TABLE simulacao_pontos (
+	id INTEGER NOT NULL, 
+	simulacao_id INTEGER NOT NULL, 
+	minuto NUMERIC(8, 2) NOT NULL, 
+	garrafas_acumuladas NUMERIC(14, 2) NOT NULL, 
+	producao_h NUMERIC(12, 2) NOT NULL, 
+	energia_kwh NUMERIC(12, 3) NOT NULL, 
+	fila_total NUMERIC(14, 2) DEFAULT '0' NOT NULL, 
+	risco_max NUMERIC(5, 4) NOT NULL, 
+	CONSTRAINT pk_simulacao_pontos PRIMARY KEY (id), 
+	CONSTRAINT uq_simulacao_pontos_minuto UNIQUE (simulacao_id, minuto), 
+	CONSTRAINT ck_simulacao_pontos_risco CHECK (risco_max >= 0 AND risco_max <= 1), 
+	CONSTRAINT fk_simulacao_pontos_simulacao_id FOREIGN KEY(simulacao_id) REFERENCES simulacoes (id) ON DELETE CASCADE
+);
+
 -- Situação de cada máquina dentro de um cenário (capacidade, saída, fila, risco e energia)
 CREATE TABLE cenario_maquinas (
 	id INTEGER NOT NULL, 
@@ -380,3 +451,23 @@ CREATE TABLE cenario_maquinas (
 	CONSTRAINT fk_cenario_maquinas_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE SET NULL
 );
 CREATE INDEX ix_cenario_maquinas_cenario_id ON cenario_maquinas (cenario_id);
+
+-- Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel da máquina)
+CREATE TABLE simulacao_pontos_maquina (
+	id INTEGER NOT NULL, 
+	ponto_id INTEGER NOT NULL, 
+	fabrica_maquina_id INTEGER, 
+	saida_h NUMERIC(12, 2) NOT NULL, 
+	fila_h NUMERIC(12, 2) DEFAULT '0' NOT NULL, 
+	risco NUMERIC(5, 4) NOT NULL, 
+	estado VARCHAR(10) NOT NULL, 
+	energia_kw NUMERIC(10, 3) NOT NULL, 
+	temperatura_c NUMERIC(5, 1) NOT NULL, 
+	CONSTRAINT pk_simulacao_pontos_maquina PRIMARY KEY (id), 
+	CONSTRAINT ck_simulacao_pontos_maquina_estado CHECK (estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')), 
+	CONSTRAINT ck_simulacao_pontos_maquina_risco CHECK (risco >= 0 AND risco <= 1), 
+	CONSTRAINT fk_simulacao_pontos_maquina_ponto_id FOREIGN KEY(ponto_id) REFERENCES simulacao_pontos (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_simulacao_pontos_maquina_fabrica_maquina_id FOREIGN KEY(fabrica_maquina_id) REFERENCES fabrica_maquinas (id) ON DELETE SET NULL
+);
+CREATE INDEX ix_simulacao_pontos_maquina_maquina ON simulacao_pontos_maquina (fabrica_maquina_id);
+CREATE INDEX ix_simulacao_pontos_maquina_ponto ON simulacao_pontos_maquina (ponto_id);

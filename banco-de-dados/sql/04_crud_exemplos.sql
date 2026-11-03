@@ -1,4 +1,4 @@
--- Digital Twin Industrial: exemplos de CRUD em TODAS as 21 tabelas.
+-- Digital Twin Industrial: exemplos de CRUD em TODAS as 25 tabelas (21 da versão 1 e 4 da versão 2).
 --   C = Create (INSERT)   R = Read (SELECT)   U = Update (UPDATE)   D = Delete (DELETE)
 -- SQL padrão: roda no SQLite e no PostgreSQL. Cada bloco cria dados de exemplo, lê, altera e apaga,
 -- então no final o banco volta ao que era no começo (ver a conferência no fim do arquivo).
@@ -237,6 +237,68 @@ DELETE FROM fabricas WHERE nome = 'Fábrica da Ana';
 DELETE FROM usuarios WHERE nome_usuario = 'ana.souza';
 
 -- =====================================================================================================
+-- BLOCO E: VERSÃO 2 (desgaste e manutenção, versões de máquina, fichas técnicas e linha do tempo do Play)
+--          (manutencoes, documentos_maquina, simulacao_pontos, simulacao_pontos_maquina e as colunas novas)
+-- =====================================================================================================
+
+-- [UPDATE] a primeira máquina da fábrica de exemplo ganha horas de uso e desgaste
+UPDATE fabrica_maquinas SET horas_operacao = 1500, horas_desgaste = 1800 WHERE id = (SELECT MIN(id) FROM fabrica_maquinas);
+
+-- [READ] quanto da vida útil ela já gastou (o desgaste vem das colunas novas; a vida útil, do catálogo)
+SELECT m.codigo, fm.horas_operacao, fm.horas_desgaste, m.vida_util_h,
+       ROUND(100.0 * fm.horas_desgaste / m.vida_util_h, 2) AS vida_gasta_pct
+FROM fabrica_maquinas fm JOIN maquinas_catalogo m ON m.id = fm.maquina_id
+WHERE fm.id = (SELECT MIN(id) FROM fabrica_maquinas);
+
+-- [CREATE] registrar uma manutenção preventiva (recupera 60% do desgaste)
+INSERT INTO manutencoes (fabrica_maquina_id, tipo, horas_desgaste_antes, horas_desgaste_depois, observacao)
+VALUES ((SELECT MIN(id) FROM fabrica_maquinas), 'preventiva', 1800, 720, 'troca de vedações');
+UPDATE fabrica_maquinas SET horas_desgaste = 720, manutencao_em_h = 720 WHERE id = (SELECT MIN(id) FROM fabrica_maquinas);
+
+-- [READ] histórico de manutenções
+SELECT tipo, horas_desgaste_antes, horas_desgaste_depois, observacao FROM manutencoes;
+
+-- [UPDATE] volta a máquina ao estado inicial e [DELETE] apaga a manutenção de exemplo
+UPDATE fabrica_maquinas SET horas_operacao = 0, horas_desgaste = 0, manutencao_em_h = 0 WHERE id = (SELECT MIN(id) FROM fabrica_maquinas);
+DELETE FROM manutencoes WHERE observacao = 'troca de vedações';
+
+-- [CREATE] anexar uma ficha técnica (o mesmo arquivo não entra duas vezes: sha256 é único)
+INSERT INTO documentos_maquina (nome_arquivo, sha256, tamanho_bytes, paginas, texto_extraido, campos_extraidos, status)
+VALUES ('ficha-exemplo.pdf', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 1000, 2, 'texto da ficha', '{}', 'analisado');
+
+-- [CREATE] a máquina vira uma NOVA VERSÃO (v2) da enchedora; a v1 continua no catálogo
+INSERT INTO maquinas_catalogo (codigo, nome, categoria_id, etapa_id, parametro, unidade, valor_min, valor_otimo, valor_atencao, valor_falha, valor_max,
+                               capacidade_otima, consumo_parado_kw, consumo_variavel_kw, descricao, risco_fisico, base_dos_numeros,
+                               versao, grupo_codigo, origem, fabricante, modelo)
+SELECT 'enchedora_v2', 'Enchedora (v2)', categoria_id, etapa_id, parametro, unidade, valor_min, valor_otimo, valor_atencao, valor_falha, valor_max,
+       capacidade_otima * 1.5, consumo_parado_kw, consumo_variavel_kw, descricao, risco_fisico, base_dos_numeros,
+       2, 'enchedora', 'importada', 'Krones', 'Modulfill'
+FROM maquinas_catalogo WHERE codigo = 'enchedora';
+UPDATE documentos_maquina SET status = 'importado', maquina_id = (SELECT id FROM maquinas_catalogo WHERE codigo = 'enchedora_v2')
+WHERE sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+-- [READ] as versões da enchedora e o documento de onde veio a v2
+SELECT codigo, versao, origem, capacidade_otima FROM maquinas_catalogo WHERE grupo_codigo = 'enchedora' ORDER BY versao;
+SELECT d.nome_arquivo, d.status, m.codigo FROM documentos_maquina d JOIN maquinas_catalogo m ON m.id = d.maquina_id;
+
+-- [DELETE] apagar a máquina importada não apaga o documento (ele só perde o vínculo); depois apagamos o documento
+DELETE FROM maquinas_catalogo WHERE codigo = 'enchedora_v2';
+DELETE FROM documentos_maquina WHERE sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+-- [CREATE] linha do tempo de uma simulação: um ponto da fábrica e a leitura de uma máquina nesse ponto
+INSERT INTO simulacao_pontos (simulacao_id, minuto, garrafas_acumuladas, producao_h, energia_kwh, fila_total, risco_max)
+VALUES ((SELECT MIN(id) FROM simulacoes), 15, 2850, 11400, 6.1, 0, 0.02);
+INSERT INTO simulacao_pontos_maquina (ponto_id, fabrica_maquina_id, saida_h, fila_h, risco, estado, energia_kw, temperatura_c)
+VALUES ((SELECT MAX(id) FROM simulacao_pontos), (SELECT MIN(id) FROM fabrica_maquinas), 11400, 0, 0.02, 'normal', 3.1, 65.0);
+
+-- [READ] a leitura da máquina em cada minuto da simulação
+SELECT p.minuto, p.garrafas_acumuladas, pm.saida_h, pm.temperatura_c, pm.estado
+FROM simulacao_pontos p JOIN simulacao_pontos_maquina pm ON pm.ponto_id = p.id;
+
+-- [DELETE] apagar o ponto apaga em cascata a leitura da máquina
+DELETE FROM simulacao_pontos WHERE minuto = 15 AND garrafas_acumuladas = 2850;
+
+-- =====================================================================================================
 -- CONFERÊNCIA FINAL: linhas de cada tabela. Devem ser iguais às do banco original (ver banco-de-dados/README.md):
 -- tudo o que foi criado nos blocos acima foi apagado, inclusive o que caiu pela cascata.
 -- =====================================================================================================
@@ -260,4 +322,8 @@ UNION ALL SELECT 'simulacoes', COUNT(*) FROM simulacoes
 UNION ALL SELECT 'eventos_registro', COUNT(*) FROM eventos_registro
 UNION ALL SELECT 'planos_objetivo', COUNT(*) FROM planos_objetivo
 UNION ALL SELECT 'plano_passos', COUNT(*) FROM plano_passos
-UNION ALL SELECT 'mensagens_chat', COUNT(*) FROM mensagens_chat;
+UNION ALL SELECT 'mensagens_chat', COUNT(*) FROM mensagens_chat
+UNION ALL SELECT 'documentos_maquina', COUNT(*) FROM documentos_maquina
+UNION ALL SELECT 'manutencoes', COUNT(*) FROM manutencoes
+UNION ALL SELECT 'simulacao_pontos', COUNT(*) FROM simulacao_pontos
+UNION ALL SELECT 'simulacao_pontos_maquina', COUNT(*) FROM simulacao_pontos_maquina;

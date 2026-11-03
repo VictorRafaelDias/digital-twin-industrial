@@ -3,7 +3,7 @@
 
 O que faz:
   1. sobe o banco (docker compose up -d --wait), se pedido com --subir;
-  2. confere que as 21 tabelas, as 4 views e as linhas iniciais foram criadas pelos scripts de sql/;
+  2. confere que as 25 tabelas, as 4 views e as linhas iniciais foram criadas pelos scripts de sql/;
   3. executa o CRUD completo (sql/04_crud_exemplos.sql) e confere que o banco voltou ao estado inicial;
   4. executa os testes de integridade (testes/test_integridade_postgres.sql): 14 comandos inválidos que o banco precisa recusar.
 
@@ -22,6 +22,7 @@ ESPERADO = {
     "precos_maquina": 14, "modelos_reais": 18, "glossario_termos": 38, "glossario_palavras": 52, "fabricas": 3, "fabrica_maquinas": 22,
     "conexoes": 19, "cenarios": 2, "cenario_maquinas": 16, "simulacoes": 1, "eventos_registro": 5, "planos_objetivo": 1, "plano_passos": 2,
     "mensagens_chat": 2,
+    "documentos_maquina": 0, "manutencoes": 0, "simulacao_pontos": 0, "simulacao_pontos_maquina": 0,   # versão 2: começam vazias
 }
 
 
@@ -50,15 +51,15 @@ def main() -> None:
 
     n_tab = int(consulta("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"))
     n_views = int(consulta("SELECT COUNT(*) FROM information_schema.views WHERE table_schema='public'"))
-    print(f"[1] Estrutura: {n_tab} tabelas, {n_views} views", "OK" if (n_tab, n_views) == (21, 4) else "FALHOU")
-    assert (n_tab, n_views) == (21, 4)
+    print(f"[1] Estrutura: {n_tab} tabelas, {n_views} views", "OK" if (n_tab, n_views) == (25, 4) else "FALHOU")
+    assert (n_tab, n_views) == (25, 4)
 
     def contagens() -> dict:
         linhas = consulta(" UNION ALL ".join(f"SELECT '{t}', COUNT(*) FROM {t}" for t in ESPERADO)).splitlines()
         return {l.split("|")[0]: int(l.split("|")[1]) for l in linhas}
 
     assert contagens() == ESPERADO, f"dados iniciais diferentes: {contagens()}"
-    print(f"[2] Dados iniciais: {sum(ESPERADO.values())} linhas em 21 tabelas, iguais às esperadas OK")
+    print(f"[2] Dados iniciais: {sum(ESPERADO.values())} linhas em 25 tabelas, iguais às esperadas OK")
 
     run("docker", "cp", str(RAIZ / "sql"), f"{CONTAINER}:/tmp/sql")
     run("docker", "cp", str(RAIZ / "testes"), f"{CONTAINER}:/tmp/testes")

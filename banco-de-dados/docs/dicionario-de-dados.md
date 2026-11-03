@@ -4,15 +4,15 @@ Gerado automaticamente por `scripts/gerar_banco.py` a partir de `scripts/modelo.
 
 Legenda: **PK** = chave primária; **FK** = chave estrangeira; **UQ** = valor único; **NN** = obrigatório (não pode ficar vazio).
 
-A base tem **21 tabelas**, em 5 módulos.
+A base tem **25 tabelas**, em 5 módulos.
 
 | Módulo | Tabelas |
 |---|---|
 | Acesso | `usuarios` |
-| Catálogo de máquinas | `categorias`, `etapas`, `maquinas_catalogo`, `manuais_maquina`, `fontes`, `maquina_fontes`, `precos_maquina`, `modelos_reais` |
+| Catálogo de máquinas | `categorias`, `etapas`, `maquinas_catalogo`, `manuais_maquina`, `documentos_maquina`, `fontes`, `maquina_fontes`, `precos_maquina`, `modelos_reais` |
 | Apoio ao usuário | `glossario_termos`, `glossario_palavras`, `mensagens_chat` |
-| Fábricas | `fabricas`, `fabrica_maquinas`, `conexoes` |
-| Simulação e resultados | `cenarios`, `cenario_maquinas`, `simulacoes`, `planos_objetivo`, `plano_passos`, `eventos_registro` |
+| Fábricas | `fabricas`, `fabrica_maquinas`, `conexoes`, `manutencoes` |
+| Simulação e resultados | `cenarios`, `cenario_maquinas`, `simulacoes`, `simulacao_pontos`, `simulacao_pontos_maquina`, `planos_objetivo`, `plano_passos`, `eventos_registro` |
 
 ## Módulo: Acesso
 
@@ -91,15 +91,26 @@ Catálogo: os tipos de máquina que podem ser colocados numa fábrica, com limit
 | `risco_fisico` | TEXT |  | sim |  | O que pode dar errado fisicamente |
 | `base_dos_numeros` | TEXT |  | sim |  | Nota de em que os números se baseiam (hipótese didática ou fonte) |
 | `ativa` | BOOLEAN |  | sim | verdadeiro | Falso = máquina fora do catálogo |
+| `fabricante` | VARCHAR(80) |  | não |  | Fabricante, quando se sabe (ex.: Tetra Pak) |
+| `modelo` | VARCHAR(80) |  | não |  | Modelo comercial, quando se sabe (ex.: Pasteurizer BF) |
+| `ano_modelo` | SMALLINT |  | não |  | Ano do modelo, quando se sabe |
+| `versao` | SMALLINT |  | sim | 1 | Versão da máquina dentro da família (1, 2, 3...). Versões antigas continuam no sistema |
+| `grupo_codigo` | VARCHAR(40) |  | não |  | Código da família: as versões de uma máquina compartilham o mesmo (vazio = o próprio código) |
+| `origem` | VARCHAR(10) |  | sim | embutida | embutida = veio com o sistema; importada = criada a partir de uma ficha técnica anexada |
+| `vida_util_h` | INTEGER |  | sim | 30000 | Horas de operação até o fim da vida útil (base do desgaste e da depreciação; hipótese didática) |
+| `intervalo_manutencao_h` | INTEGER |  | sim | 1000 | De quantas em quantas horas a máquina precisa de manutenção preventiva (hipótese didática) |
 
 Regras de integridade:
 
-- **Regra** `ck_maquinas_catalogo_limites`: `valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max`
-- **Regra** `ck_maquinas_catalogo_fluxo`: `fluxo IN ('geral', 'suco')`
-- **Regra** `ck_maquinas_catalogo_capacidade`: `capacidade_otima > 0`
-- **Regra** `ck_maquinas_catalogo_consumo`: `consumo_parado_kw >= 0 AND consumo_variavel_kw >= 0`
 - **Regra** `ck_maquinas_catalogo_sensibilidade`: `sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')`
 - **Regra** `ck_maquinas_catalogo_ordem`: `ordem_processo IS NULL OR (ordem_processo >= 0 AND ordem_processo <= 9)`
+- **Regra** `ck_maquinas_catalogo_origem`: `origem IN ('embutida', 'importada')`
+- **Regra** `ck_maquinas_catalogo_limites`: `valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max`
+- **Regra** `ck_maquinas_catalogo_versao`: `versao >= 1`
+- **Regra** `ck_maquinas_catalogo_capacidade`: `capacidade_otima > 0`
+- **Regra** `ck_maquinas_catalogo_fluxo`: `fluxo IN ('geral', 'suco')`
+- **Regra** `ck_maquinas_catalogo_horas`: `vida_util_h > 0 AND intervalo_manutencao_h > 0`
+- **Regra** `ck_maquinas_catalogo_consumo`: `consumo_parado_kw >= 0 AND consumo_variavel_kw >= 0`
 
 Índices: `ix_maquinas_catalogo_categoria_id`
 
@@ -113,6 +124,30 @@ Texto do Manual das máquinas (relação 1 para 1 com o catálogo)
 | `o_que_faz` | TEXT |  | sim |  | Descrição completa da máquina |
 | `como_funciona_ritmo` | TEXT |  | sim |  | Como o ritmo funciona |
 | `dicas` | TEXT |  | sim |  | Dicas e cuidados |
+
+### `documentos_maquina`
+
+Fichas técnicas anexadas pelo usuário, de onde o sistema extrai os dados de uma máquina nova
+
+| Coluna | Tipo | Chave | Obrigatório | Padrão | Descrição |
+|---|---|---|---|---|---|
+| `id` | INTEGER | PK | sim |  | Identificador da linha (gerado automaticamente) |
+| `usuario_id` | INTEGER | FK → usuarios.id (SET NULL) | não |  | Quem anexou o documento |
+| `nome_arquivo` | VARCHAR(255) |  | sim |  | Nome do arquivo anexado (ex.: ficha-pasteurizador.pdf) |
+| `sha256` | VARCHAR(64) | UQ | sim |  | Impressão digital do arquivo: o mesmo arquivo não é anexado duas vezes |
+| `tamanho_bytes` | INTEGER |  | sim |  | Tamanho do arquivo |
+| `paginas` | SMALLINT |  | não |  | Número de páginas (PDF) |
+| `texto_extraido` | TEXT |  | sim |  | Texto lido do documento (base da extração por regras) |
+| `campos_extraidos` | TEXT |  | sim |  | O que o sistema entendeu do documento (JSON): cada campo com valor, trecho de origem e confiança |
+| `status` | VARCHAR(12) |  | sim | analisado | analisado = aguardando conferência; importado = virou máquina; descartado |
+| `maquina_id` | INTEGER | FK → maquinas_catalogo.id (SET NULL) | não |  | Máquina criada ou atualizada a partir do documento |
+| `enviado_em` | DATETIME |  | sim | agora | Quando o documento foi anexado |
+
+Regras de integridade:
+
+- **Regra** `ck_documentos_maquina_status`: `status IN ('analisado', 'importado', 'descartado')`
+
+Índices: `ix_documentos_maquina_maquina_id`
 
 ### `fontes`
 
@@ -277,13 +312,18 @@ Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e uni
 | `ritmo` | NUMERIC(12, 3) |  | sim |  | Ritmo atual (na unidade do parâmetro da máquina) |
 | `unidades_paralelo` | SMALLINT |  | sim | 1 | Quantas máquinas iguais trabalham lado a lado (1 a 6) |
 | `desligada` | BOOLEAN |  | sim | falso | Verdadeiro = máquina desligada |
+| `instalada_em` | DATETIME |  | sim | agora | Quando a máquina foi colocada na fábrica |
+| `horas_operacao` | NUMERIC(12, 1) |  | sim | 0 | Horas em que a máquina trabalhou (tempo real de uso) |
+| `horas_desgaste` | NUMERIC(12, 1) |  | sim | 0 | Horas de desgaste: contam mais rápido quando opera acima do ótimo (hipótese didática) |
+| `manutencao_em_h` | NUMERIC(12, 1) |  | sim | 0 | Horas de desgaste que a máquina tinha na última manutenção |
 
 Regras de integridade:
 
 - **Regra** `ck_fabrica_maquinas_posicao`: `pos_x >= 0 AND pos_y >= 0`
-- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
-- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
+- **Regra** `ck_fabrica_maquinas_horas`: `horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste`
 - **Regra** `ck_fabrica_maquinas_ritmo`: `ritmo >= 0`
+- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
+- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
 
 Índices: `ix_fabrica_maquinas_fabrica_id`, `ix_fabrica_maquinas_maquina_id`
 
@@ -307,6 +347,28 @@ Regras de integridade:
 
 Índices: `ix_conexoes_destino_id`, `ix_conexoes_fabrica_id`
 
+### `manutencoes`
+
+Histórico de manutenções de cada máquina da fábrica
+
+| Coluna | Tipo | Chave | Obrigatório | Padrão | Descrição |
+|---|---|---|---|---|---|
+| `id` | INTEGER | PK | sim |  | Identificador da linha (gerado automaticamente) |
+| `fabrica_maquina_id` | INTEGER | FK → fabrica_maquinas.id (CASCADE) | sim |  | Máquina que recebeu a manutenção |
+| `usuario_id` | INTEGER | FK → usuarios.id (SET NULL) | não |  | Quem registrou |
+| `realizada_em` | DATETIME |  | sim | agora | Quando a manutenção foi registrada |
+| `tipo` | VARCHAR(10) |  | sim | preventiva | preventiva (programada) ou corretiva (depois de falha) |
+| `horas_desgaste_antes` | NUMERIC(12, 1) |  | sim |  | Desgaste (horas) logo antes da manutenção |
+| `horas_desgaste_depois` | NUMERIC(12, 1) |  | sim |  | Desgaste (horas) logo depois: a manutenção recupera parte da vida da máquina |
+| `observacao` | TEXT |  | não |  | O que foi feito |
+
+Regras de integridade:
+
+- **Regra** `ck_manutencoes_recupera`: `horas_desgaste_depois <= horas_desgaste_antes`
+- **Regra** `ck_manutencoes_tipo`: `tipo IN ('preventiva', 'corretiva')`
+
+Índices: `ix_manutencoes_maquina`
+
 ## Módulo: Simulação e resultados
 
 ### `cenarios`
@@ -327,8 +389,8 @@ Fotos de uma fábrica simulada, para comparar antes e depois
 
 Regras de integridade:
 
-- **Regra** `ck_cenarios_valores`: `producao_h >= 0 AND energia_kw >= 0`
 - **Regra** `ck_cenarios_risco`: `risco_max >= 0 AND risco_max <= 1`
+- **Regra** `ck_cenarios_valores`: `producao_h >= 0 AND energia_kw >= 0`
 
 Índices: `ix_cenarios_fabrica_id`
 
@@ -381,12 +443,55 @@ Resultado final de cada vez que o usuário roda o Play
 
 Regras de integridade:
 
+- **Regra** `ck_simulacoes_valores`: `garrafas_produzidas >= 0 AND energia_kwh >= 0 AND fila_total >= 0`
 - **Regra** `ck_simulacoes_duracao`: `duracao_min > 0`
 - **Regra** `ck_simulacoes_risco`: `risco_max >= 0 AND risco_max <= 1`
 - **Regra** `ck_simulacoes_velocidade`: `velocidade IN (1, 5, 20, 60)`
-- **Regra** `ck_simulacoes_valores`: `garrafas_produzidas >= 0 AND energia_kwh >= 0 AND fila_total >= 0`
 
 Índices: `ix_simulacoes_fabrica_id`
+
+### `simulacao_pontos`
+
+Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábrica)
+
+| Coluna | Tipo | Chave | Obrigatório | Padrão | Descrição |
+|---|---|---|---|---|---|
+| `id` | INTEGER | PK | sim |  | Identificador da linha (gerado automaticamente) |
+| `simulacao_id` | INTEGER | FK → simulacoes.id (CASCADE) | sim |  | Simulação a que o ponto pertence |
+| `minuto` | NUMERIC(8, 2) |  | sim |  | Minuto simulado em que a leitura foi feita |
+| `garrafas_acumuladas` | NUMERIC(14, 2) |  | sim |  | Garrafas produzidas até este minuto |
+| `producao_h` | NUMERIC(12, 2) |  | sim |  | Produção naquele instante (garrafas por hora) |
+| `energia_kwh` | NUMERIC(12, 3) |  | sim |  | Energia gasta até este minuto (kWh) |
+| `fila_total` | NUMERIC(14, 2) |  | sim | 0 | Garrafas paradas na fila neste minuto |
+| `risco_max` | NUMERIC(5, 4) |  | sim |  | Maior risco entre as máquinas neste minuto (0 a 1) |
+
+Regras de integridade:
+
+- **Único** `uq_simulacao_pontos_minuto`: combinação de `simulacao_id, minuto`
+- **Regra** `ck_simulacao_pontos_risco`: `risco_max >= 0 AND risco_max <= 1`
+
+### `simulacao_pontos_maquina`
+
+Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel da máquina)
+
+| Coluna | Tipo | Chave | Obrigatório | Padrão | Descrição |
+|---|---|---|---|---|---|
+| `id` | INTEGER | PK | sim |  | Identificador da linha (gerado automaticamente) |
+| `ponto_id` | INTEGER | FK → simulacao_pontos.id (CASCADE) | sim |  | Ponto da linha do tempo |
+| `fabrica_maquina_id` | INTEGER | FK → fabrica_maquinas.id (SET NULL) | não |  | Máquina (vazio se foi removida depois) |
+| `saida_h` | NUMERIC(12, 2) |  | sim |  | O que a máquina entregava neste minuto (garrafas/h) |
+| `fila_h` | NUMERIC(12, 2) |  | sim | 0 | Excesso parado esperando esta máquina (garrafas/h) |
+| `risco` | NUMERIC(5, 4) |  | sim |  | Risco de falha (0 a 1) |
+| `estado` | VARCHAR(10) |  | sim |  | normal, alerta, critico, falha ou desligada |
+| `energia_kw` | NUMERIC(10, 3) |  | sim |  | Consumo (kW) |
+| `temperatura_c` | NUMERIC(5, 1) |  | sim |  | Temperatura estimada da máquina (°C; modelo didático: ambiente + aquecimento pela carga) |
+
+Regras de integridade:
+
+- **Regra** `ck_simulacao_pontos_maquina_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
+- **Regra** `ck_simulacao_pontos_maquina_risco`: `risco >= 0 AND risco <= 1`
+
+Índices: `ix_simulacao_pontos_maquina_maquina`, `ix_simulacao_pontos_maquina_ponto`
 
 ### `planos_objetivo`
 
@@ -413,9 +518,9 @@ Planos do tipo 'quero +10% de produção': o que fazer, o resultado esperado e o
 
 Regras de integridade:
 
-- **Regra** `ck_planos_objetivo_risco`: `risco_antes >= 0 AND risco_antes <= 1 AND risco_depois >= 0 AND risco_depois <= 1`
 - **Regra** `ck_planos_objetivo_tipo`: `tipo_objetivo IN ('pct', 'abs', 'risk')`
 - **Regra** `ck_planos_objetivo_investimento`: `investimento_min >= 0 AND investimento_min <= investimento_max`
+- **Regra** `ck_planos_objetivo_risco`: `risco_antes >= 0 AND risco_antes <= 1 AND risco_depois >= 0 AND risco_depois <= 1`
 
 Índices: `ix_planos_objetivo_fabrica_id`
 

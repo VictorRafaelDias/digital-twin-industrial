@@ -40,6 +40,27 @@ erDiagram
         decimal risco_max
         int gargalo_maquina_id FK
     }
+    simulacao_pontos {
+        int id PK
+        int simulacao_id FK
+        decimal minuto
+        decimal garrafas_acumuladas
+        decimal producao_h
+        decimal energia_kwh
+        decimal fila_total
+        decimal risco_max
+    }
+    simulacao_pontos_maquina {
+        int id PK
+        int ponto_id FK
+        int fabrica_maquina_id FK
+        decimal saida_h
+        decimal fila_h
+        decimal risco
+        string estado
+        decimal energia_kw
+        decimal temperatura_c
+    }
     planos_objetivo {
         int id PK
         int fabrica_id FK
@@ -82,16 +103,6 @@ erDiagram
         string tipo
         text mensagem
     }
-    fabrica_maquinas {
-        int id PK
-        int fabrica_id FK
-        int maquina_id FK
-        int pos_x
-        int pos_y
-        decimal ritmo
-        int unidades_paralelo
-        boolean desligada
-    }
     fabricas {
         int id PK
         int usuario_id FK
@@ -102,6 +113,20 @@ erDiagram
         boolean parada_emergencia
         datetime criada_em
         datetime atualizada_em
+    }
+    fabrica_maquinas {
+        int id PK
+        int fabrica_id FK
+        int maquina_id FK
+        int pos_x
+        int pos_y
+        decimal ritmo
+        int unidades_paralelo
+        boolean desligada
+        datetime instalada_em
+        decimal horas_operacao
+        decimal horas_desgaste
+        decimal manutencao_em_h
     }
     maquinas_catalogo {
         int id PK
@@ -129,6 +154,14 @@ erDiagram
         text risco_fisico
         text base_dos_numeros
         boolean ativa
+        string fabricante
+        string modelo
+        int ano_modelo
+        int versao
+        string grupo_codigo
+        string origem
+        int vida_util_h
+        int intervalo_manutencao_h
     }
     usuarios {
         int id PK
@@ -139,22 +172,25 @@ erDiagram
         datetime criado_em
         datetime ultimo_acesso_em
     }
-    fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
     fabricas ||--o{ cenarios : "gera"
+    fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
+    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
     fabrica_maquinas |o--o{ cenario_maquinas : "registra"
     cenarios ||--o{ cenario_maquinas : "detalha"
-    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
     fabricas ||--o{ simulacoes : "é simulada em"
-    usuarios ||--o{ simulacoes : "roda"
     maquinas_catalogo |o--o{ simulacoes : "limitou"
+    usuarios ||--o{ simulacoes : "roda"
+    simulacoes ||--o{ simulacao_pontos : "simulacao_id"
+    simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"
+    fabrica_maquinas |o--o{ simulacao_pontos_maquina : "fabrica_maquina_id"
     usuarios ||--o{ planos_objetivo : "pede"
     fabricas ||--o{ planos_objetivo : "recebe"
+    maquinas_catalogo ||--o{ plano_passos : "afeta tipo"
     fabrica_maquinas |o--o{ plano_passos : "mexe em"
     planos_objetivo ||--o{ plano_passos : "é feito de"
-    maquinas_catalogo ||--o{ plano_passos : "afeta tipo"
-    usuarios |o--o{ eventos_registro : "causa"
     simulacoes |o--o{ eventos_registro : "ocorre em"
+    usuarios |o--o{ eventos_registro : "causa"
     fabricas |o--o{ eventos_registro : "registra"
-    fabricas ||--o{ fabrica_maquinas : "contém"
-    maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
     usuarios ||--o{ fabricas : "possui"
+    maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
+    fabricas ||--o{ fabrica_maquinas : "contém"

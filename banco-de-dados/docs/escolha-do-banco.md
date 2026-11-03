@@ -6,7 +6,7 @@ Este é o texto que acompanha o link de acesso à base de dados. Ele resume a es
 
 **https://github.com/VictorRafaelDias/digital-twin-industrial/tree/main/banco-de-dados**
 
-Na pasta estão: o DER (`der/`), o banco com as 21 tabelas criadas (`digital_twin.db` e os scripts em `sql/`), os comandos de CRUD (`sql/04_crud_exemplos.sql` e `scripts/crud_demo.py`), os testes e a documentação (`docs/`).
+Na pasta estão: o DER (`der/`), o banco com as 25 tabelas criadas (21 da versão 1 e 4 da versão 2) (`digital_twin.db` e os scripts em `sql/`), os comandos de CRUD (`sql/04_crud_exemplos.sql` e `scripts/crud_demo.py`), os testes e a documentação (`docs/`).
 
 ## Banco escolhido: PostgreSQL
 
@@ -29,7 +29,7 @@ Escolhemos o **PostgreSQL** como banco de dados do sistema Digital Twin Industri
 ## O que foi entregue
 
 - **DER** (diagrama entidade-relacionamento): visão geral e um diagrama por módulo, com todas as colunas.
-- **Base de dados:** 21 tabelas em 5 módulos, 4 views e 345 linhas iniciais (o catálogo de 14 máquinas com fontes e preços, o glossário e fábricas de exemplo).
+- **Base de dados:** 25 tabelas em 5 módulos (21 da versão 1 e 4 da versão 2, para desgaste, versões de máquina, fichas técnicas e linha do tempo do Play), 4 views e 345 linhas iniciais (o catálogo de 14 máquinas com fontes e preços, o glossário e fábricas de exemplo).
 - **CRUD** (Create, Read, Update, Delete) demonstrado em todas as tabelas: `python scripts/crud_demo.py` executa os comandos e mostra os resultados.
 - **23 testes automáticos** (SQLite) e **a verificação no PostgreSQL** (`scripts/testar_postgres.py`), que cobrem a criação, os dados, o CRUD em cada tabela e a recusa de dados inválidos.
 - **`docker-compose.yml`**, que sobe o PostgreSQL com tudo criado em um comando.
@@ -37,6 +37,6 @@ Escolhemos o **PostgreSQL** como banco de dados do sistema Digital Twin Industri
 
 ## O PostgreSQL foi testado num servidor de verdade
 
-Os scripts de criação foram executados num servidor **PostgreSQL 16 (Docker)** e passaram: as 21 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo rodou em todas as tabelas e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos do teste de integridade (chaves estrangeiras, valores únicos, regras entre colunas, chave composta e apagamento restrito).
+Os scripts de criação da **versão 2 (25 tabelas)** foram executados num servidor **PostgreSQL 16 (Docker)** e passaram: as 25 tabelas, as 4 views e os 345 registros iniciais foram criados sem erro; o CRUD completo rodou em todas as tabelas e deixou o banco igual ao inicial; e o banco recusou os 14 comandos inválidos do teste de integridade (chaves estrangeiras, valores únicos, regras entre colunas, chave composta e apagamento restrito).
 
 Para repetir a verificação: `docker compose up -d` (sobe o banco já criado) e `python scripts/testar_postgres.py`, dentro da pasta `banco-de-dados/`. A cópia SQLite (`digital_twin.db`) continua disponível para abrir sem instalar nada e é usada nos testes unitários em Python.
