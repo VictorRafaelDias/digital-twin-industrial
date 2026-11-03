@@ -6,6 +6,7 @@ import type { Catalog, FEdge, FNode, SimContext } from '../types';
 
 export interface VersionMachine {
   id: string; type: string; name: string; value: number; qty: number; off: boolean;
+  ageYears?: number; maintMonths?: number;   // idade e meses desde a manutenção (versões vindas do servidor não trazem)
   cap: number;   // o que a máquina consegue entregar (capacidade)
   eff: number;   // o que realmente passa por ela com a fábrica funcionando (fluxo real, limitado pelas máquinas à frente)
 }
@@ -75,20 +76,21 @@ export function makeVersion(n: number, label: string, kind: ReportVersion['kind'
     n, label, kind, at: stamp(), prod: sim.production, risk: sim.maxRisk, energy: sim.energy,
     costPerBottle: sim.production > 0 ? (sim.energy * tariff) / sim.production : null,
     bottleneck: sim.bn ? bnName(sim, nodes, ctx.catalog) : null,
-    machines: nodes.map((x) => ({ id: x.id, type: x.type, name: names[x.id], value: x.value, qty: x.qty || 1, off: !!x.off, cap: sim.res[x.id].cap, eff: flow[x.id] })),
+    machines: nodes.map((x) => ({ id: x.id, type: x.type, name: names[x.id], value: x.value, qty: x.qty || 1, off: !!x.off, cap: sim.res[x.id].cap, eff: flow[x.id], ageYears: x.ageYears ?? 0, maintMonths: x.maintMonths ?? 0 })),
   };
 }
 
 /** A configuração (quantidade, ritmo, ligada/desligada) é a mesma da versão? Se sim, não vale criar uma versão repetida. */
 export function sameConfig(v: ReportVersion | undefined, nodes: FNode[]): boolean {
   if (!v || v.machines.length !== nodes.length) return false;
-  return nodes.every((x) => { const m = v.machines.find((y) => y.id === x.id); return !!m && m.type === x.type && m.value === x.value && m.qty === (x.qty || 1) && m.off === !!x.off; });
+  return nodes.every((x) => { const m = v.machines.find((y) => y.id === x.id); return !!m && m.type === x.type && m.value === x.value && m.qty === (x.qty || 1) && m.off === !!x.off
+    && (m.ageYears === undefined || m.ageYears === (x.ageYears ?? 0)) && (m.maintMonths === undefined || m.maintMonths === (x.maintMonths ?? 0)); });
 }
 
-export type Cfg = { id: string; type: string; name: string; value: number; qty: number; off: boolean };
+export type Cfg = { id: string; type: string; name: string; value: number; qty: number; off: boolean; ageYears?: number; maintMonths?: number };
 export const cfgOf = (nodes: FNode[], catalog: Catalog): Cfg[] => {
   const names = machineNames(nodes, catalog);
-  return nodes.map((x) => ({ id: x.id, type: x.type, name: names[x.id], value: x.value, qty: x.qty || 1, off: !!x.off }));
+  return nodes.map((x) => ({ id: x.id, type: x.type, name: names[x.id], value: x.value, qty: x.qty || 1, off: !!x.off, ageYears: x.ageYears ?? 0, maintMonths: x.maintMonths ?? 0 }));
 };
 
 /** O que mudou de uma configuração para outra, em frases curtas (para a lista com marcadores). */
@@ -100,6 +102,8 @@ export function describeChanges(before: Cfg[], after: Cfg[], catalog: Catalog): 
     if (!o) { out.push(`Nova máquina: ${m.name}`); return; }
     if (m.qty !== o.qty) out.push(`${m.qty > o.qty ? '+' : '−'}${Math.abs(m.qty - o.qty)} ${m.name} (${o.qty} → ${m.qty} em paralelo)`);
     if (m.value !== o.value) out.push(`${m.name}: ${catalog[m.type]?.param?.split('(')[0].trim().toLowerCase() || 'ritmo'} ${fv(o.value)} → ${fv(m.value)} ${catalog[m.type]?.unit ?? ''}`.trim());
+    if (o.ageYears !== undefined && m.ageYears !== undefined && m.ageYears !== o.ageYears) out.push(`${m.name}: idade ${fv(o.ageYears)} → ${fv(m.ageYears)} anos`);
+    if (o.maintMonths !== undefined && m.maintMonths !== undefined && m.maintMonths !== o.maintMonths) out.push(m.maintMonths === 0 ? `${m.name}: manutenção feita (estava há ${fv(o.maintMonths)} meses sem)` : `${m.name}: ${fv(o.maintMonths)} → ${fv(m.maintMonths)} meses sem manutenção`);
     if (m.off !== o.off) out.push(m.off ? `Desligou ${m.name}` : `Religou ${m.name}`);
   });
   const now = new Set(after.map((m) => m.id));
@@ -109,7 +113,7 @@ export function describeChanges(before: Cfg[], after: Cfg[], catalog: Catalog): 
 
 /** O mesmo, mas entre duas versões guardadas. */
 export function diffVersions(a: ReportVersion, b: ReportVersion, catalog: Catalog): string[] {
-  const cfg = (v: ReportVersion): Cfg[] => v.machines.map(({ id, type, name, value, qty, off }) => ({ id, type, name, value, qty, off }));
+  const cfg = (v: ReportVersion): Cfg[] => v.machines.map(({ id, type, name, value, qty, off, ageYears, maintMonths }) => ({ id, type, name, value, qty, off, ageYears, maintMonths }));
   return describeChanges(cfg(a), cfg(b), catalog);
 }
 

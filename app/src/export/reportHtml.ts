@@ -71,7 +71,7 @@ function reportSection(i: ExportInput): string {
   const stateCls = (s: string) => (s === 'falha' ? 'bad' : s === 'normal' ? 'ok' : 'warn');
   const rows = nodes.map((n) => {
     const r = sim.res[n.id], u = utilization(r.cap, cd.flow[n.id]), w = cd.wearRows.find((x) => x.label === cd.names[n.id]);
-    return `<tr><td><b>${esc(cd.names[n.id])}</b></td><td class="n">${n.qty}</td><td class="${stateCls(r.state)}">${esc(r.state)}</td><td class="n">${fmt(r.cap)}</td><td class="n">${fmt(cd.flow[n.id])}</td><td class="n">${r.cap > 0 ? fmt(u * 100) + '%' : '—'}</td><td class="n">${fmt(r.queue)}</td><td class="n">${fmt(r.risk * 100, 1)}%</td><td class="n">${fmt(r.energy, 1)}</td><td class="n">${fmt(cd.temps[n.id])}</td>${i.server ? `<td class="n">${w ? fmt(w.a) + '%' : '—'}</td>` : ''}</tr>`;
+    return `<tr><td><b>${esc(cd.names[n.id])}</b></td><td class="n">${n.qty}</td><td class="${stateCls(r.state)}">${esc(r.state)}</td><td class="n">${fmt(r.cap)}</td><td class="n">${fmt(cd.flow[n.id])}</td><td class="n">${r.cap > 0 ? fmt(u * 100) + '%' : '—'}</td><td class="n">${fmt(r.queue)}</td><td class="n">${fmt(r.risk * 100, 1)}%</td><td class="n">${fmt(r.energy, 1)}</td><td class="n">${fmt(cd.temps[n.id])}</td>${cd.hasWear ? `<td class="n">${w ? fmt(w.a) + '%' : '—'}</td>` : ''}</tr>`;
   }).join('');
   const util: BarRow[] = nodes.map((n) => ({ label: cd.names[n.id], a: utilization(sim.res[n.id].cap, cd.flow[n.id]) * 100, color: ({ ociosa: '#E8871E', folga: '#1C7293', bem: '#2E8B57', limite: '#C0392B' })[utilLevel(utilization(sim.res[n.id].cap, cd.flow[n.id]))], note: sim.res[n.id].cap > 0 ? UTIL_TEXT[utilLevel(utilization(sim.res[n.id].cap, cd.flow[n.id]))] : 'desligada' }));
   const opts = bn?.options.length
@@ -87,7 +87,7 @@ function reportSection(i: ExportInput): string {
 </div>
 ${bn ? `<h3>Gargalo: ${esc(bn.name)} (limita a fábrica a ${fmt(bn.prod)} garrafas/h)</h3><div class="sub">Por que isso acontece</div><ul>${bn.why.map((w) => `<li>${plain(w)}</li>`).join('')}</ul><div class="sub">Como melhorar</div>${opts}` : ''}
 <h3>Máquina por máquina</h3>
-<table><thead><tr><th>Máquina</th><th class="n">Unid.</th><th>Situação</th><th class="n">Capacidade/h</th><th class="n">Passa/h</th><th class="n">Uso</th><th class="n">Fila/h</th><th class="n">Risco</th><th class="n">kW</th><th class="n">°C</th>${i.server ? '<th class="n">Desgaste</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th>Máquina</th><th class="n">Unid.</th><th>Situação</th><th class="n">Capacidade/h</th><th class="n">Passa/h</th><th class="n">Uso</th><th class="n">Fila/h</th><th class="n">Risco</th><th class="n">kW</th><th class="n">°C</th>${cd.hasWear ? '<th class="n">Desgaste</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>
 <div class="sub">Capacidade = o que a máquina consegue entregar; Passa = o que realmente passa por ela com a fábrica no ritmo do gargalo; Uso = Passa ÷ Capacidade. Temperatura e desgaste são hipóteses didáticas, não medições.</div>
 <div class="grid2">
   ${box('Capacidade × o que sai', 'Garrafas por hora. Barra clara: o que consegue entregar; escura: o que sai.', bars(cd.capRows))}
@@ -96,7 +96,7 @@ ${bn ? `<h3>Gargalo: ${esc(bn.name)} (limita a fábrica a ${fmt(bn.prod)} garraf
   ${box('Risco de falha', 'Chance estimada de cada máquina parar no ritmo atual (2% no ótimo).', bars(cd.riskRows, { max: 50, unit: '%', dec: 1 }))}
   ${box('Temperatura das máquinas', `Ambiente (${i.ambient} °C) mais o calor do trabalho. Hipótese didática.`, bars(cd.tempRows, { max: Math.max(100, ...cd.tempRows.map((r) => r.a)), unit: ' °C' }))}
   ${cd.queueRows.some((r) => r.a >= 1) ? box('Filas', 'Excesso que uma máquina entrega e a seguinte não aguenta (nada se perde).', bars(cd.queueRows, { unit: '/h' })) : ''}
-  ${cd.hasWear ? box('Desgaste', 'Quanto da vida útil cada máquina já gastou.', bars(cd.wearRows, { max: 100, unit: '%' })) : ''}
+  ${cd.hasWear ? box('Idade e desgaste', 'Quanto da vida útil cada máquina já gastou, pela idade informada (Estado das máquinas).', bars(cd.wearRows, { max: 100, unit: '%' })) : ''}
 </div>`;
 }
 

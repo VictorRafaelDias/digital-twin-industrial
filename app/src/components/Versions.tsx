@@ -269,7 +269,7 @@ export function ReportActions() {
     const { a, b } = pickCompare(s.versions, s.cmp);
     if (kind === 'comparacao' && !(a && b)) return s.showToast('Para exportar uma comparação, crie pelo menos duas versões (aplique uma melhoria e rode o Play, ou use Salvar versão agora).');
     const ctx = { ...s.simCtx(), run: undefined };
-    const cd = computeChartData({ nodes: s.nodes, edges: s.edges, catalog: s.catalog, ambient: s.ambient, wear: s.wear, server: !!s.server, ctx });
+    const cd = computeChartData({ nodes: s.nodes, edges: s.edges, catalog: s.catalog, ambient: s.ambient, ctx });
     const html = buildReportHtml({
       kind, factory: s.plantName, ambient: s.ambient, tariff: s.tariff, server: !!s.server, generatedAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
       cd, nodes: s.nodes, catalog: s.catalog, bn: bottleneckReport(s.nodes, s.edges, ctx), versions: s.versions, a, b,

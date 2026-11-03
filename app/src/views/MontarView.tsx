@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { GuideChecklist } from '../components/GuideChecklist';
 import { Icon } from '../components/Icon';
+import { AgePanel } from '../components/AgePanel';
 import { PendingBanner } from '../components/Versions';
 import { useSim, useSimCtx, useTrouble } from '../components/hooks';
 import { canConnect, edgeKind } from '../engine/connect';
 import { fmt, fv } from '../engine/format';
+import { STATUS_SHORT, wearEffects } from '../engine/wear';
 import { useStore } from '../store/useStore';
 
 interface Rect { x: number; y: number; w: number; h: number }
@@ -120,6 +122,7 @@ export function MontarView() {
           {s.nodes.map((n) => {
             const t = s.catalog[n.type], r = sim.res[n.id];
             const q = s.run.active ? s.run.queue[n.id] || 0 : 0;
+            const ageW = wearEffects(t, n.ageYears ?? 0, n.maintMonths ?? 0);
             let cls = 'node' + (r.state === 'falha' ? ' danger' : r.state === 'desligada' ? ' off' : r.state !== 'normal' ? ' warn' : '')
               + (s.selected === n.id ? ' selected' : '') + (s.connectFrom === n.id ? ' src' : '');
             if (s.tool === 'link' && s.connectFrom && s.connectFrom !== n.id) cls += canConnect(s.connectFrom, n.id, s.nodes, s.edges, ctx.catalog).ok ? ' can' : ' cant';
@@ -136,6 +139,7 @@ export function MontarView() {
                 </div>
                 {sim.bn === n.id && <span className="tag bn">gargalo</span>}
                 {affected.has(n.id) && <span className="tag up">afetada a montante</span>}
+                {(n.ageYears ?? 0) > 0 && <span className={'tag age ' + (ageW.status === 'ok' ? '' : ageW.status === 'atencao' ? 'warn' : 'bad')} title="Idade da máquina (Estado das máquinas)">{fv(n.ageYears ?? 0)} anos{ageW.status === 'ok' ? '' : ' · ' + STATUS_SHORT[ageW.status]}</span>}
               </div>
             );
           })}
@@ -151,6 +155,7 @@ export function MontarView() {
           </div>
         </div>
       )}
+      <AgePanel />
       <PendingBanner />
       <GuideChecklist />
       <div className="legend">

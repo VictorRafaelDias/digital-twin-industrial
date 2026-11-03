@@ -29,14 +29,8 @@ const apiMachine = (code: string, over: Record<string, unknown> = {}) => ({
   origin: 'importada', price: null, description: 'Pasteurizador de leite.', physical_risk: 'Desgaste.', basis_of_numbers: 'Importada da ficha técnica.', sources: [], ...over,
 });
 
-const wearOf = (id: number, over: Record<string, unknown> = {}) => ({
-  id, operating_hours: 1000, wear_hours: 1000, life_hours: 25000, life_used_pct: 4, life_left_hours: 24000, maintenance_interval_hours: 800, hours_since_maintenance: 1000,
-  hours_to_maintenance: -200, maintenance_overdue: true, capacity_factor: 0.9, capacity_lost_pct: 10, risk_added: 0.05, status: 'manutencao_atrasada', status_text: 'Manutenção atrasada',
-  residual_value_fraction: 0.9, replacement_cost: 100, residual_value: 90, depreciation_per_hour: 0.1, ...over,
-});
-
 beforeEach(() => {
-  useStore.setState({ server: null, user: null, serverFactoryId: null, nodes: [], edges: [], wear: {}, undoStack: [], redoStack: [], events: [], ambient: 25, estop: false });
+  useStore.setState({ server: null, user: null, serverFactoryId: null, nodes: [], edges: [], undoStack: [], redoStack: [], events: [], ambient: 25, estop: false });
   st().loadTemplate('bebidas');
 });
 afterEach(() => { vi.unstubAllGlobals(); try { sessionStorage.clear(); } catch { /* ok */ } });
@@ -77,7 +71,6 @@ describe('modo servidor', () => {
       'POST /factories': { id: 7 },
       'PUT /factories/7/layout': { ids_by_ref: ids },
       'PATCH /factories/7': { id: 7 },
-      'GET /factories/7/wear': { machines: [] },
     });
     st().setPlantName('Minha linha');
     await st().saveServerFactory();
@@ -102,7 +95,7 @@ describe('modo servidor', () => {
         const nome = JSON.parse(String(init.body)).name as string; tentativas.push(nome);
         return nome.endsWith('V3') ? { id: 8 } : new Response(JSON.stringify({ detail: { message: 'Você já tem uma fábrica com esse nome.' } }), { status: 409 });
       },
-      'PUT /factories/8/layout': { ids_by_ref: ids }, 'GET /factories/8/wear': { machines: [] },
+      'PUT /factories/8/layout': { ids_by_ref: ids },
     });
     st().setPlantName('Exemplo: bebidas');
     await st().saveServerFactory();
@@ -117,10 +110,9 @@ describe('modo servidor', () => {
     fakeServer({
       'GET /factories/9': {
         id: 9, name: 'Do servidor', ambient: 32, tariff: 1.1, emergency_stop: false,
-        machines: [{ id: 41, type: 'tanque_agua', x: 10, y: 20, value: 8, units_in_parallel: 1, off: false }, { id: 42, type: 'enchedora', x: 200, y: 20, value: 200, units_in_parallel: 2, off: true }],
+        machines: [{ id: 41, type: 'tanque_agua', x: 10, y: 20, value: 8, units_in_parallel: 1, off: false }, { id: 42, type: 'enchedora', x: 200, y: 20, value: 200, units_in_parallel: 2, off: true, age_years: 3.75, months_since_maintenance: 12 }],
         connections: [{ id: 5, from: 41, to: 42 }],
       },
-      'GET /factories/9/wear': { machines: [wearOf(42)] },
       'GET /factories/9/simulations': [],
     });
     await st().openServerFactory(9);
@@ -129,9 +121,12 @@ describe('modo servidor', () => {
     expect([s.ambient, s.tariff, s.serverFactoryId]).toEqual([32, 1.1, 9]);
     expect(s.nodes.map((n) => [n.id, n.sid, n.qty, n.off])).toEqual([['s41', 41, 1, false], ['s42', 42, 2, true]]);
     expect(s.edges).toEqual([{ id: 'e5', from: 's41', to: 's42' }]);
-    expect(s.nodes[1].wearCap).toBe(0.9);                               // o desgaste vira capacidade menor e risco maior na simulação
-    expect(s.nodes[1].wearRisk).toBe(0.05);
-    expect(s.wear.s42.status).toBe('manutencao_atrasada');
+    // idade e manutenção vêm do servidor: enchedora (vida de 25.000 h) com 3,75 anos (60%) e 12 meses sem manutenção (atrasada)
+    expect([s.nodes[1].ageYears, s.nodes[1].maintMonths]).toEqual([3.75, 12]);
+    expect(s.nodes[1].wearCap).toBeCloseTo(1 - 0.2 * 0.6 - 0.05);       // vira capacidade menor, risco maior e temperatura maior na simulação
+    expect(s.nodes[1].wearRisk).toBeCloseTo(0.08 * 0.36 + 0.04);
+    expect(s.nodes[1].wearTemp).toBeCloseTo(8 * 0.36 + 4);
+    expect(s.nodes[0].ageYears).toBeUndefined();                        // máquina nova: sem campos de desgaste
     expect(s.nodes[0].wearCap).toBeUndefined();
   });
 
@@ -141,7 +136,7 @@ describe('modo servidor', () => {
     fakeServer({
       'GET /factories/3': { id: 3, name: 'Com tipo novo', ambient: 25, tariff: 0.85, emergency_stop: false, machines: [{ id: 1, type: 'tipo_de_outro_usuario', x: 0, y: 0, value: 50, units_in_parallel: 1, off: false }], connections: [] },
       'GET /catalog/machines/tipo_de_outro_usuario': apiMachine('tipo_de_outro_usuario', { name: 'Tipo de outro usuário' }),
-      'GET /factories/3/wear': { machines: [] }, 'GET /factories/3/simulations': [],
+      'GET /factories/3/simulations': [],
     });
     await st().openServerFactory(3);
     expect(st().catalog.tipo_de_outro_usuario.name).toBe('Tipo de outro usuário');
@@ -169,7 +164,6 @@ describe('modo servidor', () => {
     fakeServer({
       'POST /factories': { id: 5 },
       'PUT /factories/5/layout': (_u: string, init: RequestInit) => { layouts.push(JSON.parse(String(init.body))); return { ids_by_ref: ids }; },
-      'GET /factories/5/wear': { machines: [] },
       'POST /factories/5/scenarios': {},
     });
     const e = st().nodes.find((n) => n.type === 'enchedora')!;
@@ -189,7 +183,7 @@ describe('modo servidor', () => {
     });
     fakeServer({
       'GET /factories/9': { id: 9, name: 'F', ambient: 25, tariff: 1, emergency_stop: false, machines: [{ id: 41, type: 'tanque_agua', x: 0, y: 0, value: 8, units_in_parallel: 1, off: false }, { id: 42, type: 'enchedora', x: 200, y: 0, value: 200, units_in_parallel: 2, off: false }], connections: [{ id: 1, from: 41, to: 42 }] },
-      'GET /factories/9/wear': { machines: [] }, 'GET /factories/9/simulations': [],
+      'GET /factories/9/simulations': [],
       'GET /factories/9/scenarios': [{ id: 2 }, { id: 1 }],
       'GET /factories/9/scenarios/1': sc(1, 'V1 · Antes das mudanças', 12000, 1),
       'GET /factories/9/scenarios/2': sc(2, 'V2 · Resultado do Play (30 min)', 20000, 2),
@@ -203,29 +197,38 @@ describe('modo servidor', () => {
     expect(st().versionSeq).toBe(2);
   });
 
-  it('manutenção e "+ horas de uso" pedem ao servidor e atualizam o desgaste', async () => {
+  it('idade e manutenção vão para o servidor ao guardar, e "Fiz a manutenção" zera os meses e registra no histórico', async () => {
     useStore.setState({ server: { url: 'http://srv', token: 't' }, serverFactoryId: 9 });
     useStore.setState((s) => ({ nodes: s.nodes.map((n, i) => ({ ...n, sid: 100 + i })) }));
-    const alvo = st().nodes[0];
-    let horas = 0;
+    const alvo = st().nodes.find((n) => n.type === 'enchedora')!;
+    const ids = Object.fromEntries(st().nodes.map((n, i) => [n.id, 100 + i]));
     fakeServer({
-      [`POST /factories/9/machines/${alvo.sid}/age`]: (_u: string, init: RequestInit) => { horas = JSON.parse(String(init.body)).hours; return {}; },
+      'PATCH /factories/9': {}, 'PUT /factories/9/layout': { ids_by_ref: ids },
       [`POST /factories/9/machines/${alvo.sid}/maintenance`]: {},
-      'GET /factories/9/wear': () => ({ machines: [wearOf(alvo.sid!, { capacity_factor: horas ? 0.8 : 0.95, risk_added: 0 })] }),
     });
-    await st().ageMachine(alvo.id, 1000);
-    expect(horas).toBe(1000);
-    expect(st().nodes[0].wearCap).toBe(0.8);
-    await st().maintainMachine(alvo.id, 'preventiva');
-    expect(calls.some((c) => c.url.endsWith('/maintenance') && (c.body as { kind: string }).kind === 'preventiva')).toBe(true);
+    st().setAge(alvo.id, 3.75);
+    st().setMaintMonths(alvo.id, 12);
+    expect(st().nodes.find((n) => n.id === alvo.id)!.wearCap).toBeLessThan(1);
+    await st().saveServerFactory({ silent: true });
+    const put = calls.find((c) => c.method === 'PUT')!.body as { machines: { ref: string; age_years: number; months_since_maintenance: number }[] };
+    expect(put.machines.find((m) => m.ref === alvo.id)).toMatchObject({ age_years: 3.75, months_since_maintenance: 12 });
+    expect(put.machines.filter((m) => m.age_years === 0)).toHaveLength(7);       // as outras continuam novas
+    st().doMaintenance(alvo.id);
+    expect(st().nodes.find((n) => n.id === alvo.id)!.maintMonths).toBeUndefined();
+    await vi.waitFor(() => expect(calls.some((c) => c.url.endsWith('/maintenance') && (c.body as { kind: string }).kind === 'preventiva')).toBe(true));
   });
 
-  it('sem fábrica guardada, o desgaste pede para guardar primeiro (e não chama o servidor)', async () => {
-    useStore.setState({ server: { url: 'http://srv', token: 't' }, serverFactoryId: null });
-    fakeServer({});
-    await st().ageMachine(st().nodes[0].id, 1000);
-    expect(calls).toHaveLength(0);
-    expect(st().toast).toContain('Guarde a fábrica');
+  it('o Play não manda mais envelhecer as máquinas', async () => {
+    useStore.setState({ server: { url: 'http://srv', token: 't' }, serverFactoryId: 9 });
+    const ids = Object.fromEntries(st().nodes.map((n, i) => [n.id, 100 + i]));
+    fakeServer({ 'PATCH /factories/9': {}, 'PUT /factories/9/layout': { ids_by_ref: ids }, 'POST /factories/9/play': { id: 1 }, 'GET /factories/9/simulations': [] });
+    st().setRunSpeed(60); st().setRunDur(30);
+    st().startOrToggleRun();
+    await vi.waitFor(() => expect(st().run.active).toBe(true));
+    for (let i = 0; i < 4; i++) st().tickRun();
+    await vi.waitFor(() => expect(calls.some((c) => c.url === '/factories/9/play')).toBe(true));
+    expect(calls.find((c) => c.url === '/factories/9/play')!.body).not.toHaveProperty('apply_wear');
+    st().stopRun();                                                     // não deixa o Play ligado para o próximo teste
   });
 
   it('login vencido (401) sai do modo servidor', async () => {
@@ -240,7 +243,7 @@ describe('modo servidor', () => {
     useStore.setState({ server: { url: 'http://srv', token: 't' }, serverFactoryId: 9 });
     const ids = Object.fromEntries(st().nodes.map((n, i) => [n.id, 100 + i]));
     fakeServer({
-      'PATCH /factories/9': {}, 'PUT /factories/9/layout': { ids_by_ref: ids }, 'GET /factories/9/wear': { machines: [] },
+      'PATCH /factories/9': {}, 'PUT /factories/9/layout': { ids_by_ref: ids },
       'POST /factories/9/play': { id: 1 }, 'GET /factories/9/simulations': [{ id: 1, started_at: '2026-11-03T10:00:00', speed: 60, duration_min: 30, produced: 100, pct_of_best: 50, energy_kwh: 1, finished: true }],
     });
     st().setRunSpeed(60); st().setRunDur(30);
@@ -252,7 +255,7 @@ describe('modo servidor', () => {
     expect(st().run.series.length).toBeGreaterThan(1);                   // e a linha do tempo do dashboard ficou guardada
     expect(Object.keys(st().run.mseries)).toHaveLength(8);
     await vi.waitFor(() => expect(calls.some((c) => c.url === '/factories/9/play')).toBe(true));
-    expect(calls.find((c) => c.url === '/factories/9/play')!.body).toEqual({ speed: 60, duration_min: 30, save: true, apply_wear: true });
+    expect(calls.find((c) => c.url === '/factories/9/play')!.body).toEqual({ speed: 60, duration_min: 30, save: true });
     await vi.waitFor(() => expect(st().serverSims).toHaveLength(1));
   });
 });

@@ -12,10 +12,11 @@ import { planGoal } from '../engine/goal';
 import { advanceRun, computeArrivals, newRun } from '../engine/run';
 import { bnName, simulate } from '../engine/simulate';
 import { machineTemp } from '../engine/thermal';
+import { lifeYears, withWear } from '../engine/wear';
 import { cfgOf, makeVersion, realFlow, sameConfig, type Cfg, type ReportVersion } from './versions';
 import type {
   Catalog, ChatMsg, FEdge, FNode, GoalInput, LogEvent, MachineType, NodeChange, Plan, Ref, RunState, SideTab, SimContext, ToolId,
-  TypeInfo, ViewId, WearInfo, WhatIfResult,
+  TypeInfo, ViewId, WhatIfResult,
 } from '../types';
 
 export type ModalId = null | 'risk' | 'ambient' | 'runresult' | 'about' | 'settings' | 'factories';
@@ -26,7 +27,7 @@ export interface ApiMachine {
   limits: { min: number; optimal: number; warning: number; failure: number; max: number };
   capacity_at_optimal: number; standby_kw: number; variable_kw: number; process_order: number | null; thermal_sensitivity: string;
   accepts_multiple_inputs: boolean; is_final_stage: boolean; maker?: string | null; model?: string | null; year?: number | null; version?: number;
-  family?: string; origin?: 'embutida' | 'importada'; active?: boolean;
+  family?: string; origin?: 'embutida' | 'importada'; active?: boolean; life_hours?: number; maintenance_interval_hours?: number;
   price?: { min: number; max: number; note?: string; edited_by_user: boolean; sources?: { title: string; url: string; confidence: string }[] } | null;
   description?: string; physical_risk?: string; basis_of_numbers?: string; sources?: { title: string; url: string; confidence: string }[];
 }
@@ -35,7 +36,7 @@ export interface ServerFactory { id: number; name: string; example: string | nul
 export interface ServerSim { id: number; started_at: string; speed: number; duration_min: number; produced: number; pct_of_best: number; energy_kwh: number; finished: boolean }
 interface ApiFactoryFull {
   id: number; name: string; ambient: number; tariff: number; emergency_stop: boolean;
-  machines: { id: number; type: string; x: number; y: number; value: number; units_in_parallel: number; off: boolean }[];
+  machines: { id: number; type: string; x: number; y: number; value: number; units_in_parallel: number; off: boolean; age_years?: number; months_since_maintenance?: number }[];
   connections: { id: number; from: number; to: number }[];
 }
 export type SettingsSection = 'geral' | 'tipos' | 'limites' | 'precos' | 'catalogo' | 'dados' | 'usuarios';
@@ -69,7 +70,7 @@ export interface AppState {
   guideSel: number; glossTerm: string | null; glossQ: string; setSec: SettingsSection;
   /** modo servidor: null = o sistema roda sozinho no navegador */
   server: ApiSession | null; serverFactoryId: number | null; serverBusy: boolean;
-  serverFactories: ServerFactory[]; serverSims: ServerSim[]; wear: Record<string, WearInfo>;
+  serverFactories: ServerFactory[]; serverSims: ServerSim[];
 }
 
 export interface Actions {
@@ -114,9 +115,11 @@ export interface Actions {
   setResTab: (t: 'relatorio' | 'comparacoes') => void; setDashFull: (v: boolean) => void;
   setCmp: (c: Partial<{ a: number | null; b: number | null }>) => void; restoreVersion: (n: number) => void;
   loadSims: () => Promise<void>;
-  refreshWear: () => Promise<void>;
-  ageMachine: (nodeId: string, hours: number) => Promise<void>;
-  maintainMachine: (nodeId: string, kind: 'preventiva' | 'corretiva') => Promise<void>;
+  /** idade e manutenção das máquinas (dados de entrada da fábrica) */
+  setAge: (id: string, years: number) => void;
+  setMaintMonths: (id: string, months: number) => void;
+  agePreset: (ids: string[], fractionOfLife: number) => void;
+  doMaintenance: (id: string) => void;
 }
 
 const snapshot = (s: AppState): Snapshot => ({ nodes: s.nodes.map((n) => ({ ...n })), edges: s.edges.map((e) => ({ ...e })), seq: s.seq });
@@ -188,6 +191,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
       basis: m.basis_of_numbers ?? prev?.basis ?? '', refs: m.sources ? m.sources.filter((r) => r.url).map((r) => ({ t: r.title, u: r.url, k: r.confidence as 'real' | 'estimado' })) : (prev?.refs || []),
       risk: m.physical_risk ?? prev?.risk ?? '', cost,
       origin: m.origin, version: m.version, maker: m.maker, model: m.model, year: m.year, family: m.family, inactive: m.active === false || undefined,
+      lifeH: m.life_hours, maintH: m.maintenance_interval_hours,
     };
   };
 
@@ -195,7 +199,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
   const log = (text: string, kind: LogEvent['kind'] = '') => set((s) => ({ events: [{ time: now(), text, kind }, ...s.events].slice(0, 80) }));
 
   return {
-    user: saved, server: savedServer, serverFactoryId: null, serverBusy: false, serverFactories: [], serverSims: [], wear: {}, versions: [], versionSeq: 0, pendingBase: null, resTab: 'relatorio', dashFull: false, cmp: { a: null, b: null }, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
+    user: saved, server: savedServer, serverFactoryId: null, serverBusy: false, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null, resTab: 'relatorio', dashFull: false, cmp: { a: null, b: null }, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
     plantName: 'Minha fábrica', catalog: buildCatalog(), typeInfo,
     nodes: [], edges: [], seq: 1, selected: null, selEdge: null, connectFrom: null, hmiSel: null, zoom: 1,
     undoStack: [], redoStack: [], ambient: 25, tariff: 0.85, estop: false, baseline: null,
@@ -208,7 +212,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
     login: (name) => { const user = name.trim() || 'usuário'; try { sessionStorage.setItem('dtw_user', user); } catch { /* ok */ } set({ user }); },
     logout: () => {
       try { sessionStorage.removeItem('dtw_user'); sessionStorage.removeItem('dtw_api'); } catch { /* ok */ }
-      set({ user: null, server: null, serverFactoryId: null, wear: {}, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null });
+      set({ user: null, server: null, serverFactoryId: null, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null });
     },
 
     setView: (view) => set({ view }),
@@ -241,18 +245,18 @@ export const useStore = create<AppState & Actions>((set, get) => {
 
     newFactory: () => {
       get().pushUndo();
-      set({ nodes: [], edges: [], selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: null, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null });
+      set({ nodes: [], edges: [], selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: null, serverFactoryId: null, versions: [], versionSeq: 0, pendingBase: null });
       log('Fábrica nova, em branco');
     },
     loadTemplate: (key) => {
       const s = get(); s.pushUndo();
       const f = buildFromTemplate(key, s.catalog, s.seq);
-      set((st) => ({ nodes: f.nodes, edges: f.edges, seq: f.seq, selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: f.nodes[0].id, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null, plantName: f.name, guide: { ...st.guide, min: true }, view: 'logic' }));
+      set((st) => ({ nodes: f.nodes, edges: f.edges, seq: f.seq, selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: f.nodes[0].id, serverFactoryId: null, versions: [], versionSeq: 0, pendingBase: null, plantName: f.name, guide: { ...st.guide, min: true }, view: 'logic' }));
       log(`Exemplo carregado: ${f.name}`, 'ok');
     },
     openFactory: (d) => {
       get().pushUndo();
-      set((s) => ({ nodes: d.nodes.map((n) => ({ ...n, qty: n.qty ?? 1, off: n.off ?? false })), edges: d.edges, seq: d.seq || 100, plantName: d.name || 'Fábrica aberta', selected: null, goalPlan: s.goalPlan, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null }));
+      set((s) => ({ nodes: d.nodes.map((n) => withWear({ ...n, qty: n.qty ?? 1, off: n.off ?? false }, s.catalog[n.type])), edges: d.edges, seq: d.seq || 100, plantName: d.name || 'Fábrica aberta', selected: null, goalPlan: s.goalPlan, serverFactoryId: null, versions: [], versionSeq: 0, pendingBase: null }));
       get().showToast('Fábrica aberta');
     },
     clearAll: () => { get().stopRun(); get().newFactory(); get().showToast('Fábrica limpa. Para voltar, use Desfazer (Ctrl+Z).'); },
@@ -352,7 +356,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
       get().pushUndo();
       const ids = new Set(get().nodes.map((x) => x.id));
       const sumidas = v.machines.filter((m) => !ids.has(m.id)).length;
-      set((st) => ({ nodes: st.nodes.map((x) => { const m = v.machines.find((y) => y.id === x.id); return m ? { ...x, value: m.value, qty: m.qty, off: m.off } : x; }), view: 'logic' }));
+      set((st) => ({ nodes: st.nodes.map((x) => { const m = v.machines.find((y) => y.id === x.id); return m ? withWear({ ...x, value: m.value, qty: m.qty, off: m.off, ...(m.ageYears !== undefined ? { ageYears: m.ageYears || undefined, maintMonths: m.maintMonths || undefined } : {}) }, st.catalog[x.type]) : x; }), view: 'logic' }));
       log(`Voltou para a configuração da V${n}`, 'ok');
       get().showToast(`Voltou para a configuração da V${n}.${sumidas ? ` ${sumidas} máquina(s) dela não existem mais na fábrica e não foram recriadas.` : ''} Se quiser voltar atrás, use Desfazer (Ctrl+Z).`);
     },
@@ -369,7 +373,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
     discardPending: () => {
       const s = get(); const base = s.pendingBase; if (!base) return;
       s.pushUndo();
-      set((st) => ({ nodes: st.nodes.map((n) => { const b = base.find((x) => x.id === n.id); return b ? { ...n, value: b.value, qty: b.qty, off: b.off } : n; }), pendingBase: null }));
+      set((st) => ({ nodes: st.nodes.map((n) => { const b = base.find((x) => x.id === n.id); return b ? withWear({ ...n, value: b.value, qty: b.qty, off: b.off, ...(b.ageYears !== undefined ? { ageYears: b.ageYears || undefined, maintMonths: b.maintMonths || undefined } : {}) }, st.catalog[n.type]) : n; }), pendingBase: null }));
       log('Desfez as mudanças aplicadas', 'ok'); get().showToast('As mudanças foram desfeitas.');
     },
     /** Traz do servidor as versões guardadas (as últimas 12) para comparar também em outra sessão. */
@@ -488,12 +492,12 @@ export const useStore = create<AppState & Actions>((set, get) => {
           const tipos = await Promise.all(faltam.map((t) => call<ApiMachine>(`/catalog/machines/${t}`)));
           set((st) => { const catalog = { ...st.catalog }; tipos.forEach((m) => { catalog[m.code] = fromApi(m); }); return { catalog }; });
         }
-        const nodes: FNode[] = f.machines.map((m) => ({ id: 's' + m.id, sid: m.id, type: m.type, x: m.x, y: m.y, value: m.value, qty: m.units_in_parallel, off: m.off }));
+        const nodes: FNode[] = f.machines.map((m) => withWear({ id: 's' + m.id, sid: m.id, type: m.type, x: m.x, y: m.y, value: m.value, qty: m.units_in_parallel, off: m.off,
+          ageYears: m.age_years || undefined, maintMonths: m.months_since_maintenance || undefined }, get().catalog[m.type]));
         const edges: FEdge[] = f.connections.map((c) => ({ id: 'e' + c.id, from: 's' + c.from, to: 's' + c.to }));
         get().stopRun();
         set({ nodes, edges, plantName: f.name, ambient: f.ambient, tariff: f.tariff, estop: f.emergency_stop, serverFactoryId: f.id, selected: null, hmiSel: nodes[0]?.id ?? null,
           goalPlan: null, baseline: null, undoStack: [], redoStack: [], modal: null, view: 'logic', versions: [], versionSeq: 0, pendingBase: null });
-        await get().refreshWear();
         await get().loadSims();
         get().loadVersions().catch(() => undefined);
         log(`Fábrica aberta do servidor: ${f.name}`, 'ok');
@@ -529,12 +533,12 @@ export const useStore = create<AppState & Actions>((set, get) => {
         const res = await call<{ ids_by_ref: Record<string, number> }>(`/factories/${fid}/layout`, {
           method: 'PUT',
           json: {
-            machines: s.nodes.map((n) => ({ ref: n.id, id: keepIds ? n.sid ?? null : null, type: n.type, x: Math.max(0, Math.round(n.x)), y: Math.max(0, Math.round(n.y)), value: n.value, units_in_parallel: n.qty, off: n.off })),
+            machines: s.nodes.map((n) => ({ ref: n.id, id: keepIds ? n.sid ?? null : null, type: n.type, x: Math.max(0, Math.round(n.x)), y: Math.max(0, Math.round(n.y)), value: n.value, units_in_parallel: n.qty, off: n.off,
+              age_years: n.ageYears ?? 0, months_since_maintenance: n.maintMonths ?? 0 })),
             connections: s.edges.map((e) => ({ from_ref: e.from, to_ref: e.to })),
           },
         });
         set((st) => ({ serverFactoryId: fid, nodes: st.nodes.map((n) => ({ ...n, sid: res.ids_by_ref[n.id] ?? n.sid })) }));
-        await get().refreshWear();
         if (!opts.silent && nome === nomeOriginal) get().showToast('Fábrica guardada no servidor');
       } catch (e) {
         get().showToast('Não consegui guardar: ' + errText(e));
@@ -545,7 +549,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
     deleteServerFactory: async (id) => {
       try {
         await call(`/factories/${id}`, { method: 'DELETE' });
-        if (get().serverFactoryId === id) set({ serverFactoryId: null, wear: {} });
+        if (get().serverFactoryId === id) set({ serverFactoryId: null });
         await get().listServerFactories();
         get().showToast('Fábrica apagada do servidor');
       } catch (e) { get().showToast('Não consegui apagar: ' + errText(e)); }
@@ -557,42 +561,39 @@ export const useStore = create<AppState & Actions>((set, get) => {
       set({ serverSims: await call<ServerSim[]>(`/factories/${fid}/simulations`) });
     },
 
-    /** Lê o desgaste de cada máquina no servidor e aplica na simulação local (capacidade menor e risco maior). */
-    refreshWear: async () => {
-      const fid = get().serverFactoryId;
-      if (!get().server || fid == null) return;
-      const w = await call<{ machines: (WearInfo & { id: number })[] }>(`/factories/${fid}/wear`);
-      set((st) => {
-        const wear: Record<string, WearInfo> = {};
-        const nodes = st.nodes.map((n) => {
-          const m = w.machines.find((x) => x.id === n.sid);
-          if (!m) return n;
-          wear[n.id] = m;
-          return { ...n, wearCap: m.capacity_factor, wearRisk: m.risk_added };
-        });
-        return { nodes, wear };
-      });
+    /** Idade (anos de uso) de uma máquina. Os meses desde a manutenção não passam da idade. */
+    setAge: (id, years) => {
+      const s0 = get(); const n = s0.nodes.find((x) => x.id === id); if (!n || !Number.isFinite(years)) return;
+      const age = Math.min(60, Math.max(0, Math.round(years * 100) / 100));
+      s0.pushUndo();
+      set((st) => ({ nodes: st.nodes.map((x) => (x.id === id ? withWear({ ...x, ageYears: age || undefined, maintMonths: Math.min(x.maintMonths ?? 0, age * 12) || undefined }, st.catalog[x.type]) : x)) }));
+      log(`${s0.catalog[n.type].name}: idade ${fmt(age, 1)} ano(s)`);
     },
-
-    ageMachine: async (nodeId, hours) => {
-      const st = get(); const n = st.nodes.find((x) => x.id === nodeId);
-      if (!n?.sid || st.serverFactoryId == null) return get().showToast('Guarde a fábrica no servidor primeiro (Arquivo › Guardar no servidor).');
-      try {
-        await call(`/factories/${st.serverFactoryId}/machines/${n.sid}/age`, { method: 'POST', json: { hours } });
-        await get().refreshWear();
-        log(`${st.catalog[n.type].name}: +${hours} h de uso`, 'warn');
-      } catch (e) { get().showToast(errText(e)); }
+    setMaintMonths: (id, months) => {
+      const s0 = get(); const n = s0.nodes.find((x) => x.id === id); if (!n || !Number.isFinite(months)) return;
+      const m = Math.min((n.ageYears ?? 0) * 12, Math.max(0, Math.round(months * 10) / 10));
+      s0.pushUndo();
+      set((st) => ({ nodes: st.nodes.map((x) => (x.id === id ? withWear({ ...x, maintMonths: m || undefined }, st.catalog[x.type]) : x)) }));
+      log(`${s0.catalog[n.type].name}: ${fmt(m, 1)} mês(es) desde a última manutenção`);
     },
-
-    maintainMachine: async (nodeId, kind) => {
-      const st = get(); const n = st.nodes.find((x) => x.id === nodeId);
-      if (!n?.sid || st.serverFactoryId == null) return get().showToast('Guarde a fábrica no servidor primeiro (Arquivo › Guardar no servidor).');
-      try {
-        await call(`/factories/${st.serverFactoryId}/machines/${n.sid}/maintenance`, { method: 'POST', json: { kind } });
-        await get().refreshWear();
-        log(`${st.catalog[n.type].name}: manutenção ${kind} feita`, 'ok');
-        get().showToast('Manutenção registrada: o desgaste diminuiu');
-      } catch (e) { get().showToast(errText(e)); }
+    /** "Nova", "Meia-vida", "Velha", "Fim de vida": a idade vira essa fração da vida útil de cada máquina. */
+    agePreset: (ids, fraction) => {
+      const s0 = get(); s0.pushUndo();
+      set((st) => ({ nodes: st.nodes.map((x) => {
+        if (!ids.includes(x.id)) return x;
+        const age = Math.round(lifeYears(st.catalog[x.type]) * fraction * 10) / 10;
+        return withWear({ ...x, ageYears: age || undefined, maintMonths: Math.min(x.maintMonths ?? 0, age * 12) || undefined }, st.catalog[x.type]);
+      }) }));
+      get().showToast(fraction === 0 ? 'Máquinas marcadas como novas.' : `Idade ajustada para ${fraction * 100}% da vida útil.`);
+    },
+    /** "Fiz a manutenção": zera os meses desde a última manutenção (a idade continua). No servidor, também registra no histórico. */
+    doMaintenance: (id) => {
+      const s0 = get(); const n = s0.nodes.find((x) => x.id === id); if (!n) return;
+      s0.pushUndo();
+      set((st) => ({ nodes: st.nodes.map((x) => (x.id === id ? withWear({ ...x, maintMonths: undefined }, st.catalog[x.type]) : x)) }));
+      log(`${s0.catalog[n.type].name}: manutenção feita`, 'ok');
+      get().showToast('Manutenção registrada: o tempo desde a última volta a zero.');
+      if (s0.server && s0.serverFactoryId != null && n.sid) call(`/factories/${s0.serverFactoryId}/machines/${n.sid}/maintenance`, { method: 'POST', json: { kind: 'preventiva' } }).catch(() => undefined);
     },
 
     startOrToggleRun: () => {
@@ -629,8 +630,8 @@ export const useStore = create<AppState & Actions>((set, get) => {
       });
       if (finished) recordPlayVersion(produced, r.dur);
       if (finished && s.server && s.serverFactoryId != null) {   // guarda o resultado no servidor e envelhece as máquinas que trabalharam
-        call(`/factories/${s.serverFactoryId}/play`, { method: 'POST', json: { speed: r.speed, duration_min: r.dur, save: true, apply_wear: true } })
-          .then(() => Promise.all([get().refreshWear(), get().loadSims()])).catch((e) => get().showToast('Não consegui guardar a simulação no servidor: ' + errText(e)));
+        call(`/factories/${s.serverFactoryId}/play`, { method: 'POST', json: { speed: r.speed, duration_min: r.dur, save: true } })
+          .then(() => get().loadSims()).catch((e) => get().showToast('Não consegui guardar a simulação no servidor: ' + errText(e)));
       }
       set((st) => ({ run: { ...r, t, produced, kwh, queue, announced, lastK, on: !finished, finished: finished || r.finished, series, mseries }, events: [...events.reverse(), ...st.events].slice(0, 80), ...(finished ? { modal: 'runresult' as ModalId } : {}) }));
     },

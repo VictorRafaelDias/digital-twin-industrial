@@ -13,11 +13,12 @@ export function machineTemp(t: MachineType, n: FNode, r: NodeResult, ambient: nu
   const qty = n.qty || 1;
   const cold = COLD_SET + 0.5 * Math.max(0, ambient - 20);
   if (n.off) return round1(t.heat === 'cold' ? cold : ambient);
-  const load = t.cap ? Math.min(1.3, r.eff / (t.cap * qty)) : 0;
+  const load = t.cap ? Math.min(1.3, r.eff / (t.cap * qty * (n.wearCap ?? 1))) : 0;   // carga em relação à capacidade real (máquina velha rende menos, mas não esfria por isso)
   const over = t.crit > t.opt ? Math.max(0, (n.value - t.opt) / (t.crit - t.opt)) : 0;
   const boost = 1 + 0.5 * Math.min(over, 1);
-  if (t.heat === 'cold') return round1(cold + (r.state === 'falha' ? 10 * OVERHEAT : 10 * load * boost));
+  const idade = n.wearTemp ?? 0;   // máquina velha ou sem manutenção esquenta mais (engine/wear.ts)
+  if (t.heat === 'cold') return round1(cold + (r.state === 'falha' ? 10 * OVERHEAT : 10 * load * boost) + idade);
   const rise = RISE[t.heat] ?? 15;
-  if (r.state === 'falha') return round1(ambient + rise * OVERHEAT);
-  return round1(ambient + rise * load * boost);
+  if (r.state === 'falha') return round1(ambient + rise * OVERHEAT + idade);
+  return round1(ambient + rise * load * boost + idade);
 }

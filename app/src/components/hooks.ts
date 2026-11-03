@@ -58,8 +58,6 @@ export function useChartData(withRun = true): ChartData {
   const edges = useStore((s) => s.edges);
   const catalog = useStore((s) => s.catalog);
   const ambient = useStore((s) => s.ambient);
-  const wear = useStore((s) => s.wear);
-  const server = useStore((s) => !!s.server);
   const ctx = useSimCtx(withRun);
-  return useMemo(() => computeChartData({ nodes, edges, catalog, ambient, wear, server, ctx }), [nodes, edges, catalog, ambient, wear, server, ctx]);
+  return useMemo(() => computeChartData({ nodes, edges, catalog, ambient, ctx }), [nodes, edges, catalog, ambient, ctx]);
 }

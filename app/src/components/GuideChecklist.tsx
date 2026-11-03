@@ -14,7 +14,7 @@ export function GuideChecklist() {
   const server = useStore((s) => s.server);
   const factoryId = useStore((s) => s.serverFactoryId);
   const sims = useStore((s) => s.serverSims.length);
-  const wearUsed = useStore((s) => Object.values(s.wear).some((w) => w.operating_hours > 0));
+  const aged = useStore((s) => s.nodes.some((n) => (n.ageYears ?? 0) > 0));
   const imported = useStore((s) => Object.values(s.catalog).some((t) => t.origin === 'importada'));
   const [aba, setAba] = useState<'montar' | 'servidor'>('montar');
   const [visited, setVisited] = useState<string[]>([]);
@@ -29,13 +29,13 @@ export function GuideChecklist() {
     { text: 'Clique numa máquina e mude o <b>ritmo</b> dela. Veja o que acontece.', done: guide.changed },
     { text: 'Na aba <b>Objetivo</b>, diga o que você quer (ex.: +10% de produção).', done: guide.goal },
     { text: 'Na aba <b>Conversa</b>, pergunte ao assistente onde está o gargalo.', done: guide.chat },
+    { text: 'Informe a <b>idade</b> de uma máquina em <b>Estado das máquinas</b> (canto do quadro): veja o rendimento, o risco e a temperatura mudarem.', done: aged },
   ];
   const servidor: Step[] = [
     { text: 'Você está <b>conectado ao servidor</b>: o que você faz fica guardado no banco de dados, não só neste navegador.', done: !!server },
     { text: 'Guarde a fábrica: <b>Arquivo › Guardar no servidor</b>. Ela fica na sua conta e abre em qualquer computador.', done: factoryId != null, go: ['Minhas fábricas', visit('fab', () => openModal('factories'))] },
     { text: 'Aperte <b>▶ Play</b>. Ao terminar, o resultado é guardado no servidor (e o Play gasta as máquinas).', done: sims > 0 },
     { text: 'Abra <b>Resultados</b> (F4): gráficos da simulação, temperatura das máquinas e histórico.', done: visited.includes('res'), go: ['Abrir Resultados', visit('res', () => setView('dashboard'))] },
-    { text: 'Veja o <b>desgaste</b>: clique numa máquina, use <b>+ horas de uso</b> e depois <b>Manutenção</b> para recuperar.', done: wearUsed },
     { text: 'Importe uma <b>ficha técnica</b> (PDF) de uma máquina real: o servidor lê o documento e cria a máquina no catálogo.', done: imported, go: ['Dados reais', visit('dados', () => openSettings('dados'))] },
     { text: 'Cadastre quem mais vai usar o servidor em <b>Configurações › Usuários</b>.', done: visited.includes('usu'), go: ['Usuários', visit('usu', () => openSettings('usuarios'))] },
   ];

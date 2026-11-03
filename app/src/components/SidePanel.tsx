@@ -5,10 +5,12 @@ import { money, moneyRange } from '../engine/cost';
 import { fmt, fv, stepOf } from '../engine/format';
 import { explainNow, heatFactor } from '../engine/simulate';
 import { machineTemp } from '../engine/thermal';
+import { HORAS_USO_ANO, intervalMonths, lifeYears, STATUS_TEXT, wearEffects } from '../engine/wear';
 import { useStore } from '../store/useStore';
 import { utilization } from '../store/versions';
 import type { ChatMsg, SideTab } from '../types';
 import { COLORS, riskColor, Spark } from './Charts';
+import { NumField } from './AgePanel';
 import { DashTab } from './DashTab';
 import { Icon } from './Icon';
 import { Rich } from './Rich';
@@ -222,9 +224,11 @@ function MachineLive({ nodeId }: { nodeId: string }) {
   const t = s.catalog[n.type], r = sim.res[n.id];
   const temp = machineTemp(t, n, r, s.ambient);
   const ms = s.run.mseries[n.id] || [];
-  const w = s.wear[n.id];
+  const age = n.ageYears ?? 0, months = n.maintMonths ?? 0;
+  const w = wearEffects(t, age, months);
+  const price = t.cost && t.cost.max ? ((t.cost.min + t.cost.max) / 2) * (n.qty || 1) : null;
   const hot = temp - s.ambient > 45 || r.state === 'falha' ? COLORS.bad : temp - s.ambient > 25 ? COLORS.warn : COLORS.teal;
-  const wcolor = !w ? COLORS.muted : w.status === 'ok' ? COLORS.ok : w.status === 'atencao' ? COLORS.warn : COLORS.bad;
+  const wcolor = w.status === 'ok' ? COLORS.ok : w.status === 'atencao' ? COLORS.warn : COLORS.bad;
   return (
     <>
       <div className="mlive">
@@ -235,28 +239,30 @@ function MachineLive({ nodeId }: { nodeId: string }) {
         {ms.length < 2 && <div className="nodata small">As linhas aparecem durante a simulação. A temperatura é uma <b>hipótese didática</b>: ambiente mais o calor do trabalho.</div>}
       </div>
       <div className="mlive">
-        <h4>Desgaste e manutenção <small>(hipótese didática)</small></h4>
-        {!s.server && <div className="nodata small">O desgaste fica guardado no servidor. Entre com o servidor para ver o tempo de uso, a depreciação e a previsão de manutenção.</div>}
-        {s.server && !w && <div className="nodata small">Guarde a fábrica no servidor (Arquivo › Guardar no servidor) para a máquina começar a acumular desgaste.</div>}
-        {w && (
+        <h4>Idade e manutenção <small>(hipótese didática)</small></h4>
+        <div className="agegrid">
+          <label>Idade (anos de uso)<NumField value={age} max={60} onCommit={(v) => s.setAge(n.id, v)} /></label>
+          <label>Última manutenção (meses atrás)<NumField value={months} max={age * 12} step={1} onCommit={(v) => s.setMaintMonths(n.id, v)} title="Não passa da idade da máquina" /></label>
+        </div>
+        <div className="agepre">
+          {([['Nova', 0], ['Meia-vida', 0.5], ['Velha', 0.8], ['Fim de vida', 1]] as [string, number][]).map(([l, f]) => <button key={l} className="btn sec" onClick={() => s.agePreset([n.id], f)}>{l}</button>)}
+        </div>
+        {age > 0 ? (
           <>
-            <div className="wbar" title={`${fmt(w.life_used_pct, 1)}% da vida útil`}><i style={{ width: `${Math.min(100, w.life_used_pct)}%`, background: wcolor }} /></div>
-            <div className="wline"><b style={{ color: wcolor }}>{w.status_text}</b></div>
+            <div className="wbar" title={`${fmt(w.lifeUsed * 100, 1)}% da vida útil`}><i style={{ width: `${Math.min(100, w.lifeUsed * 100)}%`, background: wcolor }} /></div>
+            <div className="wline"><b style={{ color: wcolor }}>{STATUS_TEXT[w.status]}</b></div>
             <table className="wt"><tbody>
-              <tr><td>Horas de uso</td><td><b>{fmt(w.operating_hours, 1)} h</b></td></tr>
-              <tr><td>Vida útil gasta</td><td><b>{fmt(w.life_used_pct, 1)}%</b> de {fmt(w.life_hours)} h</td></tr>
-              <tr><td>Próxima manutenção</td><td><b>{w.hours_to_maintenance >= 0 ? `em ${fmt(w.hours_to_maintenance)} h` : `atrasada ${fmt(-w.hours_to_maintenance)} h`}</b></td></tr>
-              <tr><td>Perda de rendimento</td><td><b>{fmt(w.capacity_lost_pct, 1)}%</b> · risco +{fmt(w.risk_added * 100, 1)} pontos</td></tr>
-              {w.residual_value != null && <tr><td>Valor hoje (depreciação)</td><td><b>{money(w.residual_value)}</b> de {money(w.replacement_cost ?? 0)}</td></tr>}
-              <tr><td>Previsão: fim da vida útil</td><td><b>em {fmt(w.life_left_hours)} h</b></td></tr>
+              <tr><td>Vida útil gasta</td><td><b>{fmt(w.lifeUsed * 100, 1)}%</b> de {fmt(lifeYears(t), 1)} anos</td></tr>
+              <tr><td>Próxima manutenção</td><td><b>{w.hoursToMaintenance >= 0 ? `em ${fmt(w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses` : `atrasada ${fmt(-w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses`}</b> (a cada {fmt(intervalMonths(t), 1)} meses)</td></tr>
+              <tr><td>Perda de rendimento</td><td><b>{fmt((1 - w.cap) * 100, 1)}%</b> · risco +{fmt(w.risk * 100, 1)} pontos · +{fmt(w.temp, 1)} °C</td></tr>
+              {price != null && <tr><td>Valor hoje (depreciação)</td><td><b>{money(price * w.residual)}</b> de {money(price)}</td></tr>}
+              <tr><td>Previsão: fim da vida útil</td><td><b>em {fmt(w.hoursOfLifeLeft / HORAS_USO_ANO, 1)} anos</b></td></tr>
             </tbody></table>
             <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn sec" style={{ flex: 1 }} title="Para demonstrar: como se a máquina tivesse trabalhado mais mil horas" onClick={() => s.ageMachine(n.id, 1000)}>+ 1.000 h de uso</button>
-              <button className="btn sec" style={{ flex: 1 }} title="Recupera 60% do desgaste" onClick={() => s.maintainMachine(n.id, 'preventiva')}>Manutenção</button>
-              <button className="btn sec" style={{ flex: 1 }} title="Depois de uma falha, com troca de peças: recupera 80% do desgaste" onClick={() => s.maintainMachine(n.id, 'corretiva')}>Corretiva</button>
+              <button className="btn sec" style={{ flex: 1 }} title="Zera o tempo desde a última manutenção (a idade continua)" onClick={() => s.doMaintenance(n.id)}>Fiz a manutenção</button>
             </div>
           </>
-        )}
+        ) : <div className="nodata small">Máquina nova e em dia: sem perda de rendimento. Informe a idade para ver o efeito no rendimento, no risco e na temperatura.</div>}
       </div>
     </>
   );

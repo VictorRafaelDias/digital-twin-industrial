@@ -117,7 +117,7 @@ describe('PDF: a página que vai para a impressão', () => {
     const { a, b } = pickCompare(s.versions, s.cmp);
     return buildReportHtml({
       kind, factory: s.plantName, ambient: s.ambient, tariff: s.tariff, server: false, generatedAt: '03/11/26 10:00',
-      cd: computeChartData({ nodes: s.nodes, edges: s.edges, catalog: s.catalog, ambient: s.ambient, wear: s.wear, server: false, ctx }),
+      cd: computeChartData({ nodes: s.nodes, edges: s.edges, catalog: s.catalog, ambient: s.ambient, ctx }),
       nodes: s.nodes, catalog: s.catalog, bn: bottleneckReport(s.nodes, s.edges, ctx), versions: s.versions, a, b,
     });
   };

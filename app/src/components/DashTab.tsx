@@ -94,7 +94,7 @@ export function DashTab() {
       </ChartBox>
 
       <ChartBox title="Desgaste" what="Quanto da vida útil cada máquina já gastou. Passando do intervalo de manutenção, ela rende menos e arrisca mais.">
-        {hasWear ? <HBars rows={wearRows} max={100} unit="%" /> : <div className="nodata">{server ? 'Guarde a fábrica no servidor (Arquivo) para acompanhar o desgaste das máquinas.' : 'O desgaste fica guardado no servidor: entre com o servidor para usar.'}</div>}
+        {hasWear ? <HBars rows={wearRows} max={100} unit="%" /> : <div className="nodata">Todas as máquinas estão novas. Informe a idade delas em <b>Estado das máquinas</b>, no canto do quadro (Montar), ou no painel de cada máquina.</div>}
       </ChartBox>
 
       {server && sims.length > 0 && (

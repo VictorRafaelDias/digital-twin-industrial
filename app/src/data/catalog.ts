@@ -1,5 +1,6 @@
 /* Gerado a partir do protótipo (frontend/prototipo/js) e mantido à mão a partir daqui. */
 import type { Catalog, HeatKind, MachineType, Ref } from '../types';
+import { LIFE_H_BY_CAT, MAINT_H_BY_CAT } from '../engine/wear';
 
 export const LINK: Record<string, Ref> = {
   kronesVFJ:{t:'Krones Modulfill VFJ (página do fabricante)', u:'https://www.krones.com/en/products/machines/modulfill-vfj-water.php', k:'real'},
@@ -120,7 +121,7 @@ export function buildCatalog(): Catalog {
   const out: Catalog = {};
   Object.entries(BASE).forEach(([k, b]) => {
     const m = META[k]; const c = COST[k];
-    out[k] = { ...b, ...m, cost: { ...c, refs: [...c.refs] } };
+    out[k] = { ...b, ...m, lifeH: LIFE_H_BY_CAT[b.cat], maintH: MAINT_H_BY_CAT[b.cat], cost: { ...c, refs: [...c.refs] } };
   });
   return out;
 }

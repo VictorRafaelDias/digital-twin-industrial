@@ -105,9 +105,9 @@ export function ResultsView() {
             </div>
 
             <div className="card c6">
-              <h4>Desgaste</h4>
-              <div className="sub" style={{ marginTop: 0 }}>Quanto da vida útil cada máquina já gastou. Passando do intervalo de manutenção, ela rende menos e arrisca mais.</div>
-              {cd.hasWear ? <HBars rows={cd.wearRows} max={100} unit="%" /> : <div className="nodata">{s.server ? 'Guarde a fábrica no servidor (Arquivo) para acompanhar o desgaste das máquinas.' : 'O desgaste fica guardado no servidor: entre com “Usar o servidor” no login.'}</div>}
+              <h4>Idade e desgaste</h4>
+              <div className="sub" style={{ marginTop: 0 }}>Quanto da vida útil cada máquina já gastou, pela idade que você informou. Passando do intervalo de manutenção, ela rende menos e arrisca mais.</div>
+              {cd.hasWear ? <HBars rows={cd.wearRows} max={100} unit="%" /> : <div className="nodata">Todas as máquinas estão novas. Informe a idade delas em <b>Estado das máquinas</b>, no canto do quadro (Montar), ou no painel de cada máquina.</div>}
             </div>
           </>
         )}

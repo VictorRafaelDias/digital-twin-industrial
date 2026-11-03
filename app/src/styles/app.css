@@ -383,3 +383,14 @@ table.cmp td, table.cmp th{padding:4px 8px;} table.cmp tr.diff td{background:var
 .restabs .ractions{margin-left:auto; display:flex; gap:8px; align-items:center; padding-bottom:6px;}
 .ractions .exp{position:relative;} .ractions .expmenu{position:absolute; right:0; top:calc(100% + 4px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 30px rgba(23,35,46,.18); z-index:20; min-width:290px; overflow:hidden;}
 .ractions .expmenu button{display:block; width:100%; text-align:left; background:none; border:none; padding:10px 14px; font-size:13px; cursor:pointer;} .ractions .expmenu button:hover{background:#eaf4f8;}
+
+/* idade e manutenção das máquinas */
+.agepanel{position:absolute; left:16px; top:16px; z-index:9; max-width:min(540px, calc(100% - 32px));}
+.agebtn{background:#fff; border:1px solid var(--line); border-radius:18px; padding:6px 14px; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 4px 14px rgba(23,35,46,.12);} .agebtn.on{border-color:var(--amber);}
+.agebtn .badge{background:var(--amber); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px;}
+.agebody{background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(23,35,46,.18); padding:10px 12px; margin-top:6px; max-height:55vh; overflow:auto;}
+.agein{width:72px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; font-size:12.5px;}
+.agetbl td, .agetbl th{padding:3px 6px;}
+.agegrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px;} .agegrid label{display:flex; flex-direction:column; font-size:11.5px; color:var(--muted); gap:3px;} .agegrid .agein{width:100%;}
+.agepre{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:6px 0;} .agepre .btn{padding:3px 9px; font-size:11.5px;}
+.tag.age{background:#e9eef2; color:#3b4a56;} .tag.age.warn{background:var(--amber-l); color:#8a4e0c;} .tag.age.bad{background:var(--danger-l); color:#7a231a;}
