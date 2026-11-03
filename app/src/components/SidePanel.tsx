@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { HEAT_INFO } from '../data/catalog';
 import { KB, SUGGESTIONS } from '../data/content';
-import { moneyRange } from '../engine/cost';
+import { money, moneyRange } from '../engine/cost';
 import { fmt, fv, stepOf } from '../engine/format';
 import { explainNow, heatFactor } from '../engine/simulate';
+import { machineTemp } from '../engine/thermal';
 import { useStore } from '../store/useStore';
+import { utilization } from '../store/versions';
 import type { ChatMsg, SideTab } from '../types';
+import { COLORS, riskColor, Spark } from './Charts';
+import { DashTab } from './DashTab';
 import { Icon } from './Icon';
 import { Rich } from './Rich';
 import { BottleneckChat, Chip, Cites, CostInfo, PlanResult, Refs } from './Shared';
-import { useBnName, useSim, useTrouble } from './hooks';
+import { useBnName, useFlow, useSim, useTrouble } from './hooks';
 
-const TABS: [SideTab, string, string][] = [['goal', 'Objetivo', 'target'], ['machine', 'Máquina', 'gauge'], ['chat', 'Conversa', 'chat'], ['log', 'Registro', 'list']];
+const TABS: [SideTab, string, string][] = [['goal', 'Objetivo', 'target'], ['machine', 'Máquina', 'gauge'], ['dash', 'Dash', 'chart'], ['chat', 'Conversa', 'chat'], ['log', 'Registro', 'list']];
 
 export function SidePanel() {
   const tab = useStore((s) => s.tab);
@@ -21,7 +25,7 @@ export function SidePanel() {
       <div className="stabs">
         {TABS.map(([k, l, ic]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}><Icon name={ic} size={16} />{l}</button>)}
       </div>
-      {tab === 'chat' ? <ChatTab /> : <div className="sbody">{tab === 'goal' ? <GoalTab /> : tab === 'machine' ? <MachineTab /> : <LogTab />}</div>}
+      {tab === 'chat' ? <ChatTab /> : tab === 'dash' ? <DashTab /> : <div className="sbody">{tab === 'goal' ? <GoalTab /> : tab === 'machine' ? <MachineTab /> : <LogTab />}</div>}
     </>
   );
 }
@@ -66,6 +70,7 @@ function GoalTab() {
 function MachineTab() {
   const s = useStore();
   const sim = useSim(false);
+  const flow = useFlow(sim);
   const { affected } = useTrouble(sim);
   const n = s.nodes.find((x) => x.id === s.selected);
   const [drag, setDrag] = useState<number | null>(null);
@@ -102,10 +107,12 @@ function MachineTab() {
         <div className="c"><div className="l"><Rich text="Capacidade" terms /></div><div className="v">{fmt(r.cap)}/h</div></div>
         <div className={'c ' + cls}><div className="l">Situação</div><div className="v">{r.state}</div></div>
         <div className="c"><div className="l"><Rich text="Saída real" terms /></div><div className="v">{fmt(r.eff)}/h</div></div>
+        <div className="c" title="O que realmente passa pela máquina ÷ o que ela consegue entregar"><div className="l">Uso da capacidade</div><div className="v">{r.cap > 0 ? `${fmt(utilization(r.cap, flow[n.id] ?? r.eff) * 100)}%` : '—'}</div></div>
         <div className={'c ' + (r.risk > 0.1 ? 'warn' : '')}><div className="l">Risco de falha <a className="qm" onClick={() => s.openModal('risk')}>?</a></div><div className="v">{fmt(r.risk * 100, 1)}%</div></div>
         <div className="c"><div className="l">Consumo</div><div className="v">{fmt(r.energy, 1)} kW</div></div>
         <div className="c"><div className="l"><Rich text="Fila" terms /> de excesso</div><div className="v">{fmt(r.queue)}/h</div></div>
       </div>
+      <MachineLive nodeId={n.id} />
       <div className={'say ' + (cls === 'ok' ? '' : cls)}><Rich text={explainNow(n, sim, affected.has(n.id), t)} terms /></div>
       {hf < 0.999 && <div className="say warn">🌡 Com o ambiente a {s.ambient} °C, esta máquina rende <b>{fmt((1 - hf) * 100, 1)}%</b> menos. {HEAT_INFO[t.heat].n}</div>}
       <div className="field"><label>Unidades em paralelo</label>
@@ -202,6 +209,55 @@ function LogTab() {
           : <div className="sub">Nada aconteceu ainda. Aqui aparece o que você faz e o que acontece durante a simulação.</div>}
       </div>
       <button className="btn sec" style={{ marginTop: 12 }} onClick={clearEvents}>Limpar registro</button>
+    </>
+  );
+}
+
+/* ---------- Gráficos da máquina e desgaste ---------- */
+function MachineLive({ nodeId }: { nodeId: string }) {
+  const s = useStore();
+  const sim = useSim(true);
+  const n = s.nodes.find((x) => x.id === nodeId);
+  if (!n) return null;
+  const t = s.catalog[n.type], r = sim.res[n.id];
+  const temp = machineTemp(t, n, r, s.ambient);
+  const ms = s.run.mseries[n.id] || [];
+  const w = s.wear[n.id];
+  const hot = temp - s.ambient > 45 || r.state === 'falha' ? COLORS.bad : temp - s.ambient > 25 ? COLORS.warn : COLORS.teal;
+  const wcolor = !w ? COLORS.muted : w.status === 'ok' ? COLORS.ok : w.status === 'atencao' ? COLORS.warn : COLORS.bad;
+  return (
+    <>
+      <div className="mlive">
+        <h4>Gráficos da máquina</h4>
+        <div className="mrow"><span>Temperatura <small>(estimada)</small></span><b style={{ color: hot }}>{fmt(temp, 1)} °C</b><Spark points={ms.map((p) => p.temp)} color={hot} /></div>
+        <div className="mrow"><span>O que sai</span><b>{fmt(r.eff)}/h</b><Spark points={ms.map((p) => p.out)} color={COLORS.teal} /></div>
+        <div className="mrow"><span>Risco</span><b style={{ color: riskColor(r.risk) }}>{fmt(r.risk * 100, 1)}%</b><Spark points={ms.map((p) => p.risk * 100)} color={riskColor(r.risk)} /></div>
+        {ms.length < 2 && <div className="nodata small">As linhas aparecem durante a simulação. A temperatura é uma <b>hipótese didática</b>: ambiente mais o calor do trabalho.</div>}
+      </div>
+      <div className="mlive">
+        <h4>Desgaste e manutenção <small>(hipótese didática)</small></h4>
+        {!s.server && <div className="nodata small">O desgaste fica guardado no servidor. Entre com o servidor para ver o tempo de uso, a depreciação e a previsão de manutenção.</div>}
+        {s.server && !w && <div className="nodata small">Guarde a fábrica no servidor (Arquivo › Guardar no servidor) para a máquina começar a acumular desgaste.</div>}
+        {w && (
+          <>
+            <div className="wbar" title={`${fmt(w.life_used_pct, 1)}% da vida útil`}><i style={{ width: `${Math.min(100, w.life_used_pct)}%`, background: wcolor }} /></div>
+            <div className="wline"><b style={{ color: wcolor }}>{w.status_text}</b></div>
+            <table className="wt"><tbody>
+              <tr><td>Horas de uso</td><td><b>{fmt(w.operating_hours, 1)} h</b></td></tr>
+              <tr><td>Vida útil gasta</td><td><b>{fmt(w.life_used_pct, 1)}%</b> de {fmt(w.life_hours)} h</td></tr>
+              <tr><td>Próxima manutenção</td><td><b>{w.hours_to_maintenance >= 0 ? `em ${fmt(w.hours_to_maintenance)} h` : `atrasada ${fmt(-w.hours_to_maintenance)} h`}</b></td></tr>
+              <tr><td>Perda de rendimento</td><td><b>{fmt(w.capacity_lost_pct, 1)}%</b> · risco +{fmt(w.risk_added * 100, 1)} pontos</td></tr>
+              {w.residual_value != null && <tr><td>Valor hoje (depreciação)</td><td><b>{money(w.residual_value)}</b> de {money(w.replacement_cost ?? 0)}</td></tr>}
+              <tr><td>Previsão: fim da vida útil</td><td><b>em {fmt(w.life_left_hours)} h</b></td></tr>
+            </tbody></table>
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="btn sec" style={{ flex: 1 }} title="Para demonstrar: como se a máquina tivesse trabalhado mais mil horas" onClick={() => s.ageMachine(n.id, 1000)}>+ 1.000 h de uso</button>
+              <button className="btn sec" style={{ flex: 1 }} title="Recupera 60% do desgaste" onClick={() => s.maintainMachine(n.id, 'preventiva')}>Manutenção</button>
+              <button className="btn sec" style={{ flex: 1 }} title="Depois de uma falha, com troca de peças: recupera 80% do desgaste" onClick={() => s.maintainMachine(n.id, 'corretiva')}>Corretiva</button>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }

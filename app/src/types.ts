@@ -16,6 +16,9 @@ export interface MachineType {
   desc: string; src: string | null; flow?: 'suco';
   rank: number | null; heat: HeatKind; multiIn?: boolean; end?: boolean;
   basis: string; refs: Ref[]; risk: string; cost: Cost;
+  /** só no modo servidor: de onde veio a máquina (embutida ou importada de uma ficha técnica) e a versão dela */
+  inactive?: boolean; // desativada no catálogo do servidor: continua funcionando nas fábricas que já a usam, mas some da lista de máquinas
+  origin?: 'embutida' | 'importada'; version?: number; maker?: string | null; model?: string | null; year?: number | null; family?: string;
 }
 export type Catalog = Record<string, MachineType>;
 
@@ -24,7 +27,21 @@ export interface ManualEntry { long: string; how: string; tips: string }
 export interface GuideStep { id: string; title: string; img: string; what: string; does: string[]; tip: string }
 
 /** Uma máquina colocada no quadro. */
-export interface FNode { id: string; type: string; x: number; y: number; value: number; qty: number; off: boolean }
+export interface FNode {
+  id: string; type: string; x: number; y: number; value: number; qty: number; off: boolean;
+  /** id da máquina no servidor (modo servidor) */
+  sid?: number;
+  /** desgaste (modo servidor): multiplica a capacidade e soma ao risco; neutro quando não informado */
+  wearCap?: number; wearRisk?: number;
+}
+
+/** Desgaste de uma máquina (vem do servidor): hipótese didática, ver backend/app/engine/wear.py. */
+export interface WearInfo {
+  operating_hours: number; wear_hours: number; life_hours: number; life_used_pct: number; life_left_hours: number;
+  maintenance_interval_hours: number; hours_since_maintenance: number; hours_to_maintenance: number; maintenance_overdue: boolean;
+  capacity_factor: number; capacity_lost_pct: number; risk_added: number; status: 'ok' | 'atencao' | 'manutencao_atrasada' | 'fim_de_vida'; status_text: string;
+  residual_value_fraction: number; replacement_cost: number | null; residual_value: number | null; depreciation_per_hour: number | null;
+}
 export interface FEdge { id: string; from: string; to: string }
 
 export type MachineState = 'normal' | 'alerta' | 'critico' | 'falha' | 'desligada';
@@ -70,15 +87,20 @@ export interface WhatIfResult {
 
 export interface LogEvent { time: string; text: string; kind: '' | 'ok' | 'warn' | 'bad' }
 
+/** Um ponto da linha do tempo do play (alimenta o dashboard). */
+export interface RunPoint { t: number; produced: number; rate: number; kwh: number; risk: number; queue: number }
+export interface MachinePoint { t: number; out: number; temp: number; risk: number }
+
 export interface RunState {
   on: boolean; active: boolean; speed: number; dur: number; t: number; produced: number; kwh: number;
   queue: Record<string, number>; arrivals: Record<string, number>; announced: Record<string, boolean>;
   finished: boolean; lastK: number;
+  series: RunPoint[]; mseries: Record<string, MachinePoint[]>;
 }
 
 export type ViewId = 'logic' | 'physical' | 'hmi' | 'dashboard' | 'guide' | 'manual' | 'glossary';
 export type ToolId = 'select' | 'link' | 'trash';
-export type SideTab = 'goal' | 'machine' | 'chat' | 'log';
+export type SideTab = 'goal' | 'machine' | 'dash' | 'chat' | 'log';
 
 /** Mensagem da aba Conversa. Guardamos dados, não HTML. */
 export type ChatMsg =

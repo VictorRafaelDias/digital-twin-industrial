@@ -39,6 +39,14 @@ export function MenuBar() {
       { label: 'Abrir…', run: () => fileRef.current?.click() },
       { label: 'Salvar…', run: saveFile },
       { label: 'Exportar relatório (PDF)', run: () => s.showToast('Relatório em PDF — ainda não implementado') },
+      '-',
+      ...(s.server ? [
+        { label: 'Minhas fábricas no servidor…', run: () => s.openModal('factories') },
+        { label: s.serverFactoryId == null ? 'Guardar no servidor' : 'Guardar as mudanças no servidor', run: () => { s.saveServerFactory().catch(() => undefined); } },
+        { label: 'Guardar como cópia nova no servidor', run: () => { s.saveServerFactory({ asNew: true }).catch(() => undefined); } },
+      ] : [
+        { label: 'Servidor: não conectado (entre marcando “Usar o servidor”)', run: () => s.showToast('Saia e entre de novo marcando “Usar o servidor” na tela de login') },
+      ]),
     ],
     Visualizar: [
       { label: 'Montar', key: 'F1', run: () => s.setView('logic') },
@@ -81,7 +89,7 @@ export function MenuBar() {
       ))}
       <div className="spacer" />
       <input className="plantname" value={s.plantName} onChange={(e) => s.setPlantName(e.target.value)} title="Nome da fábrica (clique para editar)" />
-      <div className="userchip"><Icon name="user" size={16} /><b>{s.user}</b><a onClick={s.logout}>Sair</a></div>
+      <div className="userchip"><Icon name="user" size={16} /><b>{s.user}</b>{s.server ? <span className="srvbadge" title={`Conectado a ${s.server.url}`}>servidor{s.serverFactoryId != null ? ' ✓' : ''}</span> : null}<a onClick={s.logout}>Sair</a></div>
       <button className="guidebtn" onClick={() => { s.setGuide({ open: true, min: false }); s.setView('logic'); }}>? Guia</button>
       <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ''; }} />
     </header>

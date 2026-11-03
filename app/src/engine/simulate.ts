@@ -61,7 +61,7 @@ export function simulate(nodes: FNode[], edges: FEdge[], ctx: SimContext): SimRe
   const res: Record<string, NodeResult> = {};
   order.forEach((k) => {
     const { n, t, ups } = byId[k];
-    const cap = (n.off ? 0 : capacity(t, n.value, ambient)) * (n.qty || 1);
+    const cap = (n.off ? 0 : capacity(t, n.value, ambient) * (n.wearCap ?? 1)) * (n.qty || 1); // wearCap: desgaste (modo servidor)
     // o que chega: saída das anteriores, dividida entre as saídas de cada uma (divisão de fluxo)
     const inflow = ups.reduce((s, u) => s + (res[u]?.eff || 0) / Math.max(1, byId[u].outs), 0);
     let eff = cap;
@@ -70,7 +70,7 @@ export function simulate(nodes: FNode[], edges: FEdge[], ctx: SimContext): SimRe
     res[k] = {
       cap, eff, inflow,
       queue: ups.length ? Math.max(0, inflow - eff) : 0, // Lavoisier: o que sobra fica parado na fila
-      risk: riskOf(t, n.value),
+      risk: n.value < t.crit ? Math.min(1, riskOf(t, n.value) + (n.wearRisk ?? 0)) : riskOf(t, n.value),
       state: n.off ? 'desligada' : stateOf(t, n.value),
       energy: t.sb * (n.qty || 1) + (n.off ? 0 : (t.vr * eff) / t.cap),
     };

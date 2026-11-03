@@ -16,7 +16,7 @@ export function Palette() {
   const active = cats.some((c) => c.id === cat) ? cat : 'all';
   const term = q.trim().toLowerCase();
   const list = Object.entries(catalog).filter(([, t]) =>
-    typeInfo[t.cat]?.on !== false && (active === 'all' || t.cat === active) && (!term || (t.name + ' ' + t.stage).toLowerCase().includes(term)));
+    !t.inactive && typeInfo[t.cat]?.on !== false && (active === 'all' || t.cat === active) && (!term || (t.name + ' ' + t.stage).toLowerCase().includes(term)));
 
   return (
     <div className="pal">

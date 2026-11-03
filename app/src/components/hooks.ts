@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { bottleneckReport } from '../engine/bottleneck';
 import { bnName, simulate, troubleMaps } from '../engine/simulate';
+import { computeChartData, type ChartData } from '../store/reportData';
+import { realFlow } from '../store/versions';
 import { useStore } from '../store/useStore';
 import type { BnReport, SimContext, SimResult } from '../types';
 
@@ -24,6 +26,13 @@ export function useSim(withRun = true): SimResult {
   return useMemo(() => simulate(nodes, edges, ctx), [nodes, edges, ctx]);
 }
 
+/** Fluxo real que passa por cada máquina (ver realFlow). */
+export function useFlow(sim: SimResult): Record<string, number> {
+  const nodes = useStore((s) => s.nodes);
+  const edges = useStore((s) => s.edges);
+  return useMemo(() => realFlow(nodes.map((n) => n.id), Object.fromEntries(nodes.map((n) => [n.id, sim.res[n.id]?.eff ?? 0])), edges), [sim, nodes, edges]);
+}
+
 export function useTrouble(sim: SimResult) {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
@@ -41,4 +50,16 @@ export function useBnName(sim: SimResult): string {
   const nodes = useStore((s) => s.nodes);
   const catalog = useStore((s) => s.catalog);
   return bnName(sim, nodes, catalog);
+}
+
+/** Números e linhas de gráfico da fábrica (os mesmos do Dash, do Relatório e do PDF). */
+export function useChartData(withRun = true): ChartData {
+  const nodes = useStore((s) => s.nodes);
+  const edges = useStore((s) => s.edges);
+  const catalog = useStore((s) => s.catalog);
+  const ambient = useStore((s) => s.ambient);
+  const wear = useStore((s) => s.wear);
+  const server = useStore((s) => !!s.server);
+  const ctx = useSimCtx(withRun);
+  return useMemo(() => computeChartData({ nodes, edges, catalog, ambient, wear, server, ctx }), [nodes, edges, catalog, ambient, wear, server, ctx]);
 }

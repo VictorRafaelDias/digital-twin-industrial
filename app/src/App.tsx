@@ -19,6 +19,8 @@ export default function App() {
   const view = useStore((s) => s.view);
   const sideHidden = useStore((s) => s.sideHidden);
   const palMin = useStore((s) => s.palMin);
+  const dashFull = useStore((s) => s.dashFull);
+  const tab = useStore((s) => s.tab);
   const toast = useStore((s) => s.toast);
   const toggleSide = useStore((s) => s.toggleSide);
   const togglePal = useStore((s) => s.togglePal);
@@ -41,7 +43,7 @@ export default function App() {
       else if (e.key === 'z' && e.ctrlKey && !typing) { e.preventDefault(); st.undo(); }
       else if (e.key === 'y' && e.ctrlKey && !typing) { e.preventDefault(); st.redo(); }
       else if (e.key === 'Delete' && st.selected && !typing) st.removeNode(st.selected);
-      else if (e.key === 'Escape') { st.openModal(null); st.select(null); }
+      else if (e.key === 'Escape') { st.openModal(null); st.select(null); st.setDashFull(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -57,7 +59,7 @@ export default function App() {
         <MenuBar />
         <Toolbar />
         <ViewBar />
-        <main className={'workspace' + (noSide ? ' noside' : '')}>
+        <main className={'workspace' + (noSide ? ' noside' : '') + (!noSide && dashFull && tab === 'dash' ? ' dashfull' : '')}>
           <div className="stage">
             {view === 'logic' && <MontarView />}
             {view === 'physical' && <PhysicalView />}

@@ -1,22 +1,44 @@
 /* Estado global do front-end (zustand). Aqui ficam o desenho da fábrica, as configurações e as ações do usuário.
    O cálculo da simulação NÃO fica aqui: está em src/engine (funções puras). */
 import { create } from 'zustand';
+import { api, apiLogin, ApiError, type ApiSession } from '../api/client';
 import { buildCatalog } from '../data/catalog';
 import { TYPE_INFO_INITIAL } from '../data/content';
 import { bottleneckReport, runWhatIf } from '../engine/bottleneck';
 import { canConnect } from '../engine/connect';
 import { buildFromTemplate, mkNode } from '../engine/factory';
-import { clock, fmt, pad } from '../engine/format';
+import { fmt, pad } from '../engine/format';
 import { planGoal } from '../engine/goal';
-import { computeArrivals, newRun } from '../engine/run';
+import { advanceRun, computeArrivals, newRun } from '../engine/run';
 import { bnName, simulate } from '../engine/simulate';
+import { machineTemp } from '../engine/thermal';
+import { cfgOf, makeVersion, realFlow, sameConfig, type Cfg, type ReportVersion } from './versions';
 import type {
-  Catalog, ChatMsg, FEdge, FNode, GoalInput, LogEvent, NodeChange, Plan, Ref, RunState, SideTab, SimContext, ToolId,
-  TypeInfo, ViewId, WhatIfResult,
+  Catalog, ChatMsg, FEdge, FNode, GoalInput, LogEvent, MachineType, NodeChange, Plan, Ref, RunState, SideTab, SimContext, ToolId,
+  TypeInfo, ViewId, WearInfo, WhatIfResult,
 } from '../types';
 
-export type ModalId = null | 'risk' | 'ambient' | 'runresult' | 'about' | 'settings';
-export type SettingsSection = 'geral' | 'tipos' | 'limites' | 'precos' | 'catalogo' | 'dados';
+export type ModalId = null | 'risk' | 'ambient' | 'runresult' | 'about' | 'settings' | 'factories';
+
+/** O que o servidor devolve (só os campos que o front usa). */
+export interface ApiMachine {
+  code: string; name: string; category: string; stage: string; icon: string; flow: string; parameter: string; unit: string;
+  limits: { min: number; optimal: number; warning: number; failure: number; max: number };
+  capacity_at_optimal: number; standby_kw: number; variable_kw: number; process_order: number | null; thermal_sensitivity: string;
+  accepts_multiple_inputs: boolean; is_final_stage: boolean; maker?: string | null; model?: string | null; year?: number | null; version?: number;
+  family?: string; origin?: 'embutida' | 'importada'; active?: boolean;
+  price?: { min: number; max: number; note?: string; edited_by_user: boolean; sources?: { title: string; url: string; confidence: string }[] } | null;
+  description?: string; physical_risk?: string; basis_of_numbers?: string; sources?: { title: string; url: string; confidence: string }[];
+}
+export interface ApiCategory { code: string; name: string; description: string; icon: string | null; active: boolean }
+export interface ServerFactory { id: number; name: string; example: string | null; machine_count: number; updated_at: string }
+export interface ServerSim { id: number; started_at: string; speed: number; duration_min: number; produced: number; pct_of_best: number; energy_kwh: number; finished: boolean }
+interface ApiFactoryFull {
+  id: number; name: string; ambient: number; tariff: number; emergency_stop: boolean;
+  machines: { id: number; type: string; x: number; y: number; value: number; units_in_parallel: number; off: boolean }[];
+  connections: { id: number; from: number; to: number }[];
+}
+export type SettingsSection = 'geral' | 'tipos' | 'limites' | 'precos' | 'catalogo' | 'dados' | 'usuarios';
 
 interface Snapshot { nodes: FNode[]; edges: FEdge[]; seq: number }
 
@@ -33,12 +55,21 @@ export interface AppState {
   layers: { pipes: boolean; energy: boolean };
   events: LogEvent[]; run: RunState;
   goal: GoalInput; goalPlan: Plan | null;
+  /** versões do relatório (V1, V2...) e, depois de aplicar uma melhoria, como a fábrica estava antes dela (para listar o que mudou) */
+  versions: ReportVersion[]; versionSeq: number; pendingBase: Cfg[] | null;
+  /** sub-aba de Resultados e Dash ampliado (ocupa a tela toda) */
+  resTab: 'relatorio' | 'comparacoes'; dashFull: boolean;
+  /** versões escolhidas na comparação (null = as duas mais recentes) */
+  cmp: { a: number | null; b: number | null };
   whatIf: { n: number; pct: number; over: boolean; res: WhatIfResult | null; plan: Plan | null };
   chat: ChatMsg[];
   guide: { open: boolean; min: boolean; changed: boolean; goal: boolean; chat: boolean };
   cat: string; q: string;
   manual: { type: string | null; machine: string | null };
   guideSel: number; glossTerm: string | null; glossQ: string; setSec: SettingsSection;
+  /** modo servidor: null = o sistema roda sozinho no navegador */
+  server: ApiSession | null; serverFactoryId: number | null; serverBusy: boolean;
+  serverFactories: ServerFactory[]; serverSims: ServerSim[]; wear: Record<string, WearInfo>;
 }
 
 export interface Actions {
@@ -72,6 +103,20 @@ export interface Actions {
   updateType: (id: string, patch: Partial<TypeInfo>) => void; addType: (name: string) => void; removeType: (id: string) => void;
   startOrToggleRun: () => void; stopRun: () => void; setRunSpeed: (s: number) => void; setRunDur: (d: number) => void; tickRun: () => void;
   clearAll: () => void;
+  /* modo servidor */
+  loginServer: (url: string, username: string, password: string) => Promise<void>;
+  syncCatalog: () => Promise<void>;
+  listServerFactories: () => Promise<void>;
+  openServerFactory: (id: number) => Promise<void>;
+  saveServerFactory: (opts?: { silent?: boolean; asNew?: boolean }) => Promise<void>;
+  deleteServerFactory: (id: number) => Promise<void>;
+  saveVersion: () => void; discardPending: () => void; loadVersions: () => Promise<void>;
+  setResTab: (t: 'relatorio' | 'comparacoes') => void; setDashFull: (v: boolean) => void;
+  setCmp: (c: Partial<{ a: number | null; b: number | null }>) => void; restoreVersion: (n: number) => void;
+  loadSims: () => Promise<void>;
+  refreshWear: () => Promise<void>;
+  ageMachine: (nodeId: string, hours: number) => Promise<void>;
+  maintainMachine: (nodeId: string, kind: 'preventiva' | 'corretiva') => Promise<void>;
 }
 
 const snapshot = (s: AppState): Snapshot => ({ nodes: s.nodes.map((n) => ({ ...n })), edges: s.edges.map((e) => ({ ...e })), seq: s.seq });
@@ -83,13 +128,74 @@ export const useStore = create<AppState & Actions>((set, get) => {
   const typeInfo: Record<string, TypeInfo> = {};
   Object.entries(TYPE_INFO_INITIAL).forEach(([k, t]) => { typeInfo[k] = { ...t, on: true }; });
   let saved: string | null = null;
-  try { saved = sessionStorage.getItem('dtw_user'); } catch { /* sem armazenamento: segue sem lembrar o usuário */ }
+  let savedServer: ApiSession | null = null;
+  try {
+    saved = sessionStorage.getItem('dtw_user');
+    const raw = sessionStorage.getItem('dtw_api');
+    if (raw) { const o = JSON.parse(raw) as ApiSession & { user?: string }; savedServer = { url: o.url, token: o.token }; saved = saved || o.user || null; }
+  } catch { /* sem armazenamento: segue sem lembrar o usuário */ }
+
+  /** Chamada ao servidor. Se o login venceu (401), sai do modo servidor e avisa. */
+  const call = async <T,>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> => {
+    const sv = get().server;
+    if (!sv) throw new ApiError(0, 'Você não está conectado ao servidor.');
+    try { return await api<T>(sv, path, init); }
+    catch (e) {
+      if (e instanceof ApiError && e.status === 401) { get().logout(); get().showToast('O login no servidor venceu. Entre de novo.'); }
+      throw e;
+    }
+  };
+  const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+  /** Guarda uma versão do relatório (e, se a fábrica está no servidor, também lá, como "cenário"). */
+  const addVersion = (label: string, kind: ReportVersion['kind'], played?: ReportVersion['played']): ReportVersion => {
+    const s = get();
+    const v = { ...makeVersion(s.versionSeq + 1, label, kind, s.nodes, s.edges, ctx(), s.tariff), ...(played ? { played } : {}) };
+    set({ versions: [...s.versions, v], versionSeq: v.n });
+    if (s.server) {
+      // a "foto" do servidor lê o desenho guardado: guarda o desenho de agora (silencioso, cria a fábrica se ainda não existe) e então tira a foto.
+      // O saveServerFactory lê o desenho no mesmo instante da chamada, por isso a V1 sai com o desenho de ANTES da mudança.
+      s.saveServerFactory({ silent: true })
+        .then(() => call(`/factories/${get().serverFactoryId}/scenarios`, { method: 'POST', json: { name: `V${v.n} · ${v.label}`.slice(0, 100) } }))
+        .catch(() => undefined);
+    }
+    return v;
+  };
+  /** Antes da primeira mudança de uma melhoria: guarda a versão "antes" (se ainda não existe) e lembra como estava. */
+  const beginPending = () => {
+    const s = get();
+    if (s.pendingBase) return;
+    const last = s.versions[s.versions.length - 1];
+    if (!sameConfig(last, s.nodes)) addVersion('Antes das mudanças', 'auto');
+    set({ pendingBase: cfgOf(get().nodes, get().catalog) });
+  };
+  /** Terminou um Play: a configuração de agora vira uma versão (ou anota o Play na versão igual que já existe). */
+  const recordPlayVersion = (produced: number, durMin: number) => {
+    const s = get(); const last = s.versions[s.versions.length - 1];
+    const played = { produced, durMin };
+    if (last && sameConfig(last, s.nodes)) set({ versions: s.versions.map((v, i) => (i === s.versions.length - 1 ? { ...v, played } : v)), pendingBase: null });
+    else { addVersion(`Resultado do Play (${durMin >= 60 ? durMin / 60 + ' h' : durMin + ' min'})`, 'play', played); set({ pendingBase: null }); if (get().versions.length >= 2) set({ resTab: 'comparacoes' }); }
+  };
+  const fromApi = (m: ApiMachine, prev?: MachineType): MachineType => {
+    const cost = m.price ? { min: m.price.min, max: m.price.max, note: m.price.note || prev?.cost.note || '', refs: (m.price.sources || []).map((r) => ({ t: r.title, u: r.url, k: r.confidence as 'real' | 'estimado' })), edited: m.price.edited_by_user }
+      : (prev?.cost || { min: 0, max: 0, note: 'Sem preço estimado para esta máquina (a ficha técnica não traz preço): consulte o fabricante.', refs: [] });
+    return {
+      name: m.name, stage: m.stage, cat: m.category, icon: prev?.icon || m.icon, param: m.parameter, unit: m.unit,
+      min: m.limits.min, max: m.limits.max, opt: m.limits.optimal, warn: m.limits.warning, crit: m.limits.failure,
+      cap: m.capacity_at_optimal, sb: m.standby_kw, vr: m.variable_kw, desc: m.description ?? prev?.desc ?? '', src: null,
+      flow: m.flow === 'suco' ? 'suco' : undefined, rank: m.process_order, heat: m.thermal_sensitivity as MachineType['heat'],
+      multiIn: m.accepts_multiple_inputs || undefined, end: m.is_final_stage || undefined,
+      basis: m.basis_of_numbers ?? prev?.basis ?? '', refs: m.sources ? m.sources.filter((r) => r.url).map((r) => ({ t: r.title, u: r.url, k: r.confidence as 'real' | 'estimado' })) : (prev?.refs || []),
+      risk: m.physical_risk ?? prev?.risk ?? '', cost,
+      origin: m.origin, version: m.version, maker: m.maker, model: m.model, year: m.year, family: m.family, inactive: m.active === false || undefined,
+    };
+  };
 
   const ctx = (): SimContext => { const s = get(); return { catalog: s.catalog, ambient: s.ambient, estop: s.estop, run: s.run.active ? { active: true, t: s.run.t, arrivals: s.run.arrivals } : undefined }; };
   const log = (text: string, kind: LogEvent['kind'] = '') => set((s) => ({ events: [{ time: now(), text, kind }, ...s.events].slice(0, 80) }));
 
   return {
-    user: saved, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
+    user: saved, server: savedServer, serverFactoryId: null, serverBusy: false, serverFactories: [], serverSims: [], wear: {}, versions: [], versionSeq: 0, pendingBase: null, resTab: 'relatorio', dashFull: false, cmp: { a: null, b: null }, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
     plantName: 'Minha fábrica', catalog: buildCatalog(), typeInfo,
     nodes: [], edges: [], seq: 1, selected: null, selEdge: null, connectFrom: null, hmiSel: null, zoom: 1,
     undoStack: [], redoStack: [], ambient: 25, tariff: 0.85, estop: false, baseline: null,
@@ -100,7 +206,10 @@ export const useStore = create<AppState & Actions>((set, get) => {
     cat: 'all', q: '', manual: { type: null, machine: null }, guideSel: 0, glossTerm: null, glossQ: '', setSec: 'geral',
 
     login: (name) => { const user = name.trim() || 'usuário'; try { sessionStorage.setItem('dtw_user', user); } catch { /* ok */ } set({ user }); },
-    logout: () => { try { sessionStorage.removeItem('dtw_user'); } catch { /* ok */ } set({ user: null }); },
+    logout: () => {
+      try { sessionStorage.removeItem('dtw_user'); sessionStorage.removeItem('dtw_api'); } catch { /* ok */ }
+      set({ user: null, server: null, serverFactoryId: null, wear: {}, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null });
+    },
 
     setView: (view) => set({ view }),
     setTool: (tool) => {
@@ -132,18 +241,18 @@ export const useStore = create<AppState & Actions>((set, get) => {
 
     newFactory: () => {
       get().pushUndo();
-      set({ nodes: [], edges: [], selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: null });
+      set({ nodes: [], edges: [], selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: null, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null });
       log('Fábrica nova, em branco');
     },
     loadTemplate: (key) => {
       const s = get(); s.pushUndo();
       const f = buildFromTemplate(key, s.catalog, s.seq);
-      set((st) => ({ nodes: f.nodes, edges: f.edges, seq: f.seq, selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: f.nodes[0].id, plantName: f.name, guide: { ...st.guide, min: true }, view: 'logic' }));
+      set((st) => ({ nodes: f.nodes, edges: f.edges, seq: f.seq, selected: null, estop: false, baseline: null, goalPlan: null, hmiSel: f.nodes[0].id, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null, plantName: f.name, guide: { ...st.guide, min: true }, view: 'logic' }));
       log(`Exemplo carregado: ${f.name}`, 'ok');
     },
     openFactory: (d) => {
       get().pushUndo();
-      set((s) => ({ nodes: d.nodes.map((n) => ({ ...n, qty: n.qty ?? 1, off: n.off ?? false })), edges: d.edges, seq: d.seq || 100, plantName: d.name || 'Fábrica aberta', selected: null, goalPlan: s.goalPlan }));
+      set((s) => ({ nodes: d.nodes.map((n) => ({ ...n, qty: n.qty ?? 1, off: n.off ?? false })), edges: d.edges, seq: d.seq || 100, plantName: d.name || 'Fábrica aberta', selected: null, goalPlan: s.goalPlan, serverFactoryId: null, wear: {}, versions: [], versionSeq: 0, pendingBase: null }));
       get().showToast('Fábrica aberta');
     },
     clearAll: () => { get().stopRun(); get().newFactory(); get().showToast('Fábrica limpa. Para voltar, use Desfazer (Ctrl+Z).'); },
@@ -219,14 +328,75 @@ export const useStore = create<AppState & Actions>((set, get) => {
     toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 
     applyChange: (c) => {
+      beginPending();
       get().pushUndo();
-      set((s) => ({ nodes: s.nodes.map((n) => (n.id === c.id ? { ...n, value: c.value, qty: c.qty, off: c.off } : n)), guide: { ...s.guide, changed: true } }));
-      log('Aplicou: ' + (c.label || 'melhoria'), 'ok'); get().showToast('Aplicado. Para voltar, use Desfazer (Ctrl+Z).');
+      set((s) => ({ nodes: s.nodes.map((n) => (n.id === c.id ? { ...n, value: c.value, qty: c.qty, off: c.off } : n)), guide: { ...s.guide, changed: true }, view: 'logic' }));
+      log('Aplicou: ' + (c.label || 'melhoria'), 'ok'); get().showToast(`Mudança aplicada no quadro. Rode a simulação para gerar a V${get().versionSeq + 1}.`);
     },
     applyPlan: (p) => {
+      beginPending();
       const s = get(); s.pushUndo();
-      set((st) => ({ nodes: st.nodes.map((n) => { const c = p.changes[n.id]; return c ? { ...n, value: c.value, qty: c.qty, off: c.off } : n; }), goalPlan: null, whatIf: { ...st.whatIf, res: null, plan: null }, guide: { ...st.guide, changed: true } }));
+      set((st) => ({ nodes: st.nodes.map((n) => { const c = p.changes[n.id]; return c ? { ...n, value: c.value, qty: c.qty, off: c.off } : n; }), goalPlan: null, whatIf: { ...st.whatIf, res: null, plan: null }, guide: { ...st.guide, changed: true }, view: 'logic' }));
       log(`Aplicou o plano: produção ${fmt(p.before.prod)} → ${fmt(p.after.prod)} garrafas/h`, 'ok');
+      get().showToast(`Plano aplicado no quadro. Rode a simulação para gerar a V${get().versionSeq + 1}.`);
+    },
+    setResTab: (resTab) => set({ resTab }),
+    setDashFull: (dashFull) => set({ dashFull }),
+    setCmp: (c) => set((s) => ({ cmp: { ...s.cmp, ...c } })),
+    /** Volta o quadro para a configuração de uma versão (ritmo, unidades e liga/desliga). Antes, guarda a situação de agora para não perder nada. */
+    restoreVersion: (n) => {
+      const s = get(); const v = s.versions.find((x) => x.n === n);
+      if (!v) return;
+      if (s.run.active) s.stopRun();
+      beginPending();                                    // guarda a situação de agora como versão (se ainda não existe) e lembra como estava
+      get().pushUndo();
+      const ids = new Set(get().nodes.map((x) => x.id));
+      const sumidas = v.machines.filter((m) => !ids.has(m.id)).length;
+      set((st) => ({ nodes: st.nodes.map((x) => { const m = v.machines.find((y) => y.id === x.id); return m ? { ...x, value: m.value, qty: m.qty, off: m.off } : x; }), view: 'logic' }));
+      log(`Voltou para a configuração da V${n}`, 'ok');
+      get().showToast(`Voltou para a configuração da V${n}.${sumidas ? ` ${sumidas} máquina(s) dela não existem mais na fábrica e não foram recriadas.` : ''} Se quiser voltar atrás, use Desfazer (Ctrl+Z).`);
+    },
+    /** Botão manual "Salvar versão agora". */
+    saveVersion: () => {
+      const s = get();
+      if (!s.nodes.length) return s.showToast('Monte a fábrica antes de salvar uma versão.');
+      const last = s.versions[s.versions.length - 1];
+      if (sameConfig(last, s.nodes)) return s.showToast(`A V${last.n} já guarda esta mesma configuração.`);
+      const v = addVersion('Salva manualmente', 'manual');
+      get().showToast(`V${v.n} guardada.`);
+    },
+    /** Desfaz as mudanças aplicadas e ainda não simuladas (volta ritmo, quantidade e liga/desliga). */
+    discardPending: () => {
+      const s = get(); const base = s.pendingBase; if (!base) return;
+      s.pushUndo();
+      set((st) => ({ nodes: st.nodes.map((n) => { const b = base.find((x) => x.id === n.id); return b ? { ...n, value: b.value, qty: b.qty, off: b.off } : n; }), pendingBase: null }));
+      log('Desfez as mudanças aplicadas', 'ok'); get().showToast('As mudanças foram desfeitas.');
+    },
+    /** Traz do servidor as versões guardadas (as últimas 12) para comparar também em outra sessão. */
+    loadVersions: async () => {
+      const fid = get().serverFactoryId; if (!get().server || fid == null) return;
+      interface Sc {
+        id: number; name: string; created_at: string; production_per_hour: number; max_risk: number; energy_kw: number; bottleneck_machine_id: number | null;
+        machines: { machine_id: number; type: string; name: string; value: number; units_in_parallel: number; off: boolean; capacity: number; output: number }[];
+      }
+      const list = (await call<{ id: number }[]>(`/factories/${fid}/scenarios`)).sort((a, b) => a.id - b.id).slice(-12);
+      const full = await Promise.all(list.map((x) => call<Sc>(`/factories/${fid}/scenarios/${x.id}`)));
+      if (get().serverFactoryId !== fid) return;
+      const tariff = get().tariff;
+      const versions: ReportVersion[] = full.map((sc, i) => {
+        const m = /^V(\d+) · (.*)$/.exec(sc.name);
+        return {
+          n: m ? Number(m[1]) : i + 1, label: m ? m[2] : sc.name, kind: 'servidor' as const,
+          at: new Date(sc.created_at.endsWith('Z') ? sc.created_at : sc.created_at + 'Z').toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+          prod: sc.production_per_hour, risk: sc.max_risk, energy: sc.energy_kw, costPerBottle: sc.production_per_hour > 0 ? (sc.energy_kw * tariff) / sc.production_per_hour : null,
+          bottleneck: sc.machines.find((x) => x.machine_id === sc.bottleneck_machine_id)?.name ?? null,
+          machines: sc.machines.map((x) => ({ id: 's' + x.machine_id, type: x.type, name: x.name, value: x.value, qty: x.units_in_parallel, off: x.off, cap: x.capacity, eff: x.output })),
+        };
+      });
+      // o servidor guarda o que cada máquina processa; o "fluxo real" (limitado pelas máquinas à frente) se calcula com as ligações de agora
+      const edges = get().edges;
+      versions.forEach((v) => { const f = realFlow(v.machines.map((m) => m.id), Object.fromEntries(v.machines.map((m) => [m.id, m.eff])), edges); v.machines.forEach((m) => { m.eff = f[m.id]; }); });
+      set({ versions, versionSeq: Math.max(0, ...versions.map((v) => v.n)) });
     },
 
     setGoal: (g) => set((s) => ({ goal: { ...s.goal, ...g }, goalPlan: g.type ? null : s.goalPlan })),
@@ -262,20 +432,181 @@ export const useStore = create<AppState & Actions>((set, get) => {
     setGlossQ: (glossQ) => set({ glossQ }),
     openSettings: (sec) => set((s) => ({ modal: 'settings', setSec: sec || s.setSec })),
     setSetSec: (setSec) => set({ setSec }),
-    updateMachineLimit: (type, field, v) => set((s) => ({ catalog: { ...s.catalog, [type]: { ...s.catalog[type], [field]: v } } })),
+    updateMachineLimit: (type, field, v) => {
+      set((s) => ({ catalog: { ...s.catalog, [type]: { ...s.catalog[type], [field]: v } } }));
+      if (get().server) {
+        const name = { opt: 'optimal', warn: 'warning', crit: 'failure' }[field];
+        call(`/catalog/machines/${type}/limits`, { method: 'PATCH', json: { [name]: v } })
+          .catch((e) => { get().showToast('O servidor recusou: ' + errText(e)); get().syncCatalog(); });
+      }
+    },
     setMachineCat: (type, cat) => set((s) => ({ catalog: { ...s.catalog, [type]: { ...s.catalog[type], cat } } })),
-    setMachinePrice: (type, f, v) => set((s) => ({ catalog: { ...s.catalog, [type]: { ...s.catalog[type], cost: { ...s.catalog[type].cost, [f]: Math.max(0, v) * 1000, edited: true } } } })),
+    setMachinePrice: (type, f, v) => {
+      set((s) => ({ catalog: { ...s.catalog, [type]: { ...s.catalog[type], cost: { ...s.catalog[type].cost, [f]: Math.max(0, v) * 1000, edited: true } } } }));
+      if (get().server) {
+        const c = get().catalog[type].cost;
+        if (c.max >= c.min) call(`/catalog/machines/${type}/price`, { method: 'PUT', json: { min: c.min, max: c.max } }).catch((e) => get().showToast('O servidor recusou: ' + errText(e)));
+      }
+    },
     updateType: (id, patch) => set((s) => ({ typeInfo: { ...s.typeInfo, [id]: { ...s.typeInfo[id], ...patch } } })),
     addType: (name) => set((s) => ({ typeInfo: { ...s.typeInfo, ['t' + Date.now()]: { name, icon: 'factory', desc: 'Tipo criado por você.', on: true } } })),
     removeType: (id) => set((s) => { const t = { ...s.typeInfo }; delete t[id]; return { typeInfo: t }; }),
+
+    loginServer: async (url, username, password) => {
+      const { session, displayName } = await apiLogin(url, username, password);
+      try { sessionStorage.setItem('dtw_api', JSON.stringify({ ...session, user: displayName })); localStorage.setItem('dtw_api_url', session.url); } catch { /* ok */ }
+      set({ server: session, user: displayName });
+      await get().syncCatalog();
+      get().showToast('Conectado ao servidor. As suas fábricas ficam guardadas lá.');
+    },
+
+    /** Traz o catálogo do servidor: números ajustados, máquinas importadas de fichas técnicas e tipos novos. */
+    syncCatalog: async () => {
+      const [list, cats] = await Promise.all([call<ApiMachine[]>('/catalog/machines?include_inactive=true'), call<ApiCategory[]>('/catalog/categories')]);
+      const novos = list.filter((m) => !get().catalog[m.code]);
+      const detalhes = await Promise.all(novos.map((m) => call<ApiMachine>(`/catalog/machines/${m.code}`)));
+      set((st) => {
+        const catalog = { ...st.catalog };
+        list.forEach((m) => { const full = detalhes.find((d) => d.code === m.code); catalog[m.code] = fromApi(full || m, catalog[m.code]); });
+        // máquinas importadas que o servidor apagou ou desativou saem da lista local
+        Object.keys(catalog).forEach((k) => { if (catalog[k].origin === 'importada' && !list.some((m) => m.code === k)) delete catalog[k]; });
+        const typeInfo = { ...st.typeInfo };
+        cats.forEach((c) => { if (!typeInfo[c.code]) typeInfo[c.code] = { name: c.name, icon: c.icon || 'factory', desc: c.description, on: c.active }; });
+        return { catalog, typeInfo };
+      });
+    },
+
+    listServerFactories: async () => { set({ serverFactories: await call<ServerFactory[]>('/factories') }); },
+
+    openServerFactory: async (id) => {
+      set({ serverBusy: true });
+      try {
+        const f = await call<ApiFactoryFull>(`/factories/${id}`);
+        // máquina de um tipo que o catálogo local não conhece (ex.: criado por outro usuário): traz o tipo antes de montar o desenho
+        const faltam = [...new Set(f.machines.map((m) => m.type))].filter((t) => !get().catalog[t]);
+        if (faltam.length) {
+          const tipos = await Promise.all(faltam.map((t) => call<ApiMachine>(`/catalog/machines/${t}`)));
+          set((st) => { const catalog = { ...st.catalog }; tipos.forEach((m) => { catalog[m.code] = fromApi(m); }); return { catalog }; });
+        }
+        const nodes: FNode[] = f.machines.map((m) => ({ id: 's' + m.id, sid: m.id, type: m.type, x: m.x, y: m.y, value: m.value, qty: m.units_in_parallel, off: m.off }));
+        const edges: FEdge[] = f.connections.map((c) => ({ id: 'e' + c.id, from: 's' + c.from, to: 's' + c.to }));
+        get().stopRun();
+        set({ nodes, edges, plantName: f.name, ambient: f.ambient, tariff: f.tariff, estop: f.emergency_stop, serverFactoryId: f.id, selected: null, hmiSel: nodes[0]?.id ?? null,
+          goalPlan: null, baseline: null, undoStack: [], redoStack: [], modal: null, view: 'logic', versions: [], versionSeq: 0, pendingBase: null });
+        await get().refreshWear();
+        await get().loadSims();
+        get().loadVersions().catch(() => undefined);
+        log(`Fábrica aberta do servidor: ${f.name}`, 'ok');
+      } catch (e) { get().showToast('Não consegui abrir: ' + errText(e)); }
+      finally { set({ serverBusy: false }); }
+    },
+
+    /** Guarda a fábrica no servidor (cria na primeira vez). As máquinas que já existiam lá são atualizadas no lugar, sem perder o desgaste. */
+    saveServerFactory: async (opts = {}) => {
+      const s = get();
+      set({ serverBusy: true });
+      try {
+        let fid = opts.asNew ? null : s.serverFactoryId;
+        let nome = s.plantName.trim() || 'Minha fábrica';
+        const nomeOriginal = nome;
+        /** Nome já usado por outra fábrica sua (409): em vez de travar, guarda como uma nova versão do nome: "nome V2", "nome V3"... */
+        const comNomeLivre = async <T,>(pedido: (n: string) => Promise<T>): Promise<T> => {
+          for (let k = 2; ; k++) {
+            try { return await pedido(nome); }
+            catch (e) { if (!(e instanceof ApiError && e.status === 409) || k > 50) throw e; nome = `${nomeOriginal} V${k}`; }
+          }
+        };
+        if (fid == null) {
+          const f = await comNomeLivre((n) => call<{ id: number }>('/factories', { method: 'POST', json: { name: n, ambient: s.ambient, tariff: s.tariff } }));
+          fid = f.id;
+          if (s.estop) await call(`/factories/${fid}`, { method: 'PATCH', json: { emergency_stop: true } });
+        } else {
+          const id = fid;
+          await comNomeLivre((n) => call(`/factories/${id}`, { method: 'PATCH', json: { name: n, ambient: s.ambient, tariff: s.tariff, emergency_stop: s.estop } }));
+        }
+        if (nome !== nomeOriginal) { set({ plantName: nome }); get().showToast(`Já existia uma fábrica chamada “${nomeOriginal}”. Esta foi guardada como a versão “${nome}”.`); }
+        const keepIds = opts.asNew ? false : true;
+        const res = await call<{ ids_by_ref: Record<string, number> }>(`/factories/${fid}/layout`, {
+          method: 'PUT',
+          json: {
+            machines: s.nodes.map((n) => ({ ref: n.id, id: keepIds ? n.sid ?? null : null, type: n.type, x: Math.max(0, Math.round(n.x)), y: Math.max(0, Math.round(n.y)), value: n.value, units_in_parallel: n.qty, off: n.off })),
+            connections: s.edges.map((e) => ({ from_ref: e.from, to_ref: e.to })),
+          },
+        });
+        set((st) => ({ serverFactoryId: fid, nodes: st.nodes.map((n) => ({ ...n, sid: res.ids_by_ref[n.id] ?? n.sid })) }));
+        await get().refreshWear();
+        if (!opts.silent && nome === nomeOriginal) get().showToast('Fábrica guardada no servidor');
+      } catch (e) {
+        get().showToast('Não consegui guardar: ' + errText(e));
+        throw e;
+      } finally { set({ serverBusy: false }); }
+    },
+
+    deleteServerFactory: async (id) => {
+      try {
+        await call(`/factories/${id}`, { method: 'DELETE' });
+        if (get().serverFactoryId === id) set({ serverFactoryId: null, wear: {} });
+        await get().listServerFactories();
+        get().showToast('Fábrica apagada do servidor');
+      } catch (e) { get().showToast('Não consegui apagar: ' + errText(e)); }
+    },
+
+    loadSims: async () => {
+      const fid = get().serverFactoryId;
+      if (!get().server || fid == null) return set({ serverSims: [] });
+      set({ serverSims: await call<ServerSim[]>(`/factories/${fid}/simulations`) });
+    },
+
+    /** Lê o desgaste de cada máquina no servidor e aplica na simulação local (capacidade menor e risco maior). */
+    refreshWear: async () => {
+      const fid = get().serverFactoryId;
+      if (!get().server || fid == null) return;
+      const w = await call<{ machines: (WearInfo & { id: number })[] }>(`/factories/${fid}/wear`);
+      set((st) => {
+        const wear: Record<string, WearInfo> = {};
+        const nodes = st.nodes.map((n) => {
+          const m = w.machines.find((x) => x.id === n.sid);
+          if (!m) return n;
+          wear[n.id] = m;
+          return { ...n, wearCap: m.capacity_factor, wearRisk: m.risk_added };
+        });
+        return { nodes, wear };
+      });
+    },
+
+    ageMachine: async (nodeId, hours) => {
+      const st = get(); const n = st.nodes.find((x) => x.id === nodeId);
+      if (!n?.sid || st.serverFactoryId == null) return get().showToast('Guarde a fábrica no servidor primeiro (Arquivo › Guardar no servidor).');
+      try {
+        await call(`/factories/${st.serverFactoryId}/machines/${n.sid}/age`, { method: 'POST', json: { hours } });
+        await get().refreshWear();
+        log(`${st.catalog[n.type].name}: +${hours} h de uso`, 'warn');
+      } catch (e) { get().showToast(errText(e)); }
+    },
+
+    maintainMachine: async (nodeId, kind) => {
+      const st = get(); const n = st.nodes.find((x) => x.id === nodeId);
+      if (!n?.sid || st.serverFactoryId == null) return get().showToast('Guarde a fábrica no servidor primeiro (Arquivo › Guardar no servidor).');
+      try {
+        await call(`/factories/${st.serverFactoryId}/machines/${n.sid}/maintenance`, { method: 'POST', json: { kind } });
+        await get().refreshWear();
+        log(`${st.catalog[n.type].name}: manutenção ${kind} feita`, 'ok');
+        get().showToast('Manutenção registrada: o desgaste diminuiu');
+      } catch (e) { get().showToast(errText(e)); }
+    },
 
     startOrToggleRun: () => {
       const s = get(); const r = s.run;
       if (!s.nodes.length) return get().showToast('Monte a fábrica antes de iniciar a simulação');
       if (r.on) { set({ run: { ...r, on: false } }); return log('Simulação pausada'); }
       if (!r.active || r.finished) {
-        set({ run: { ...newRun(r.speed, r.dur), active: true, arrivals: computeArrivals(s.nodes, s.edges), on: true }, view: 'logic' });
-        return log(`Simulação iniciada (${r.dur >= 60 ? r.dur / 60 + ' h' : r.dur + ' min'} simulados)`, 'ok');
+        const begin = () => {
+          const st = get();
+          set({ run: { ...newRun(r.speed, r.dur), active: true, arrivals: computeArrivals(st.nodes, st.edges), on: true }, view: 'logic' });
+          log(`Simulação iniciada (${r.dur >= 60 ? r.dur / 60 + ' h' : r.dur + ' min'} simulados)`, 'ok');
+        };
+        if (s.server) { s.saveServerFactory({ silent: true }).then(begin).catch((e) => get().showToast('Não deu para salvar no servidor: ' + errText(e))); return; }
+        return begin();
       }
       set({ run: { ...r, on: true } });
     },
@@ -286,22 +617,22 @@ export const useStore = create<AppState & Actions>((set, get) => {
     /** Um passo do relógio do play (chamado a cada 250 ms pelo App). */
     tickRun: () => {
       const s = get(); const r = s.run; if (!r.on) return;
-      const dt = 0.25 * r.speed;
-      const t = Math.min(r.dur, r.t + dt);
-      const sim = simulate(s.nodes, s.edges, ctx());
-      const produced = r.produced + (sim.production / 60) * dt, kwh = r.kwh + (sim.energy * dt) / 60;
-      const queue = { ...r.queue }, announced = { ...r.announced };
-      const events: LogEvent[] = [];
+      const step = advanceRun(r, s.nodes, s.edges, { catalog: s.catalog, ambient: s.ambient, estop: s.estop });
+      const { t, produced, kwh, queue, announced, lastK, finished, sim } = step;
+      const events: LogEvent[] = step.events.map((e) => ({ time: now(), ...e }));
+      // linha do tempo para o dashboard (a conta é a mesma do play, só guardada ponto a ponto)
+      const series = [...r.series, { t, produced, rate: sim.production, kwh, risk: sim.maxRisk, queue: Object.values(queue).reduce((a, b) => a + b, 0) }].slice(-400);
+      const mseries = { ...r.mseries };
       s.nodes.forEach((n) => {
-        const q = sim.res[n.id].queue || 0; if (q > 0) queue[n.id] = (queue[n.id] || 0) + (q / 60) * dt;
-        if (!announced[n.id] && t >= (r.arrivals[n.id] || 0)) { announced[n.id] = true; events.push({ time: now(), text: `${s.catalog[n.type].name} começou a trabalhar`, kind: '' }); }
+        const res = sim.res[n.id];
+        mseries[n.id] = [...(mseries[n.id] || []), { t, out: res.eff, temp: machineTemp(s.catalog[n.type], n, res, s.ambient), risk: res.risk }].slice(-400);
       });
-      const stepMin = r.dur <= 60 ? 10 : 60, k = Math.floor(t / stepMin);
-      let lastK = r.lastK;
-      if (k > lastK && t < r.dur) { lastK = k; events.push({ time: now(), text: `${clock(t)} — ${fmt(produced)} garrafas produzidas · gargalo: ${bnName(sim, s.nodes, s.catalog)} · risco máx. ${fmt(sim.maxRisk * 100, 1)}%`, kind: '' }); }
-      const finished = t >= r.dur;
-      if (finished) events.push({ time: now(), text: 'Simulação terminada', kind: 'ok' });
-      set((st) => ({ run: { ...r, t, produced, kwh, queue, announced, lastK, on: !finished, finished: finished || r.finished }, events: [...events.reverse(), ...st.events].slice(0, 80), ...(finished ? { modal: 'runresult' as ModalId } : {}) }));
+      if (finished) recordPlayVersion(produced, r.dur);
+      if (finished && s.server && s.serverFactoryId != null) {   // guarda o resultado no servidor e envelhece as máquinas que trabalharam
+        call(`/factories/${s.serverFactoryId}/play`, { method: 'POST', json: { speed: r.speed, duration_min: r.dur, save: true, apply_wear: true } })
+          .then(() => Promise.all([get().refreshWear(), get().loadSims()])).catch((e) => get().showToast('Não consegui guardar a simulação no servidor: ' + errText(e)));
+      }
+      set((st) => ({ run: { ...r, t, produced, kwh, queue, announced, lastK, on: !finished, finished: finished || r.finished, series, mseries }, events: [...events.reverse(), ...st.events].slice(0, 80), ...(finished ? { modal: 'runresult' as ModalId } : {}) }));
     },
   };
 });

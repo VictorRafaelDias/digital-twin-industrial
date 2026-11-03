@@ -83,6 +83,9 @@ svg.i{stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stro
 .guide li{display:flex; gap:10px; padding:8px 4px; align-items:flex-start; line-height:1.4; border-bottom:1px solid #eef2f4;} .guide li:last-child{border:none;}
 .guide .n{width:22px; height:22px; border-radius:50%; background:var(--bg); border:1px solid var(--line); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
 .guide li.done .n{background:var(--ok); color:#fff; border-color:var(--ok);} .guide li.done span{color:var(--muted); text-decoration:line-through;}
+.guide .gtabs{display:flex; border-bottom:1px solid var(--line);} .guide .gtabs button{flex:1; border:none; background:none; padding:8px 4px; font-size:12px; font-weight:700; color:var(--muted); border-bottom:3px solid transparent; cursor:pointer;} .guide .gtabs button.active{color:var(--teal); border-color:var(--teal);}
+.guide .golink{color:var(--teal); cursor:pointer; font-weight:700; white-space:nowrap;}
+.guide ol{max-height:max(110px, calc(100vh - 470px)); overflow:auto;}
 .guide .gf{padding:0 14px 12px; font-size:12px;} .guide .gf a{color:var(--teal); cursor:pointer; font-weight:600;}
 
 /* painel lateral */
@@ -303,3 +306,80 @@ ul.why{margin:0; padding-left:18px; line-height:1.55;} ul.why li{margin-bottom:6
 .wfrow{display:flex; align-items:center; flex-wrap:wrap; gap:10px;} .wfrow .stepper{display:flex; align-items:center; gap:4px;} .wfrow .stepper input{width:64px; text-align:center;}
 .wfrow .stepper button{width:30px; height:34px; border:1px solid var(--line); background:#fff; border-radius:8px; font-size:16px;}
 .whatif .gres{margin-top:12px;}
+
+/* ---------- dashboard (aba Dash), gráficos da máquina e desgaste ---------- */
+.stabs button{font-size:11.5px; gap:4px;}
+.dashtab h3{margin-top:0;}
+.chartbox{background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 12px 10px; margin-bottom:12px;}
+.chartbox h4{margin:0 0 2px; font-size:13.5px; color:var(--navy);}
+.chartbox .what{color:var(--muted); font-size:11.5px; line-height:1.4; margin-bottom:8px;}
+.gauge{width:100%; max-width:230px; display:block; margin:0 auto;}
+.dkpis{display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin-top:6px;}
+.dkpis div{background:var(--bg); border-radius:8px; padding:6px 9px;} .dkpis small{display:block; color:var(--muted); font-size:10.5px;} .dkpis b{font-size:14px;} .dkpis em{display:block; font-style:normal; color:var(--muted); font-size:11px;}
+.linechart{width:100%; display:block;}
+.legend2{display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:4px;} .legend2 i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px;}
+.hbars .hb{display:grid; grid-template-columns:104px 1fr auto; align-items:center; gap:8px; margin:5px 0;}
+.hbars .hl{font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.hbars .ht{position:relative; height:12px; background:var(--bg); border-radius:6px; overflow:hidden;}
+.hbars .bar{position:absolute; left:0; top:0; height:100%; border-radius:6px; transition:width .25s;} .hbars .bar.b{height:55%; top:22%;}
+.hbars .hv{font-size:11.5px; font-weight:700; min-width:64px; text-align:right;} .hbars .hv small{font-weight:400; color:var(--muted);}
+.donutwrap{display:flex; align-items:center; gap:10px;} .donut{width:118px; flex:none;}
+.dlegend{font-size:11.5px; display:grid; gap:3px;} .dlegend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px;}
+.nodata{color:var(--muted); background:var(--bg); border-radius:8px; padding:10px 12px; font-size:12px;} .nodata.small{padding:6px 9px; font-size:11.5px; margin-top:6px;}
+.spark{width:100%; height:34px; display:block;}
+.mlive{background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:12px;}
+.mlive h4{margin:0 0 6px; font-size:13px;} .mlive h4 small{font-weight:400; color:var(--muted);}
+.mrow{display:grid; grid-template-columns:1fr auto 120px; align-items:center; gap:8px; padding:3px 0; border-top:1px solid var(--line);} .mrow:first-of-type{border-top:none;}
+.mrow span{font-size:12px;} .mrow span small{color:var(--muted);}
+.wbar{height:10px; background:var(--bg); border-radius:6px; overflow:hidden; margin:4px 0 6px;} .wbar i{display:block; height:100%; border-radius:6px; transition:width .25s;}
+.wline{font-size:12px; margin-bottom:6px;}
+.wt{width:100%; border-collapse:collapse; font-size:12px;} .wt td{padding:3px 0; border-top:1px solid var(--line);} .wt td:first-child{color:var(--muted); width:44%;}
+.srvbadge{background:var(--ok-l); color:#1f6a40; border-radius:10px; padding:1px 8px; font-size:11px; font-weight:700;}
+
+/* ---------- Configurações › Dados reais (importar ficha técnica) ---------- */
+.importbox{display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:var(--bg); border:2px dashed var(--teal-m); border-radius:12px; padding:18px; margin-bottom:14px;}
+.filebtn{background:var(--teal); color:#fff; border-radius:8px; padding:10px 18px; font-weight:700; cursor:pointer; display:inline-block;} .filebtn input{display:none;}
+.inl{font-size:12px; color:var(--muted);} .inl small{margin-left:6px;}
+.importdoc table.fields td:nth-child(2) input[type=text], .importdoc table.fields textarea{width:100%;}
+.importdoc textarea{font-family:inherit; font-size:12.5px; border:1px solid var(--line); border-radius:6px; padding:6px 8px;}
+.srcline summary{font-size:11px; color:var(--muted); cursor:pointer;} .srcline q{display:block; font-size:11px; color:var(--text); background:var(--bg); padding:4px 8px; border-radius:6px; margin-top:3px; quotes:none;}
+.note{font-size:11px; color:var(--muted); margin-top:3px;}
+.say.hyp{background:var(--amber-l); color:#7a4a0c;}
+.matches{border:2px solid var(--amber); border-radius:12px; padding:12px 14px; margin:10px 0; background:#fffaf2;}
+.matchcard{background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px;} .matchcard .mh2{margin-bottom:6px;}
+table.cmp td, table.cmp th{padding:4px 8px;} table.cmp tr.diff td{background:var(--amber-l); font-weight:600;}
+
+/* uso das máquinas, versões do relatório e faixa de mudanças pendentes */
+.utilbars .ub{display:grid; grid-template-columns:minmax(90px,1.1fr) 2fr 44px minmax(90px,1fr); gap:8px; align-items:center; padding:4px 0; font-size:12.5px;}
+.utilbars .trk{height:12px; background:var(--bg); border:1px solid var(--line); border-radius:7px; overflow:hidden;} .utilbars .trk i{display:block; height:100%; border-radius:7px;}
+.utilbars .ub em{font-style:normal; color:var(--muted); font-size:11.5px;} .utilbars .ub b{text-align:right;}
+.vers .vhead{display:flex; gap:10px; align-items:center; margin-bottom:8px; flex-wrap:wrap;}
+.vers .vpick{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 6px; font-size:12.5px;} .vers .vpick select{max-width:100%;}
+.vers tr.vsel td{background:#eaf4f8;} .vers tr.vchg td{background:#fff8e8;}
+.vers .chg{margin:4px 0 0; padding-left:18px;} .vers .chg li{margin:2px 0;}
+.vers .delta-pos{color:var(--ok); font-weight:700;} .vers .delta-neg{color:var(--danger); font-weight:700;}
+.pending{position:absolute; right:16px; top:16px; width:330px; max-width:calc(100% - 32px); background:#fff; border:2px solid var(--amber); border-radius:12px; box-shadow:0 10px 30px rgba(23,35,46,.18); z-index:9; padding:12px 14px;}
+.pending .ph{font-size:13px;} .pending .ph span{color:var(--muted); font-size:12px;}
+.pending ul{margin:6px 0 8px; padding-left:18px; font-size:12.5px;} .pending li{margin:2px 0;}
+.pending .pf{display:flex; gap:8px; flex-wrap:wrap;}
+
+/* sub-abas de Resultados, rótulos das barras, uso por versão e Dash ampliado */
+.restabs{display:flex; align-items:center; gap:6px; border-bottom:2px solid var(--line); flex-wrap:wrap;}
+.restabs button{border:none; background:none; padding:9px 16px; font-weight:700; font-size:14px; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer;}
+.restabs button.active{color:var(--teal); border-color:var(--teal);} .restabs .sub{margin-left:12px !important;}
+.bars .b.bhead{font-size:11.5px; color:var(--muted); font-weight:700; line-height:1.25; align-items:end;}
+.uvers .leg{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+.uvers .leg button{border:1px solid var(--line); background:#fff; border-radius:14px; padding:3px 10px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center;}
+.uvers .leg button.off{opacity:.4;} .uvers .leg i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px;}
+.uvers .uv{display:grid; grid-template-columns:minmax(110px,170px) 1fr; gap:12px; padding:6px 0; border-bottom:1px solid #eef2f4; align-items:start; font-size:12.5px;}
+.uvers .uvb{display:grid; grid-template-columns:30px 1fr 44px; gap:6px; align-items:center; font-size:11.5px; margin:2px 0;} .uvers .uvb b{text-align:right;} .uvers .uvb small{color:var(--muted);}
+.uvers .trk{height:10px; background:var(--bg); border:1px solid var(--line); border-radius:6px; overflow:hidden;} .uvers .trk i{display:block; height:100%; border-radius:6px;}
+.dhead{display:flex; align-items:center; justify-content:space-between; gap:8px;} .dhead h3{margin:0;}
+.workspace.dashfull{grid-template-columns:0 minmax(0,1fr);} .workspace.dashfull .stage{visibility:hidden; overflow:hidden;}
+.dashtab.full{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:12px; align-items:start; align-content:start;}
+.dashtab.full > .dhead, .dashtab.full > .lead{grid-column:1 / -1;}
+
+/* faixa de ações de Resultados (salvar versão e exportar) */
+.restabs .ractions{margin-left:auto; display:flex; gap:8px; align-items:center; padding-bottom:6px;}
+.ractions .exp{position:relative;} .ractions .expmenu{position:absolute; right:0; top:calc(100% + 4px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 30px rgba(23,35,46,.18); z-index:20; min-width:290px; overflow:hidden;}
+.ractions .expmenu button{display:block; width:100%; text-align:left; background:none; border:none; padding:10px 14px; font-size:13px; cursor:pointer;} .ractions .expmenu button:hover{background:#eaf4f8;}

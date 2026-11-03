@@ -9,6 +9,7 @@ import { bestProduction, heatFactor, simulate } from '../engine/simulate';
 import { waterExpansionL } from '../engine/water';
 import { useStore } from '../store/useStore';
 import { Modal } from './Modal';
+import { FactoriesModal } from './FactoriesModal';
 import { SettingsModal } from './SettingsModal';
 
 export function Modals() {
@@ -20,6 +21,7 @@ export function Modals() {
   if (modal === 'runresult') return <RunResultModal onClose={close} />;
   if (modal === 'about') return <AboutModal onClose={close} />;
   if (modal === 'settings') return <SettingsModal onClose={close} />;
+  if (modal === 'factories') return <FactoriesModal onClose={close} />;
   return null;
 }
 

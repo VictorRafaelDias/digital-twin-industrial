@@ -32,10 +32,11 @@ export function BottleneckBlock() {
                     <td>{fmt(rep.prod)} → <b>{fmt(o.prod)}</b><br /><b>{gainTxt(o.gain)}</b></td>
                     <td>{fmt(o.risk * 100, 1)}%</td>
                     <td>{o.cost ? <b>{moneyRange(o.cost)}</b> : <span style={{ color: 'var(--muted)' }}>R$ 0</span>}</td>
-                    <td><button className="btn sec" style={{ padding: '5px 10px' }} onClick={() => s.applyChange(o.change)}>Aplicar</button></td>
+                    <td><button className="btn sec" style={{ padding: '5px 10px' }} onClick={() => s.applyChange(o.change)}>Aplicar no quadro</button></td>
                   </tr>
                 ))}
               </tbody></table>
+              <div className="sub">Ao aplicar, você volta para o quadro com a lista do que mudou e pode rodar a simulação para ver o resultado (V2) e compará-lo com o de antes (V1) aqui em Resultados.</div>
               {rep.hasCost && <div className="sub">Preços: estimativas tiradas de anúncios de fornecedores (<a onClick={() => s.openSettings('precos')}>ver de onde vêm</a>). Para comprar, peça cotação.</div>}
             </>
           ) : <p>Não há ajuste simples que aumente a produção: a máquina já está no limite. O caminho é um <b>modelo de maior capacidade</b> (consulte o fabricante) ou uma segunda linha.</p>}
@@ -60,10 +61,10 @@ export function BottleneckBlock() {
             <div>Risco máximo <b>{fmt(res.risk * 100, 1)}%</b> · custo estimado <b>{moneyRange(res.cost)}</b></div>
             {res.enough
               ? <div className="gnote" style={{ color: 'var(--ok)' }}>Resolveu: nenhuma outra máquina passou a limitar a fábrica.</div>
-              : <div className="gnote">Só isso <b>não basta</b>: a {res.name} passaria a entregar <b>{fmt(res.capNew)}</b>/h, mas a fábrica fica em <b>{fmt(res.after)}</b>/h porque agora o gargalo é a <b>{res.next}</b>. Para aproveitar de verdade, este é o plano completo, em cascata:</div>}
+              : <div className="gnote">Só isso <b>não basta</b>: a {res.name} passaria a entregar <b>{fmt(res.capNew)}</b>/h, mas a fábrica fica em <b>{fmt(res.after)}</b>/h porque agora o gargalo é a <b>{res.next}</b>. A {res.name} ficaria usando só <b>{fmt(Math.min(1, res.after / Math.max(1, res.capNew)) * 100)}%</b> da capacidade que passa a ter. Para aproveitar de verdade, este é o plano completo, em cascata:</div>}
             {res.plan && <PlanResult plan={res.plan} onApply={() => s.applyPlan(res.plan!)} onDrop={() => s.setWhatIf({ res: null })} />}
             <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn sec" onClick={s.applyWhatIfOnly}>Aplicar só esta mudança</button>
+              <button className="btn sec" onClick={s.applyWhatIfOnly}>Aplicar só esta mudança no quadro</button>
             </div>
           </div>
         )}

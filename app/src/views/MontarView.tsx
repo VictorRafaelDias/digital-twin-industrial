@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { GuideChecklist } from '../components/GuideChecklist';
 import { Icon } from '../components/Icon';
+import { PendingBanner } from '../components/Versions';
 import { useSim, useSimCtx, useTrouble } from '../components/hooks';
 import { canConnect, edgeKind } from '../engine/connect';
 import { fmt, fv } from '../engine/format';
@@ -150,6 +151,7 @@ export function MontarView() {
           </div>
         </div>
       )}
+      <PendingBanner />
       <GuideChecklist />
       <div className="legend">
         <span><i style={{ background: '#2E8B57' }} />Normal</span>

@@ -76,7 +76,7 @@ export function PlanResult({ plan, onApply, onDrop }: { plan: Plan; onApply: () 
         ))}
       </ol>
       <div className="gloss-hint">Palavras sublinhadas têm explicação: passe o mouse ou clique. Mais no <a onClick={() => openGlossary()}>Glossário</a>.</div>
-      <div className="row"><button className="btn amber" style={{ flex: 1, padding: 11 }} onClick={onApply}>Aplicar na fábrica</button><button className="btn sec" onClick={onDrop}>Descartar</button></div>
+      <div className="row"><button className="btn amber" style={{ flex: 1, padding: 11 }} onClick={onApply}>Aplicar no quadro</button><button className="btn sec" onClick={onDrop}>Descartar</button></div>
     </>
   );
 }

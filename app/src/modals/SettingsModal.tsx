@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { CostInfo, Refs } from '../components/Shared';
 import { useStore, type SettingsSection } from '../store/useStore';
+import { RealData } from './ImportDatasheet';
 import { Modal } from './Modal';
+import { UsersAdmin } from './UsersAdmin';
 
 const SECTIONS: [SettingsSection, string][] = [
-  ['geral', 'Geral'], ['tipos', 'Tipos de máquina'], ['limites', 'Limites das máquinas'], ['precos', 'Preços das máquinas'], ['catalogo', 'Catálogo e fontes'], ['dados', 'Dados reais (futuro)'],
+  ['geral', 'Geral'], ['tipos', 'Tipos de máquina'], ['limites', 'Limites das máquinas'], ['precos', 'Preços das máquinas'], ['catalogo', 'Catálogo e fontes'], ['dados', 'Dados reais (ficha técnica)'], ['usuarios', 'Usuários'],
 ];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
@@ -21,6 +23,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           {sec === 'precos' && <Prices />}
           {sec === 'catalogo' && <CatalogSources />}
           {sec === 'dados' && <RealData />}
+          {sec === 'usuarios' && <UsersAdmin />}
         </div>
       </div>
     </Modal>
@@ -126,18 +129,6 @@ function CatalogSources() {
       <table className="t"><thead><tr><th>Máquina</th><th>Origem dos números</th></tr></thead><tbody>
         {Object.entries(catalog).map(([k, t]) => <tr key={k}><td style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>{t.name}</td><td><Refs t={t} id={k} /></td></tr>)}
       </tbody></table>
-    </>
-  );
-}
-
-function RealData() {
-  return (
-    <>
-      <h3>Dados reais (futuro)</h3>
-      <p className="d">Hoje tudo é simulado. No futuro, o sistema poderá ler as máquinas de verdade.</p>
-      {['Simulador interno (ativo)', 'Máquina moderna — leitura direta (OPC UA)', 'Máquina antiga — sensores externos (MQTT)', 'Arquivo CSV com histórico'].map((l, i) => (
-        <label key={l} className="chk"><input type="radio" name="fonte" defaultChecked={i === 0} /><span>{l}</span></label>
-      ))}
     </>
   );
 }
