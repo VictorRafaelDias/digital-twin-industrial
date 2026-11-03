@@ -47,9 +47,9 @@ Abra **http://127.0.0.1:8000/docs** (documentação interativa): clique em **Aut
 
 | O que | Onde |
 |---|---|
-| **API (FastAPI)**: login, catálogo, fábricas, simulação, planos, cenários, Play ao vivo (WebSocket), registro e conversa | [`backend/app/`](backend/app/): 70 rotas e um WebSocket, descritas em [`backend/README.md`](backend/README.md#todas-as-rotas-70--o-websocket) |
+| **API (FastAPI)**: login, catálogo, fábricas, simulação, planos, cenários, Play ao vivo (WebSocket), registro e conversa | [`backend/app/`](backend/app/): 69 rotas e um WebSocket, descritas em [`backend/README.md`](backend/README.md#todas-as-rotas-69--o-websocket) |
 | **Motor de simulação** (o mesmo do front-end, em Python) | [`backend/app/engine/`](backend/app/engine/) |
-| **Testes automáticos** (426), incluindo a prova de que o motor em Python dá os mesmos resultados do front-end | [`backend/tests/`](backend/tests/): `pip install -r requirements-dev.txt` e `python -m pytest` |
+| **Testes automáticos** (430), incluindo a prova de que o motor em Python dá os mesmos resultados do front-end | [`backend/tests/`](backend/tests/): `pip install -r requirements-dev.txt` e `python -m pytest` |
 
 ## Sumário
 
@@ -91,7 +91,7 @@ O catálogo de 14 máquinas é **dado** (não código fixo), para permitir outro
 - **Painel da máquina** (como o painel de um operador), **fábrica vista de cima**, **assistente de conversa** e **registro** de tudo o que acontece.
 - **Ajuda completa:** guia da plataforma, manual das máquinas e glossário, com termos explicados nas próprias telas.
 - **Dash:** aba na lateral com gráficos que acompanham a simulação ao vivo (medidor da fábrica, linha do tempo, capacidade × saída, filas, energia, risco, temperatura estimada das máquinas e desgaste) e mini-gráficos ao clicar numa máquina.
-- **Desgaste e manutenção** (com servidor): horas de uso, vida útil gasta, depreciação, previsão de manutenção e de fim de vida; a máquina gasta rende menos e arrisca mais, e a manutenção recupera parte do desgaste.
+- **Idade e manutenção das máquinas:** você informa a idade e a última manutenção de cada máquina (painel **Estado das máquinas** no quadro, ou no painel da máquina); máquina velha rende menos, arrisca mais e esquenta mais (hipótese didática). Por padrão todas são novas. Funciona também sem servidor.
 - **Dados reais:** anexar a ficha técnica (PDF) de uma máquina; o sistema lê por regras (sem IA e sem custo), você confere e edita, ele avisa se já existe uma máquina parecida (lado a lado) e você escolhe atualizar, salvar como nova versão ou criar.
 - **Modo servidor:** login de verdade, fábricas guardadas por usuário, resultados do Play e desgaste guardados no banco; sem servidor o sistema continua funcionando sozinho no navegador.
 - **Configurações:** tipos de máquina, limites (ótimo, atenção, falha) e preços editáveis.
@@ -143,7 +143,7 @@ Execute dentro da pasta `app/`:
 │       ├── components/, views/, modals/    interface
 │       └── styles/
 ├── banco-de-dados/    base de dados: DER, banco SQLite pronto, scripts SQL, CRUD e testes (Sprint 1)
-├── backend/           API (FastAPI): login, catálogo, fábricas, simulação, planos, Play ao vivo, dashboard, desgaste, importação de ficha técnica; motor em Python e 426 testes
+├── backend/           API (FastAPI): login, catálogo, fábricas, simulação, planos, Play ao vivo, dashboard, desgaste, importação de ficha técnica; motor em Python e 430 testes
 ├── docs/              mapa de telas, decisões do código e preços estimados
 └── index.html         redireciona para ABRIR_AQUI (usado na página publicada)
 ```
@@ -167,15 +167,15 @@ cd app
 npm test
 ```
 
-São 68 testes: motor de simulação (gargalo, risco, falha em cascata, paralelo e fila, temperatura, **desgaste**, play), temperatura estimada das máquinas, regras de conexão, planejador de objetivo, relatório de gargalo, "e se..." com cascata, o estado da aplicação, as **versões do relatório (V1, V2) e o uso das máquinas** e o **modo servidor** (login, catálogo do servidor, guardar e abrir fábricas, desgaste, Play guardado), com um servidor de mentira.
+São 82 testes: motor de simulação (gargalo, risco, falha em cascata, paralelo e fila, temperatura, **desgaste**, play), temperatura estimada das máquinas, regras de conexão, planejador de objetivo, relatório de gargalo, "e se..." com cascata, o estado da aplicação, as **versões do relatório (V1, V2) e o uso das máquinas** e o **modo servidor** (login, catálogo do servidor, guardar e abrir fábricas, desgaste, Play guardado), com um servidor de mentira.
 
-O back-end tem os próprios testes (426), em [`backend/`](backend/README.md#testes).
+O back-end tem os próprios testes (430), em [`backend/`](backend/README.md#testes).
 
 ## Limitações e próximos passos
 
 - A simulação é **didática**: os degraus de risco e os percentuais de temperatura são hipóteses (estão marcados assim no sistema). Os **preços são estimativas** de anúncios de fornecedores, não cotações ([docs/precos-maquinas.md](docs/precos-maquinas.md)).
 - O assistente de conversa responde com base na fábrica atual; a leitura de manuais em PDF ainda é de demonstração.
-- O front-end **fala com a API** quando você marca "Usar o servidor" no login (fábricas guardadas, desgaste, importação de fichas). Sem servidor, ele calcula tudo no navegador (por isso funciona na versão online do GitHub Pages). A API e o banco foram validados no **PostgreSQL 16** (Docker): os 426 testes da API passam nele e `docker compose up --build` na pasta `backend/` sobe tudo.
+- O front-end **fala com a API** quando você marca "Usar o servidor" no login (fábricas guardadas, desgaste, importação de fichas). Sem servidor, ele calcula tudo no navegador (por isso funciona na versão online do GitHub Pages). A API e o banco foram validados no **PostgreSQL 16** (Docker): os 430 testes da API passam nele e `docker compose up --build` na pasta `backend/` sobe tudo.
 - O desgaste, a depreciação e a temperatura das máquinas são **hipóteses didáticas** (a validar). A leitura de ficha técnica funciona com PDF de texto (não faz OCR de imagem).
 - Próximos passos: acompanhar o Play ao vivo pelo WebSocket na tela e leitura real de manuais (RAG). Ver [docs/novas-funcionalidades.md](docs/novas-funcionalidades.md).
 
