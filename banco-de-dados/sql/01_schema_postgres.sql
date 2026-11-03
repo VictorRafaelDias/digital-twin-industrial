@@ -573,9 +573,9 @@ COMMENT ON COLUMN fabrica_maquinas.ritmo IS 'Ritmo atual (na unidade do parâmet
 COMMENT ON COLUMN fabrica_maquinas.unidades_paralelo IS 'Quantas máquinas iguais trabalham lado a lado (1 a 6)';
 COMMENT ON COLUMN fabrica_maquinas.desligada IS 'Verdadeiro = máquina desligada';
 COMMENT ON COLUMN fabrica_maquinas.instalada_em IS 'Quando a máquina foi colocada na fábrica';
-COMMENT ON COLUMN fabrica_maquinas.horas_operacao IS 'Horas em que a máquina trabalhou (tempo real de uso)';
-COMMENT ON COLUMN fabrica_maquinas.horas_desgaste IS 'Horas de desgaste: contam mais rápido quando opera acima do ótimo (hipótese didática)';
-COMMENT ON COLUMN fabrica_maquinas.manutencao_em_h IS 'Horas de desgaste que a máquina tinha na última manutenção';
+COMMENT ON COLUMN fabrica_maquinas.horas_operacao IS 'Horas de uso da máquina informadas ao montar a fábrica (idade em anos x 4.000 h por ano; igual a horas_desgaste). A simulação NÃO altera';
+COMMENT ON COLUMN fabrica_maquinas.horas_desgaste IS 'Idade da máquina em horas de desgaste (idade em anos x 4.000 h por ano; 0 = nova). Informada por quem monta a fábrica (hipótese didática)';
+COMMENT ON COLUMN fabrica_maquinas.manutencao_em_h IS 'Idade (em horas) que a máquina tinha na última manutenção; horas_desgaste menos este valor = tempo sem manutenção';
 COMMENT ON TABLE manuais_maquina IS 'Texto do Manual das máquinas (relação 1 para 1 com o catálogo)';
 COMMENT ON COLUMN manuais_maquina.maquina_id IS 'Máquina a que o manual pertence (1 manual por máquina)';
 COMMENT ON COLUMN manuais_maquina.o_que_faz IS 'Descrição completa da máquina';
@@ -672,8 +672,8 @@ COMMENT ON COLUMN manutencoes.fabrica_maquina_id IS 'Máquina que recebeu a manu
 COMMENT ON COLUMN manutencoes.usuario_id IS 'Quem registrou';
 COMMENT ON COLUMN manutencoes.realizada_em IS 'Quando a manutenção foi registrada';
 COMMENT ON COLUMN manutencoes.tipo IS 'preventiva (programada) ou corretiva (depois de falha)';
-COMMENT ON COLUMN manutencoes.horas_desgaste_antes IS 'Desgaste (horas) logo antes da manutenção';
-COMMENT ON COLUMN manutencoes.horas_desgaste_depois IS 'Desgaste (horas) logo depois: a manutenção recupera parte da vida da máquina';
+COMMENT ON COLUMN manutencoes.horas_desgaste_antes IS 'Idade (horas de desgaste) da máquina na manutenção';
+COMMENT ON COLUMN manutencoes.horas_desgaste_depois IS 'Igual ao anterior: a manutenção zera o tempo desde a última manutenção, mas não rejuvenesce a máquina';
 COMMENT ON COLUMN manutencoes.observacao IS 'O que foi feito';
 COMMENT ON TABLE plano_passos IS 'Passos de um plano (qual máquina mexer, de quanto para quanto, por quê e quanto custa)';
 COMMENT ON COLUMN plano_passos.id IS 'Identificador da linha (gerado automaticamente)';

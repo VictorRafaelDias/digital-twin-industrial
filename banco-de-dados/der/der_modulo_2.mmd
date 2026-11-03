@@ -111,13 +111,13 @@ erDiagram
         datetime criado_em
         datetime ultimo_acesso_em
     }
-    etapas ||--o{ maquinas_catalogo : "contém"
     categorias ||--o{ maquinas_catalogo : "agrupa"
+    etapas ||--o{ maquinas_catalogo : "contém"
     maquinas_catalogo ||--|| manuais_maquina : "tem manual"
-    usuarios |o--o{ documentos_maquina : "usuario_id"
     maquinas_catalogo |o--o{ documentos_maquina : "maquina_id"
+    usuarios |o--o{ documentos_maquina : "usuario_id"
     maquinas_catalogo ||--o{ maquina_fontes : "usa"
     fontes ||--o{ maquina_fontes : "sustenta"
     maquinas_catalogo ||--o{ precos_maquina : "tem preço"
-    fontes ||--o{ modelos_reais : "documenta"
     maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"
+    fontes ||--o{ modelos_reais : "documenta"

@@ -102,15 +102,15 @@ Catálogo: os tipos de máquina que podem ser colocados numa fábrica, com limit
 
 Regras de integridade:
 
-- **Regra** `ck_maquinas_catalogo_sensibilidade`: `sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')`
-- **Regra** `ck_maquinas_catalogo_ordem`: `ordem_processo IS NULL OR (ordem_processo >= 0 AND ordem_processo <= 9)`
 - **Regra** `ck_maquinas_catalogo_origem`: `origem IN ('embutida', 'importada')`
 - **Regra** `ck_maquinas_catalogo_limites`: `valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max`
+- **Regra** `ck_maquinas_catalogo_ordem`: `ordem_processo IS NULL OR (ordem_processo >= 0 AND ordem_processo <= 9)`
 - **Regra** `ck_maquinas_catalogo_versao`: `versao >= 1`
 - **Regra** `ck_maquinas_catalogo_capacidade`: `capacidade_otima > 0`
 - **Regra** `ck_maquinas_catalogo_fluxo`: `fluxo IN ('geral', 'suco')`
 - **Regra** `ck_maquinas_catalogo_horas`: `vida_util_h > 0 AND intervalo_manutencao_h > 0`
 - **Regra** `ck_maquinas_catalogo_consumo`: `consumo_parado_kw >= 0 AND consumo_variavel_kw >= 0`
+- **Regra** `ck_maquinas_catalogo_sensibilidade`: `sensibilidade_termica IN ('tanque', 'motor', 'frio', 'viscosidade', 'nenhuma')`
 
 Índices: `ix_maquinas_catalogo_categoria_id`
 
@@ -313,17 +313,17 @@ Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e uni
 | `unidades_paralelo` | SMALLINT |  | sim | 1 | Quantas máquinas iguais trabalham lado a lado (1 a 6) |
 | `desligada` | BOOLEAN |  | sim | falso | Verdadeiro = máquina desligada |
 | `instalada_em` | DATETIME |  | sim | agora | Quando a máquina foi colocada na fábrica |
-| `horas_operacao` | NUMERIC(12, 1) |  | sim | 0 | Horas em que a máquina trabalhou (tempo real de uso) |
-| `horas_desgaste` | NUMERIC(12, 1) |  | sim | 0 | Horas de desgaste: contam mais rápido quando opera acima do ótimo (hipótese didática) |
-| `manutencao_em_h` | NUMERIC(12, 1) |  | sim | 0 | Horas de desgaste que a máquina tinha na última manutenção |
+| `horas_operacao` | NUMERIC(12, 1) |  | sim | 0 | Horas de uso da máquina informadas ao montar a fábrica (idade em anos x 4.000 h por ano; igual a horas_desgaste). A simulação NÃO altera |
+| `horas_desgaste` | NUMERIC(12, 1) |  | sim | 0 | Idade da máquina em horas de desgaste (idade em anos x 4.000 h por ano; 0 = nova). Informada por quem monta a fábrica (hipótese didática) |
+| `manutencao_em_h` | NUMERIC(12, 1) |  | sim | 0 | Idade (em horas) que a máquina tinha na última manutenção; horas_desgaste menos este valor = tempo sem manutenção |
 
 Regras de integridade:
 
+- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
+- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
 - **Regra** `ck_fabrica_maquinas_posicao`: `pos_x >= 0 AND pos_y >= 0`
 - **Regra** `ck_fabrica_maquinas_horas`: `horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste`
 - **Regra** `ck_fabrica_maquinas_ritmo`: `ritmo >= 0`
-- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
-- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
 
 Índices: `ix_fabrica_maquinas_fabrica_id`, `ix_fabrica_maquinas_maquina_id`
 
@@ -358,8 +358,8 @@ Histórico de manutenções de cada máquina da fábrica
 | `usuario_id` | INTEGER | FK → usuarios.id (SET NULL) | não |  | Quem registrou |
 | `realizada_em` | DATETIME |  | sim | agora | Quando a manutenção foi registrada |
 | `tipo` | VARCHAR(10) |  | sim | preventiva | preventiva (programada) ou corretiva (depois de falha) |
-| `horas_desgaste_antes` | NUMERIC(12, 1) |  | sim |  | Desgaste (horas) logo antes da manutenção |
-| `horas_desgaste_depois` | NUMERIC(12, 1) |  | sim |  | Desgaste (horas) logo depois: a manutenção recupera parte da vida da máquina |
+| `horas_desgaste_antes` | NUMERIC(12, 1) |  | sim |  | Idade (horas de desgaste) da máquina na manutenção |
+| `horas_desgaste_depois` | NUMERIC(12, 1) |  | sim |  | Igual ao anterior: a manutenção zera o tempo desde a última manutenção, mas não rejuvenesce a máquina |
 | `observacao` | TEXT |  | não |  | O que foi feito |
 
 Regras de integridade:
@@ -389,8 +389,8 @@ Fotos de uma fábrica simulada, para comparar antes e depois
 
 Regras de integridade:
 
-- **Regra** `ck_cenarios_risco`: `risco_max >= 0 AND risco_max <= 1`
 - **Regra** `ck_cenarios_valores`: `producao_h >= 0 AND energia_kw >= 0`
+- **Regra** `ck_cenarios_risco`: `risco_max >= 0 AND risco_max <= 1`
 
 Índices: `ix_cenarios_fabrica_id`
 
@@ -416,8 +416,8 @@ Situação de cada máquina dentro de um cenário (capacidade, saída, fila, ris
 
 Regras de integridade:
 
-- **Regra** `ck_cenario_maquinas_risco`: `risco >= 0 AND risco <= 1`
 - **Regra** `ck_cenario_maquinas_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
+- **Regra** `ck_cenario_maquinas_risco`: `risco >= 0 AND risco <= 1`
 
 Índices: `ix_cenario_maquinas_cenario_id`
 
@@ -443,10 +443,10 @@ Resultado final de cada vez que o usuário roda o Play
 
 Regras de integridade:
 
-- **Regra** `ck_simulacoes_valores`: `garrafas_produzidas >= 0 AND energia_kwh >= 0 AND fila_total >= 0`
-- **Regra** `ck_simulacoes_duracao`: `duracao_min > 0`
 - **Regra** `ck_simulacoes_risco`: `risco_max >= 0 AND risco_max <= 1`
 - **Regra** `ck_simulacoes_velocidade`: `velocidade IN (1, 5, 20, 60)`
+- **Regra** `ck_simulacoes_valores`: `garrafas_produzidas >= 0 AND energia_kwh >= 0 AND fila_total >= 0`
+- **Regra** `ck_simulacoes_duracao`: `duracao_min > 0`
 
 Índices: `ix_simulacoes_fabrica_id`
 
@@ -467,8 +467,8 @@ Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábri
 
 Regras de integridade:
 
-- **Único** `uq_simulacao_pontos_minuto`: combinação de `simulacao_id, minuto`
 - **Regra** `ck_simulacao_pontos_risco`: `risco_max >= 0 AND risco_max <= 1`
+- **Único** `uq_simulacao_pontos_minuto`: combinação de `simulacao_id, minuto`
 
 ### `simulacao_pontos_maquina`
 
@@ -488,8 +488,8 @@ Leitura de cada máquina em cada ponto da linha do tempo (alimenta o mini-painel
 
 Regras de integridade:
 
-- **Regra** `ck_simulacao_pontos_maquina_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
 - **Regra** `ck_simulacao_pontos_maquina_risco`: `risco >= 0 AND risco <= 1`
+- **Regra** `ck_simulacao_pontos_maquina_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
 
 Índices: `ix_simulacao_pontos_maquina_maquina`, `ix_simulacao_pontos_maquina_ponto`
 
@@ -518,9 +518,9 @@ Planos do tipo 'quero +10% de produção': o que fazer, o resultado esperado e o
 
 Regras de integridade:
 
+- **Regra** `ck_planos_objetivo_risco`: `risco_antes >= 0 AND risco_antes <= 1 AND risco_depois >= 0 AND risco_depois <= 1`
 - **Regra** `ck_planos_objetivo_tipo`: `tipo_objetivo IN ('pct', 'abs', 'risk')`
 - **Regra** `ck_planos_objetivo_investimento`: `investimento_min >= 0 AND investimento_min <= investimento_max`
-- **Regra** `ck_planos_objetivo_risco`: `risco_antes >= 0 AND risco_antes <= 1 AND risco_depois >= 0 AND risco_depois <= 1`
 
 Índices: `ix_planos_objetivo_fabrica_id`
 

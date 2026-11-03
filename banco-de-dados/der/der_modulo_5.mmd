@@ -103,17 +103,6 @@ erDiagram
         string tipo
         text mensagem
     }
-    fabricas {
-        int id PK
-        int usuario_id FK
-        string nome
-        string exemplo_origem
-        int temperatura_ambiente
-        decimal tarifa_energia
-        boolean parada_emergencia
-        datetime criada_em
-        datetime atualizada_em
-    }
     fabrica_maquinas {
         int id PK
         int fabrica_id FK
@@ -127,6 +116,17 @@ erDiagram
         decimal horas_operacao
         decimal horas_desgaste
         decimal manutencao_em_h
+    }
+    fabricas {
+        int id PK
+        int usuario_id FK
+        string nome
+        string exemplo_origem
+        int temperatura_ambiente
+        decimal tarifa_energia
+        boolean parada_emergencia
+        datetime criada_em
+        datetime atualizada_em
     }
     maquinas_catalogo {
         int id PK
@@ -172,25 +172,25 @@ erDiagram
         datetime criado_em
         datetime ultimo_acesso_em
     }
-    fabricas ||--o{ cenarios : "gera"
     fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
-    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
+    fabricas ||--o{ cenarios : "gera"
     fabrica_maquinas |o--o{ cenario_maquinas : "registra"
     cenarios ||--o{ cenario_maquinas : "detalha"
-    fabricas ||--o{ simulacoes : "é simulada em"
+    maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
     maquinas_catalogo |o--o{ simulacoes : "limitou"
     usuarios ||--o{ simulacoes : "roda"
+    fabricas ||--o{ simulacoes : "é simulada em"
     simulacoes ||--o{ simulacao_pontos : "simulacao_id"
     simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"
     fabrica_maquinas |o--o{ simulacao_pontos_maquina : "fabrica_maquina_id"
     usuarios ||--o{ planos_objetivo : "pede"
     fabricas ||--o{ planos_objetivo : "recebe"
     maquinas_catalogo ||--o{ plano_passos : "afeta tipo"
-    fabrica_maquinas |o--o{ plano_passos : "mexe em"
     planos_objetivo ||--o{ plano_passos : "é feito de"
-    simulacoes |o--o{ eventos_registro : "ocorre em"
+    fabrica_maquinas |o--o{ plano_passos : "mexe em"
     usuarios |o--o{ eventos_registro : "causa"
+    simulacoes |o--o{ eventos_registro : "ocorre em"
     fabricas |o--o{ eventos_registro : "registra"
-    usuarios ||--o{ fabricas : "possui"
     maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
     fabricas ||--o{ fabrica_maquinas : "contém"
+    usuarios ||--o{ fabricas : "possui"
