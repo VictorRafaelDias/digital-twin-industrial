@@ -2,7 +2,7 @@
 import { COLORS, riskColor, sliceColor, stateColor, type BarRow, type Slice } from '../components/Charts';
 import { bestProduction, simulate } from '../engine/simulate';
 import { machineTemp } from '../engine/thermal';
-import { STATUS_SHORT, wearEffects } from '../engine/wear';
+import { daysSince, STATUS_SHORT, wearEffects } from '../engine/wear';
 import type { Catalog, FEdge, FNode, SimContext, SimResult } from '../types';
 import { machineNames, realFlow } from './versions';
 
@@ -30,7 +30,7 @@ export function computeChartData(p: { nodes: FNode[]; edges: FEdge[]; catalog: C
     riskRows: nodes.map((n) => ({ label: names[n.id], a: sim.res[n.id].risk * 100, color: riskColor(sim.res[n.id].risk), note: sim.res[n.id].state === 'normal' ? '' : sim.res[n.id].state })),
     tempRows: nodes.map((n) => ({ label: names[n.id], a: temps[n.id], color: temps[n.id] - ambient > 45 || sim.res[n.id].state === 'falha' ? COLORS.bad : temps[n.id] - ambient > 25 ? COLORS.warn : COLORS.teal })),
     wearRows: nodes.map((n) => {
-      const w = wearEffects(catalog[n.type], n.ageYears ?? 0, n.maintMonths ?? 0);
+      const w = wearEffects(catalog[n.type], n.ageYears ?? 0, daysSince(n.maintDate));
       return { label: names[n.id], a: Math.min(100, w.lifeUsed * 100), color: WEAR_COLOR[w.status], note: w.status === 'ok' ? '' : STATUS_SHORT[w.status] };
     }),
     slices: nodes.map((n, i) => ({ label: names[n.id], value: sim.res[n.id].energy, color: sliceColor(i) })).sort((a, b) => b.value - a.value),

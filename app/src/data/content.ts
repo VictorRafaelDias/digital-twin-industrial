@@ -1,13 +1,17 @@
 /* Gerado a partir do protótipo (frontend/prototipo/js) e mantido à mão a partir daqui. */
 import type { GuideStep, ManualEntry, TypeInfo } from '../types';
+import { REAL_CASES, type TemplateNode } from './realCases';
 
-export const TEMPLATES: Record<string, { name: string; nodes: [string, number, number][] }> = {
+/** Exemplos prontos: [tipo, x, y] e, opcionalmente, [unidades em paralelo, ritmo]. Os de empresas reais vêm de data/realCases.ts. */
+export const TEMPLATES: Record<string, { name: string; nodes: TemplateNode[] }> = {
   bebidas: { name:'Bebidas em geral', nodes:[
     ['tanque_agua',40,60],['tanque_xarope',270,60],['misturador',500,60],['pasteurizador',730,60],
     ['carbonatador',730,250],['enchedora',500,250],['esteira',270,250],['rotuladora',40,250]]},
   suco: { name:'Suco de laranja natural', nodes:[
     ['recepcao_fruta',40,60],['lavadora_frutas',270,60],['extratora',500,60],
     ['filtro_despolpadeira',500,250],['envasadora_suco',270,250],['camara_fria',40,250]]}
+,
+  ...Object.fromEntries(REAL_CASES.map((c) => [c.key, { name: c.name, nodes: c.nodes }])),
 };
 
 /** zonas da visão física (planta baixa) */

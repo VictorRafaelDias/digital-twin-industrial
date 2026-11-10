@@ -32,7 +32,7 @@ def _full(conn: Connection, row) -> dict:
 # ---------------------------------------------------------------- exemplos e fábricas
 @router.get("/templates", summary="Exemplos prontos para carregar")
 def templates():
-    return [{"key": k, "name": v["name"], "machines": [c for c, _, _ in v["nodes"]]} for k, v in fa.TEMPLATES.items()]
+    return [{"key": k, "name": v["name"], "machines": [n[0] for n in v["nodes"]], "units": [n[3] if len(n) > 3 else 1 for n in v["nodes"]]} for k, v in fa.TEMPLATES.items()]
 
 
 @router.get("/factories", summary="Minhas fábricas")
@@ -65,7 +65,7 @@ def delete_factory(row=Depends(owned_factory), conn: Connection = Depends(get_co
 @router.put("/factories/{fid}/layout", summary="Salvar o desenho inteiro de uma vez (substitui máquinas e conexões)")
 def put_layout(body: LayoutIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
     machines = [{"ref": m.ref, "id": m.id, "type": m.type, "x": m.x, "y": m.y, "value": m.value, "qty": m.units_in_parallel, "off": m.off,
-                 "age_years": m.age_years, "maint_months": m.months_since_maintenance} for m in body.machines]
+                 "age_years": m.age_years, **({"last_maintenance_date": m.last_maintenance_date} if "last_maintenance_date" in m.model_fields_set else {})} for m in body.machines]
     result = fa.replace_layout(conn, row, user.id, machines, [c.model_dump() for c in body.connections])
     return {**_full(conn, fa.get_factory(conn, row.id, user.id)), "ids_by_ref": result["machines"]}
 
@@ -73,7 +73,7 @@ def put_layout(body: LayoutIn, row=Depends(owned_factory), user=Depends(current_
 # ---------------------------------------------------------------- máquinas
 @router.post("/factories/{fid}/machines", status_code=201, summary="Colocar uma máquina do catálogo na fábrica")
 def add_machine(body: MachineIn, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
-    mid = fa.add_machine(conn, row, user.id, body.type, body.x, body.y, body.value, body.units_in_parallel, body.off, body.age_years, body.months_since_maintenance)
+    mid = fa.add_machine(conn, row, user.id, body.type, body.x, body.y, body.value, body.units_in_parallel, body.off, body.age_years, body.last_maintenance_date)
     catalog = load_catalog(conn)
     from ..views import node_dict
     n = fa.get_node(conn, row.id, mid, catalog)
@@ -83,7 +83,8 @@ def add_machine(body: MachineIn, row=Depends(owned_factory), user=Depends(curren
 @router.patch("/factories/{fid}/machines/{mid}", summary="Mudar ritmo, unidades em paralelo, ligar/desligar ou posição")
 def patch_machine(mid: Annotated[int, Path(ge=1, le=2_147_483_647)], body: MachinePatch, row=Depends(owned_factory), user=Depends(current_user), conn: Connection = Depends(get_conn)):
     fa.update_machine(conn, row, user.id, mid, {"value": body.value, "qty": body.units_in_parallel, "off": body.off, "x": body.x, "y": body.y,
-                                                         "age_years": body.age_years, "maint_months": body.months_since_maintenance})
+                                                         "age_years": body.age_years,
+                                                         **({"last_maintenance_date": body.last_maintenance_date} if "last_maintenance_date" in body.model_fields_set else {})})
     catalog = load_catalog(conn)
     nodes, edges = fa.load_graph(conn, row.id, catalog)
     fresh = fa.get_factory(conn, row.id, user.id)

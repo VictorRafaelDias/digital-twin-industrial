@@ -5,12 +5,12 @@ import { money, moneyRange } from '../engine/cost';
 import { fmt, fv, stepOf } from '../engine/format';
 import { explainNow, heatFactor } from '../engine/simulate';
 import { machineTemp } from '../engine/thermal';
-import { HORAS_USO_ANO, intervalMonths, lifeYears, STATUS_TEXT, wearEffects } from '../engine/wear';
+import { brDate, daysSince, HORAS_USO_ANO, intervalMonths, lifeYears, sinceText, STATUS_TEXT, wearEffects } from '../engine/wear';
 import { useStore } from '../store/useStore';
 import { utilization } from '../store/versions';
 import type { ChatMsg, SideTab } from '../types';
 import { COLORS, riskColor, Spark } from './Charts';
-import { NumField } from './AgePanel';
+import { DateField, NumField } from './AgePanel';
 import { DashTab } from './DashTab';
 import { Icon } from './Icon';
 import { Rich } from './Rich';
@@ -224,8 +224,8 @@ function MachineLive({ nodeId }: { nodeId: string }) {
   const t = s.catalog[n.type], r = sim.res[n.id];
   const temp = machineTemp(t, n, r, s.ambient);
   const ms = s.run.mseries[n.id] || [];
-  const age = n.ageYears ?? 0, months = n.maintMonths ?? 0;
-  const w = wearEffects(t, age, months);
+  const age = n.ageYears ?? 0, dias = daysSince(n.maintDate);
+  const w = wearEffects(t, age, dias);
   const price = t.cost && t.cost.max ? ((t.cost.min + t.cost.max) / 2) * (n.qty || 1) : null;
   const hot = temp - s.ambient > 45 || r.state === 'falha' ? COLORS.bad : temp - s.ambient > 25 ? COLORS.warn : COLORS.teal;
   const wcolor = w.status === 'ok' ? COLORS.ok : w.status === 'atencao' ? COLORS.warn : COLORS.bad;
@@ -242,7 +242,7 @@ function MachineLive({ nodeId }: { nodeId: string }) {
         <h4>Idade e manutenção <small>(hipótese didática)</small></h4>
         <div className="agegrid">
           <label>Idade (anos de uso)<NumField value={age} max={60} onCommit={(v) => s.setAge(n.id, v)} /></label>
-          <label>Última manutenção (meses atrás)<NumField value={months} max={age * 12} step={1} onCommit={(v) => s.setMaintMonths(n.id, v)} title="Não passa da idade da máquina" /></label>
+          <label>Data da última manutenção{age > 0 ? <DateField value={n.maintDate} onCommit={(v) => s.setMaintDate(n.id, v)} /> : <span className="sub" style={{ margin: 0 }}>informe a idade primeiro</span>}</label>
         </div>
         <div className="agepre">
           {([['Nova', 0], ['Meia-vida', 0.5], ['Velha', 0.8], ['Fim de vida', 1]] as [string, number][]).map(([l, f]) => <button key={l} className="btn sec" onClick={() => s.agePreset([n.id], f)}>{l}</button>)}
@@ -252,8 +252,9 @@ function MachineLive({ nodeId }: { nodeId: string }) {
             <div className="wbar" title={`${fmt(w.lifeUsed * 100, 1)}% da vida útil`}><i style={{ width: `${Math.min(100, w.lifeUsed * 100)}%`, background: wcolor }} /></div>
             <div className="wline"><b style={{ color: wcolor }}>{STATUS_TEXT[w.status]}</b></div>
             <table className="wt"><tbody>
+              <tr><td>Última manutenção</td><td>{n.maintDate ? <><b>{brDate(n.maintDate)}</b> (há {sinceText(dias)})</> : <b>não informada (conta como em dia)</b>}</td></tr>
               <tr><td>Vida útil gasta</td><td><b>{fmt(w.lifeUsed * 100, 1)}%</b> de {fmt(lifeYears(t), 1)} anos</td></tr>
-              <tr><td>Próxima manutenção</td><td><b>{w.hoursToMaintenance >= 0 ? `em ${fmt(w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses` : `atrasada ${fmt(-w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses`}</b> (a cada {fmt(intervalMonths(t), 1)} meses)</td></tr>
+              <tr><td>Próxima manutenção</td><td><b>{w.hoursToMaintenance >= 0 ? `em ${fmt(w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses` : `atrasada ${fmt(-w.hoursToMaintenance / (HORAS_USO_ANO / 12), 1)} meses`}</b> (a cada {fmt(intervalMonths(t), 0)} meses)</td></tr>
               <tr><td>Perda de rendimento</td><td><b>{fmt((1 - w.cap) * 100, 1)}%</b> · risco +{fmt(w.risk * 100, 1)} pontos · +{fmt(w.temp, 1)} °C</td></tr>
               {price != null && <tr><td>Valor hoje (depreciação)</td><td><b>{money(price * w.residual)}</b> de {money(price)}</td></tr>}
               <tr><td>Previsão: fim da vida útil</td><td><b>em {fmt(w.hoursOfLifeLeft / HORAS_USO_ANO, 1)} anos</b></td></tr>

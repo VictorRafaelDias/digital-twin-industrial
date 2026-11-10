@@ -9,7 +9,7 @@ Para regerar tudo: python scripts/gerar_banco.py
 Biblioteca usada só para gerar os arquivos: SQLAlchemy 2.x (o banco entregue funciona sem ela).
 """
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, MetaData,
+    Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, MetaData,
     Numeric, SmallInteger, String, Table, Text, UniqueConstraint, false, func, true,
 )
 
@@ -269,7 +269,8 @@ fabrica_maquinas = Table(
     Column("instalada_em", DateTime, nullable=False, server_default=func.current_timestamp(), comment="Quando a máquina foi colocada na fábrica"),
     Column("horas_operacao", Numeric(12, 1), nullable=False, server_default="0", comment="Horas de uso da máquina informadas ao montar a fábrica (idade em anos x 4.000 h por ano; igual a horas_desgaste). A simulação NÃO altera"),
     Column("horas_desgaste", Numeric(12, 1), nullable=False, server_default="0", comment="Idade da máquina em horas de desgaste (idade em anos x 4.000 h por ano; 0 = nova). Informada por quem monta a fábrica (hipótese didática)"),
-    Column("manutencao_em_h", Numeric(12, 1), nullable=False, server_default="0", comment="Idade (em horas) que a máquina tinha na última manutenção; horas_desgaste menos este valor = tempo sem manutenção"),
+    Column("manutencao_em_h", Numeric(12, 1), nullable=False, server_default="0", comment="(Não usada desde a versão com data) antes guardava a idade na última manutenção; hoje vale ultima_manutencao_em"),
+    Column("ultima_manutencao_em", Date, nullable=True, comment="Data da última manutenção informada (vazio = não informada: a máquina conta como em dia). O tempo sem manutenção é calculado a partir dela"),
     UniqueConstraint("fabrica_id", "id", name="uq_fabrica_maquinas_fabrica_id"),
     CheckConstraint("pos_x >= 0 AND pos_y >= 0", name="ck_fabrica_maquinas_posicao"),
     CheckConstraint("ritmo >= 0", name="ck_fabrica_maquinas_ritmo"),

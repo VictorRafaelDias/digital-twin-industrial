@@ -4,6 +4,8 @@ API em **Python (FastAPI)** que guarda tudo no banco da pasta [`../banco-de-dado
 
 O front-end (`../app`) já fala com esta API: na tela de login, marque **"Usar o servidor"**.
 
+> **Atalho:** na raiz do repositório, `INICIAR.bat` (duplo clique) liga a API e o site juntos; `INICIAR_DOCKER.bat` sobe banco + API + site com Docker. Os passos abaixo são o jeito manual.
+
 ## Ver funcionando (3 passos)
 
 Precisa só do Python 3.10 ou mais novo.
@@ -28,7 +30,7 @@ Na primeira vez o servidor cria sozinho o banco `backend/data/digital_twin.db` (
 5. `POST /factories/{id}/plans` com `{"type":"pct","value":10}`, depois `POST /factories/{id}/plans/{plan_id}/apply`.
 6. `POST /factories/{id}/play` para ver o resultado final da simulação com tempo e a linha do tempo.
 7. `GET /factories/{id}/dashboard` (dados dos gráficos) e `GET /factories/{id}/wear` (desgaste de cada máquina).
-8. `PATCH /factories/{id}/machines/{mid}` com `{"age_years": 3.75, "months_since_maintenance": 12}` e depois `GET .../simulate`: a máquina velha e sem manutenção rende menos e tem mais risco. `POST .../maintenance` zera o tempo sem manutenção.
+8. `PATCH /factories/{id}/machines/{mid}` com `{"age_years": 3.75, "last_maintenance_date": "2025-11-03"}` e depois `GET .../simulate`: a máquina velha e sem manutenção rende menos e tem mais risco. `POST .../maintenance` registra a manutenção de hoje.
 
 ## O que ele faz de novo (versão 2)
 
@@ -38,14 +40,14 @@ Na primeira vez o servidor cria sozinho o banco `backend/data/digital_twin.db` (
 A **temperatura da máquina** é uma **hipótese didática**: ambiente mais um aquecimento proporcional à carga em que ela trabalha, maior acima do ritmo ótimo (motor 40 °C a plena carga, tanque 12 °C, etc.; câmara fria perto de 4 °C). Não vem de ficha de fabricante (`app/engine/thermal.py`).
 
 ### Idade, manutenção e depreciação das máquinas
-A **idade da máquina** (anos de uso) e os **meses desde a última manutenção** são **dados de entrada**, informados por quem monta a fábrica (campos `age_years` e `months_since_maintenance` ao criar, salvar o desenho ou alterar uma máquina). O padrão é **máquina nova e manutenção em dia**. A simulação e o Play **não gastam** a máquina: o mesmo desenho dá sempre o mesmo resultado (por isso dá para comparar versões). Por dentro, idade e meses viram horas (4.000 h de uso por ano) e usam as colunas de horas que já existiam no banco. Efeitos (todos **hipótese didática**, em `app/engine/wear.py`):
+A **idade da máquina** (anos de uso) e a **data da última manutenção** são **dados de entrada**, informados por quem monta a fábrica (campos `age_years` e `last_maintenance_date`, AAAA-MM-DD, ao criar, salvar o desenho ou alterar uma máquina). O padrão é **máquina nova e manutenção em dia**. A simulação e o Play **não gastam** a máquina: o mesmo desenho dá sempre o mesmo resultado (por isso dá para comparar versões). Por dentro, idade e meses viram horas (4.000 h de uso por ano) e usam as colunas de horas que já existiam no banco. Efeitos (todos **hipótese didática**, em `app/engine/wear.py`):
 - até **−20%** de rendimento no fim da vida útil e até **−5%** com manutenção muito atrasada;
 - o risco base (2%) sobe até **+8 pontos** pela idade e **+4** pela manutenção atrasada;
 - a máquina **esquenta** até **+8 °C** pela idade (curva quadrática) e **+4 °C** pela manutenção atrasada;
 - **depreciação** linear até 10% do preço de nova; previsão de "manutenção em N horas" e de "fim da vida útil em N horas";
-- a **manutenção** (`POST .../maintenance`) zera o tempo desde a última manutenção e fica no histórico; ela **não rejuvenesce** a máquina.
+- a **manutenção** (`POST .../maintenance`) põe a data de hoje como última manutenção e fica no histórico; ela **não rejuvenesce** a máquina. Sem data informada a máquina conta como em dia; a data não pode estar no futuro nem antes de 1950 (422). Mandar `null` apaga a data; não mandar o campo mantém a que está.
 
-A vida útil e o intervalo de manutenção vêm da categoria da máquina (ex.: envase 25.000 h e 800 h; as mesmas tabelas do banco e do front-end, conferidas por teste). O efeito entra no mesmo motor da simulação: a produção, o gargalo, os planos e o dashboard já consideram máquinas velhas. Os números do exemplo (11.400 garrafas/h) só mudam quando a idade é informada.
+A vida útil e o intervalo de manutenção vêm da categoria da máquina (ex.: envase 25.000 h de vida e manutenção a cada 3 meses, 1.000 h; as mesmas tabelas do banco e do front-end, conferidas por teste). O efeito entra no mesmo motor da simulação: a produção, o gargalo, os planos e o dashboard já consideram máquinas velhas. Os números do exemplo (11.400 garrafas/h) só mudam quando a idade é informada.
 
 ### Importar a ficha técnica de uma máquina
 `POST /catalog/imports` recebe um PDF (com texto) ou `.txt`. O servidor lê o documento **por regras** (palavras-chave e padrões de texto; **sem IA e sem custo**), extrai fabricante, modelo, ano, capacidade, potência e uma sugestão de tipo, e devolve cada campo com o **trecho do documento e a página** de onde veio. O usuário confere e edita (`/preview`), e o sistema avisa se **já existe uma máquina parecida** (mesmo fabricante e modelo, ou nome parecido), mostrando os dois **lado a lado**. Então o usuário decide (`/confirm`):
@@ -71,7 +73,7 @@ python -m uvicorn app.main:app
 
 Para rodar os testes contra um PostgreSQL de teste (**apaga as tabelas dele**): `DT_TEST_DATABASE_URL=postgresql+psycopg2://... python -m pytest`.
 
-> **Validado no PostgreSQL 16.15 (Docker):** os **430 testes** da API passam também contra o PostgreSQL (`DT_TEST_DATABASE_URL`), e o pacote `docker compose up --build` sobe a API e o banco juntos (`/health` responde `postgresql`, 25 tabelas, 345 linhas, login funcionando). A validação achou um defeito que só o PostgreSQL mostra (a carga dos dados iniciais, por causa do símbolo "%" nos textos), já corrigido. Os testes do dia a dia rodam no SQLite, que é mais rápido.
+> **Validado no PostgreSQL 16.15 (Docker):** os **446 testes** da API passam também contra o PostgreSQL (`DT_TEST_DATABASE_URL`), e o pacote `docker compose up --build` sobe a API e o banco juntos (`/health` responde `postgresql`, 25 tabelas, 345 linhas, login funcionando). A validação achou um defeito que só o PostgreSQL mostra (a carga dos dados iniciais, por causa do símbolo "%" nos textos), já corrigido. Os testes do dia a dia rodam no SQLite, que é mais rápido.
 
 ## Como é por dentro
 
@@ -97,7 +99,7 @@ backend/
 │   ├── routers/           as rotas, agrupadas (auth, catalog, factories, system)
 │   └── engine/            MOTOR DE SIMULAÇÃO (funções puras, sem banco): simulate, connect, goal,
 │                          bottleneck, run, cost, water, wear, thermal, format, types
-├── tests/                 430 testes automáticos (ver abaixo)
+├── tests/                 446 testes automáticos (ver abaixo)
 ├── scripts/gerar_golden.ts  gera os casos de referência a partir do código do front-end
 ├── Dockerfile, docker-compose.yml
 └── requirements.txt, requirements-dev.txt
@@ -242,7 +244,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-**430 testes** (mais 1 que só roda com o PDF real, ver abaixo), em grupos:
+**446 testes** (mais 1 que só roda com o PDF real, ver abaixo), em grupos:
 
 | Arquivo | O que prova |
 |---|---|

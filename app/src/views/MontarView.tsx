@@ -6,7 +6,7 @@ import { PendingBanner } from '../components/Versions';
 import { useSim, useSimCtx, useTrouble } from '../components/hooks';
 import { canConnect, edgeKind } from '../engine/connect';
 import { fmt, fv } from '../engine/format';
-import { STATUS_SHORT, wearEffects } from '../engine/wear';
+import { daysSince, STATUS_SHORT, wearEffects } from '../engine/wear';
 import { useStore } from '../store/useStore';
 
 interface Rect { x: number; y: number; w: number; h: number }
@@ -122,7 +122,7 @@ export function MontarView() {
           {s.nodes.map((n) => {
             const t = s.catalog[n.type], r = sim.res[n.id];
             const q = s.run.active ? s.run.queue[n.id] || 0 : 0;
-            const ageW = wearEffects(t, n.ageYears ?? 0, n.maintMonths ?? 0);
+            const ageW = wearEffects(t, n.ageYears ?? 0, daysSince(n.maintDate));
             let cls = 'node' + (r.state === 'falha' ? ' danger' : r.state === 'desligada' ? ' off' : r.state !== 'normal' ? ' warn' : '')
               + (s.selected === n.id ? ' selected' : '') + (s.connectFrom === n.id ? ' src' : '');
             if (s.tool === 'link' && s.connectFrom && s.connectFrom !== n.id) cls += canConnect(s.connectFrom, n.id, s.nodes, s.edges, ctx.catalog).ok ? ' can' : ' cant';

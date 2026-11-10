@@ -113,6 +113,7 @@ erDiagram
         decimal horas_operacao
         decimal horas_desgaste
         decimal manutencao_em_h
+        string ultima_manutencao_em
     }
     manuais_maquina {
         int maquina_id PK,FK
@@ -277,30 +278,30 @@ erDiagram
     }
     usuarios ||--o{ fabricas : "possui"
     glossario_termos ||--o{ glossario_palavras : "é chamado por"
-    categorias ||--o{ maquinas_catalogo : "agrupa"
     etapas ||--o{ maquinas_catalogo : "contém"
-    maquinas_catalogo |o--o{ documentos_maquina : "maquina_id"
+    categorias ||--o{ maquinas_catalogo : "agrupa"
     usuarios |o--o{ documentos_maquina : "usuario_id"
+    maquinas_catalogo |o--o{ documentos_maquina : "maquina_id"
     maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
     fabricas ||--o{ fabrica_maquinas : "contém"
     maquinas_catalogo ||--|| manuais_maquina : "tem manual"
-    maquinas_catalogo ||--o{ maquina_fontes : "usa"
     fontes ||--o{ maquina_fontes : "sustenta"
-    usuarios ||--o{ mensagens_chat : "escreve"
+    maquinas_catalogo ||--o{ maquina_fontes : "usa"
     fabricas |o--o{ mensagens_chat : "trata de"
-    maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"
+    usuarios ||--o{ mensagens_chat : "escreve"
     fontes ||--o{ modelos_reais : "documenta"
+    maquinas_catalogo ||--o{ modelos_reais : "exemplificada por"
     usuarios ||--o{ planos_objetivo : "pede"
     fabricas ||--o{ planos_objetivo : "recebe"
     maquinas_catalogo ||--o{ precos_maquina : "tem preço"
     maquinas_catalogo |o--o{ simulacoes : "limitou"
-    usuarios ||--o{ simulacoes : "roda"
     fabricas ||--o{ simulacoes : "é simulada em"
+    usuarios ||--o{ simulacoes : "roda"
     fabrica_maquinas |o--o{ cenarios : "tinha gargalo"
     fabricas ||--o{ cenarios : "gera"
+    fabrica_maquinas ||--o{ conexoes : "recebe por"
     fabricas ||--o{ conexoes : "liga dentro de"
     fabrica_maquinas ||--o{ conexoes : "envia por"
-    fabrica_maquinas ||--o{ conexoes : "recebe por"
     usuarios |o--o{ eventos_registro : "causa"
     simulacoes |o--o{ eventos_registro : "ocorre em"
     fabricas |o--o{ eventos_registro : "registra"
@@ -313,5 +314,5 @@ erDiagram
     fabrica_maquinas |o--o{ cenario_maquinas : "registra"
     cenarios ||--o{ cenario_maquinas : "detalha"
     maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
-    simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"
     fabrica_maquinas |o--o{ simulacao_pontos_maquina : "fabrica_maquina_id"
+    simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"

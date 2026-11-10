@@ -36,8 +36,7 @@ ETAPA_PADRAO = {"termico": "Tratamento térmico", "envase": "Envase", "pos": "P�
 RANK_PADRAO = {"termico": 4, "envase": 6, "pos": 8, "preparo": 2, "insumos": 0, "frio": None}
 SENSIBILIDADE_PADRAO = {"termico": "nenhuma", "envase": "motor", "pos": "motor", "preparo": "motor", "insumos": "tanque", "frio": "frio"}
 ICONE_PADRAO = {"termico": "pasteur", "envase": "filler", "pos": "label", "preparo": "mixer", "insumos": "tank", "frio": "fridge"}
-VIDA_UTIL_H = {"insumos": 60000, "preparo": 40000, "termico": 30000, "envase": 25000, "pos": 30000, "frio": 35000}
-INTERVALO_MANUTENCAO_H = {"insumos": 2000, "preparo": 1500, "termico": 1000, "envase": 800, "pos": 1000, "frio": 1500}
+from .engine.wear import LIFE_H_BY_CAT as VIDA_UTIL_H, MAINT_H_BY_CAT as INTERVALO_MANUTENCAO_H   # vida útil e intervalo de manutenção por categoria
 
 # ritmo das máquinas importadas: % da capacidade nominal (hipótese didática: mesma lógica de risco do resto do sistema)
 LIMITES_PADRAO = {"min": 30.0, "optimal": 100.0, "warning": 110.0, "failure": 120.0, "max": 125.0}

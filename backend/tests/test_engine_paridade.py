@@ -179,7 +179,7 @@ def test_idade_e_manutencao_dao_os_mesmos_numeros_do_front():
     from app.engine.wear import HORAS_USO_ANO, hours_from_inputs, wear_of
     assert HORAS_USO_ANO == DATA["wearConsts"]["horasUsoAno"] and len(DATA["wear"]) >= 600
     for c in DATA["wear"]:
-        wear_h, maint_at = hours_from_inputs(c["age"], c["months"])
+        wear_h, maint_at = hours_from_inputs(c["age"], c["days"])
         assert close(wear_h, c["wearH"]) and close(maint_at, c["maintAtH"]), c
         w = wear_of(wear_h, maint_at, wear_h, c["lifeH"], c["maintH"])
         assert close(w.capacity_factor, c["cap"]) and close(w.risk_add, c["risk"]) and close(w.temp_add, c["temp"]), c

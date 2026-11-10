@@ -58,9 +58,17 @@ O caminho de uma melhoria, do começo ao fim:
 
 ## Idade e manutenção das máquinas
 
-No quadro (Montar) há o botão **⏱ Estado das máquinas** (canto esquerdo): uma legenda com a **idade (anos de uso)** e os **meses desde a última manutenção** de cada máquina, com atalhos **Nova / Meia-vida / Velha / Fim de vida** (a idade vira essa fração da vida útil de cada máquina). **Por padrão todas as máquinas são novas e em dia.** O painel da máquina tem os mesmos campos e mostra vida útil gasta, próxima manutenção, perda de rendimento, risco e temperatura a mais, valor depreciado e previsão de fim de vida. O cartão no quadro ganha uma etiqueta ("10 anos · fim de vida").
+No quadro (Montar) há o botão **⏱ Estado das máquinas** (canto esquerdo): uma legenda com a **idade (anos de uso)** e a **data da última manutenção** de cada máquina, com atalhos **Nova / Meia-vida / Velha / Fim de vida** (a idade vira essa fração da vida útil de cada máquina). **Por padrão todas as máquinas são novas e em dia.** O painel da máquina tem os mesmos campos e mostra vida útil gasta, próxima manutenção, perda de rendimento, risco e temperatura a mais, valor depreciado e previsão de fim de vida. O cartão no quadro ganha uma etiqueta ("10 anos · fim de vida").
 
 Efeitos (hipótese didática): até −20% de rendimento pela idade e −5% pela manutenção atrasada; até +8 pontos de risco pela idade e +4 pela manutenção atrasada; até +8 °C pela idade e +4 °C pela manutenção atrasada. A **simulação não gasta a máquina**: a idade é dado de entrada, por isso o mesmo desenho dá sempre o mesmo resultado. A idade entra nas **versões** (V1, V2...), no relatório e no PDF, e funciona também sem servidor.
+
+## Empresas reais (Exemplos)
+
+O menu **Exemplos** tem, além de "Bebidas em geral" e "Suco de laranja natural", **dez mapas de oito empresas reais** (Coca-Cola FEMSA em Jundiaí, SLMG Beverages na Índia, Refres Now/Manaos na Argentina, Coca-Cola Canners na África do Sul, Quilmes na Argentina e Tial em Minas Gerais, ambas antes e depois de uma ampliação, Refriko no Paraná e Tannourine Water no Líbano). Cada um reproduz **uma linha de envase** com a velocidade em garrafas por hora publicada, e ao carregar abre a janela **Sobre a fábrica**: o que é dado documentado (com links), o que foi assumido para montar o mapa e o histórico da empresa. `Exemplos › Sobre a fábrica carregada…` abre de novo. Detalhes, fontes e método em [empresas-reais.md](empresas-reais.md).
+
+## Ganho em reais
+
+Em **Resultados › Comparações**, abaixo do valor estimado dos equipamentos, o bloco **Ganho em reais (estimativa)** converte a diferença de produção entre duas versões em dinheiro: garrafas a mais por hora × horas de operação por ano × preço da garrafa, lucro máximo (porcentagem do preço) e retorno do investimento. Os três números (preço, horas por ano, lucro %) podem ser ajustados; nos exemplos de empresas reais o preço vem pesquisado, com fonte. Há conferência com a receita publicada da empresa (Tial) e comparação com o custo real da linha (Coca-Cola FEMSA). O PDF da comparação inclui o bloco. Detalhes em [empresas-reais.md](empresas-reais.md).
 
 ## Dash ampliado
 
@@ -125,5 +133,5 @@ Chance estimada de parar: ~2% (ótimo) → ~10% (atenção) → ~40% (crítico) 
 - **Login com servidor:** na tela de login, marque **Usar o servidor** (endereço padrão `http://127.0.0.1:8000`, ver `backend/README.md`). Sem servidor tudo funciona como antes, no navegador.
 - **Arquivo › Minhas fábricas no servidor / Guardar no servidor:** abrir, apagar e guardar fábricas na sua conta. Ao iniciar o Play a fábrica é guardada; ao terminar, o resultado é guardado (a simulação não gasta as máquinas).
 - **Painel lateral › Dash:** 9 gráficos que acompanham a simulação (medidor, linha do tempo, capacidade × saída, filas, energia, risco, temperatura estimada, desgaste, simulações guardadas).
-- **Painel lateral › Máquina:** gráficos da máquina (temperatura estimada, o que sai, risco) e **idade e manutenção** (idade em anos, meses desde a última manutenção, atalhos Nova / Meia-vida / Velha / Fim de vida, vida útil gasta, depreciação, previsão; botão "Fiz a manutenção"). Temperatura e desgaste são hipóteses didáticas.
+- **Painel lateral › Máquina:** gráficos da máquina (temperatura estimada, o que sai, risco) e **idade e manutenção** (idade em anos, data da última manutenção, atalhos Nova / Meia-vida / Velha / Fim de vida, vida útil gasta, depreciação, previsão; botão "Fiz a manutenção", que põe a data de hoje). Temperatura e desgaste são hipóteses didáticas.
 - **Configurações › Dados reais:** anexar a ficha técnica de uma máquina (PDF ou .txt), conferir os campos lidos, comparar com máquinas parecidas lado a lado e escolher atualizar, nova versão ou criar; lista de máquinas importadas (excluir) e de documentos anexados.

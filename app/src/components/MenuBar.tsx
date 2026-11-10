@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { REAL_CASES } from '../data/realCases';
 import { useStore } from '../store/useStore';
 import type { FEdge, FNode } from '../types';
 import { Icon } from './Icon';
@@ -60,6 +61,9 @@ export function MenuBar() {
     Exemplos: [
       { label: 'Bebidas em geral (8 máquinas)', run: () => s.loadTemplate('bebidas') },
       { label: 'Suco de laranja natural (6 máquinas)', run: () => s.loadTemplate('suco') },
+      '-',
+      ...REAL_CASES.map((c) => ({ label: `Empresa real: ${c.name}`, run: () => s.loadTemplate(c.key) })),
+      ...(s.caseKey ? ['-' as const, { label: 'Sobre a fábrica carregada (fontes e histórico)…', run: () => s.openModal('realcase') }] : []),
     ],
     Opções: [{ label: 'Configurações…', run: () => s.openSettings() }],
     Ajuda: [

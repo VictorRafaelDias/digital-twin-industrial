@@ -5,7 +5,7 @@ import { bottleneckReport } from '../engine/bottleneck';
 import { costOf } from '../engine/cost';
 import { computeChartData } from './reportData';
 import { useStore } from './useStore';
-import { moneyDelta, valueCompare, versionValue } from './value';
+import { effectivePrice, gainReais, moneyBig, moneyDelta, paybackText, valueCompare, versionValue } from './value';
 import { pickCompare } from './versions';
 
 const st = () => useStore.getState();
@@ -172,5 +172,77 @@ describe('PDF: a página que vai para a impressão', () => {
     expect(h).not.toContain('<img src=x');
     expect(h).toContain('&lt;img src=x');
     expect(esc('a<b>&"')).toBe('a&lt;b&gt;&amp;&quot;');
+  });
+});
+
+
+describe('ganho em reais', () => {
+  const fakeV = (prod: number) => ({ prod } as never);
+  const delta = { min: 80_000, max: 120_000 };
+
+  it('garrafas a mais × horas por ano × preço; lucro = % do preço; retorno = investimento ÷ lucro por mês', () => {
+    const g = gainReais(fakeV(10_000), fakeV(11_000), delta, { price: 5, hoursYear: 4000, margin: 15 })!;
+    expect(g.gainPerHour).toBe(1000);
+    expect(g.bottlesYear).toBe(4_000_000);
+    expect(g.revenueYear).toBe(20_000_000);
+    expect(g.profitYear).toBe(3_000_000);
+    expect(g.invest).toBe(100_000);
+    expect(g.paybackMonths).toBeCloseTo(100_000 / (3_000_000 / 12), 6);   // 0,4 mês
+    expect(g.investRef).toBeNull();
+  });
+
+  it('sem preço, sem horas ou preço zero: não calcula', () => {
+    expect(gainReais(fakeV(1), fakeV(2), delta, { price: null, hoursYear: 4000, margin: 15 })).toBeNull();
+    expect(gainReais(fakeV(1), fakeV(2), delta, { price: 0, hoursYear: 4000, margin: 15 })).toBeNull();
+    expect(gainReais(fakeV(1), fakeV(2), delta, { price: 5, hoursYear: 0, margin: 15 })).toBeNull();
+  });
+
+  it('perda de produção dá valor negativo e sem retorno; sem investimento não há retorno (só ajuste de ritmo)', () => {
+    const perda = gainReais(fakeV(11_000), fakeV(10_000), delta, { price: 5, hoursYear: 4000, margin: 15 })!;
+    expect(perda.revenueYear).toBeLessThan(0); expect(perda.paybackMonths).toBeNull();
+    const ritmo = gainReais(fakeV(10_000), fakeV(11_000), { min: 0, max: 0 }, { price: 5, hoursYear: 4000, margin: 15 })!;
+    expect(ritmo.invest).toBeNull(); expect(ritmo.paybackMonths).toBeNull(); expect(ritmo.profitYear).toBeGreaterThan(0);
+  });
+
+  it('com o custo real da linha (R$ por 1.000 garrafas/h) o retorno é calculado em separado e é mais lento', () => {
+    const g = gainReais(fakeV(10_000), fakeV(11_000), delta, { price: 5, hoursYear: 4000, margin: 15 }, 3_820_000)!;
+    expect(g.investRef).toBeCloseTo(3_820_000);
+    expect(g.paybackRefMonths!).toBeGreaterThan(g.paybackMonths!);
+  });
+
+  it('formatação: reais, mil, mi, bi, sinal e prazo', () => {
+    expect(moneyBig(850)).toBe('R$ 850'); expect(moneyBig(40_000)).toBe('R$ 40 mil');
+    expect(moneyBig(3_200_000)).toBe('R$ 3,2 mi'); expect(moneyBig(1_400_000_000)).toBe('R$ 1,4 bi'); expect(moneyBig(-2_000_000)).toBe('−R$ 2,0 mi');
+    expect(paybackText(null)).toBe('—'); expect(paybackText(0.4)).toBe('menos de 1 mês'); expect(paybackText(5.25)).toMatch(/meses$/); expect(paybackText(30)).toMatch(/anos$/);
+  });
+
+  it('o preço digitado vale mais que o do exemplo; sem os dois, não há preço', () => {
+    expect(effectivePrice(7, { min: 4, max: 6 })).toBe(7);
+    expect(effectivePrice(null, { min: 4, max: 6 })).toBe(5);
+    expect(effectivePrice(null, null)).toBeNull();
+  });
+
+  it('carregar uma empresa real limpa o preço digitado; setEcon valida os limites', () => {
+    st().setEcon({ price: 9 });
+    expect(st().econPrice).toBe(9);
+    st().loadTemplate('quilmes_gatorade_antes');
+    expect(st().econPrice).toBeNull(); expect(st().caseKey).toBe('quilmes_gatorade_antes');
+    st().setEcon({ hours: -5, margin: 500 });
+    expect(st().econHours).toBe(4000); expect(st().econMargin).toBe(100);
+    st().setEcon({ hours: 6000, margin: 12 }); expect(st().econHours).toBe(6000); expect(st().econMargin).toBe(12);
+    st().setEcon({ hours: 4000, margin: 15 });
+  });
+
+  it('o PDF da comparação traz o bloco de ganho em reais com o preço e o aviso de teto', () => {
+    st().loadTemplate('quilmes_gatorade_antes');
+    st().saveVersion();
+    const ench = find('enchedora');
+    st().applyChange({ id: ench.id, value: ench.value, qty: ench.qty + 1, off: false });
+    st().saveVersion();
+    const [v1, v2] = st().versions;
+    const ctx = { ...st().simCtx(), run: undefined };
+    const cd = computeChartData({ nodes: st().nodes, edges: st().edges, catalog: st().catalog, ambient: st().ambient, ctx });
+    const html = buildReportHtml({ kind: 'comparacao', factory: 'X', ambient: 25, tariff: 0.85, server: false, generatedAt: 'hoje', cd, nodes: st().nodes, catalog: st().catalog, bn: bottleneckReport(st().nodes, st().edges, ctx), versions: st().versions, a: v1, b: v2, econ: { price: 5.2, hoursYear: 4000, margin: 15 } });
+    expect(html).toContain('Ganho em reais'); expect(html).toContain('teto'); expect(html).toContain('R$ 5,20');
   });
 });

@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { Modal } from './Modal';
 import { FactoriesModal } from './FactoriesModal';
 import { SettingsModal } from './SettingsModal';
+import { REAL_BY_KEY } from '../data/realCases';
 
 export function Modals() {
   const modal = useStore((s) => s.modal);
@@ -22,6 +23,7 @@ export function Modals() {
   if (modal === 'about') return <AboutModal onClose={close} />;
   if (modal === 'settings') return <SettingsModal onClose={close} />;
   if (modal === 'factories') return <FactoriesModal onClose={close} />;
+  if (modal === 'realcase') return <RealCaseModal onClose={close} />;
   return null;
 }
 
@@ -121,6 +123,40 @@ function RunResultModal({ onClose }: { onClose: () => void }) {
           <button className="btn sec" onClick={() => { onClose(); s.setView('dashboard'); }}>Ver em Resultados</button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/** Sobre a fábrica de empresa real carregada: o que a linha faz, o que é dado documentado (com link), o que foi assumido e o histórico da empresa. */
+function RealCaseModal({ onClose }: { onClose: () => void }) {
+  const key = useStore((s) => s.caseKey);
+  const c = key ? REAL_BY_KEY[key] : null;
+  const sim = useSim(false);
+  if (!c) return null;
+  return (
+    <Modal title={c.company} wide onClose={onClose}>
+      <div className="mb realcase">
+        <p className="sub" style={{ marginTop: 0 }}>{c.place} · {c.what}</p>
+        <div className="say">
+          <b>Velocidade publicada da linha: {fmt(c.ratedBph)} garrafas por hora.</b> No simulador esta fábrica produz <b>{fmt(sim.production)}</b> garrafas/h
+          (diferença só do arredondamento das unidades). Experimente: aplique uma melhoria, rode o Play e compare as versões em Resultados › Comparações.
+        </div>
+        <h5>O que é dado documentado (com fonte)</h5>
+        <ul>{c.facts.map((f) => <li key={f}>{f}</li>)}</ul>
+        <h5>O que nós assumimos para montar o mapa</h5>
+        <ul>{c.assumptions.map((f) => <li key={f}>{f}</li>)}</ul>
+        <h5>Um pouco do histórico da empresa</h5>
+        <ul>{c.history.map((f) => <li key={f}>{f}</li>)}</ul>
+        <h5>Preço usado no ganho em reais</h5>
+        {c.price
+          ? <ul><li><b>R$ {fmt(c.price.min, 2)} a R$ {fmt(c.price.max, 2)} por {c.price.unit}.</b> {c.price.basis} {c.price.sources.map((r, i) => <span key={r.u}>{i ? ' · ' : ''}<a href={r.u} target="_blank" rel="noreferrer">{r.t}</a></span>)}</li>
+              {c.investRef && <li><b>Custo real da linha:</b> {c.investRef.text} Dá R$ {fmt(c.investRef.perThousand / 1e6, 2)} milhões por cada 1.000 garrafas/h. <a href={c.investRef.source.u} target="_blank" rel="noreferrer">{c.investRef.source.t}</a></li>}</ul>
+          : <ul><li>Não encontramos preço público de referência para esta empresa: digite o preço por garrafa em Resultados › Comparações › Ganho em reais.</li></ul>}
+        <h5>Fontes</h5>
+        <ul>{c.sources.map((r) => <li key={r.u}><a href={r.u} target="_blank" rel="noreferrer">{r.t}</a></li>)}</ul>
+        <div className="sub">Mapa reconstruído a partir de dados públicos, para fins didáticos: não é o projeto real da fábrica, que as empresas não divulgam.</div>
+      </div>
+      <div className="row" style={{ justifyContent: 'flex-end', padding: '0 18px 16px' }}><button className="btn" onClick={onClose}>Entendi</button></div>
     </Modal>
   );
 }

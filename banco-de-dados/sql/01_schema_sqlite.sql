@@ -179,6 +179,7 @@ CREATE TABLE fabrica_maquinas (
 	horas_operacao NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	horas_desgaste NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	manutencao_em_h NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	ultima_manutencao_em DATE, 
 	CONSTRAINT pk_fabrica_maquinas PRIMARY KEY (id), 
 	CONSTRAINT uq_fabrica_maquinas_fabrica_id UNIQUE (fabrica_id, id), 
 	CONSTRAINT ck_fabrica_maquinas_posicao CHECK (pos_x >= 0 AND pos_y >= 0), 

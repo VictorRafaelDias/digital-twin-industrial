@@ -6,7 +6,7 @@ from tests.conftest import by_type
 
 def test_exemplos_prontos(client, auth):
     ex = client.get("/templates").json()
-    assert {e["key"] for e in ex} == {"bebidas", "suco"}
+    assert {e["key"] for e in ex} == {"bebidas", "suco", "cocacola_jundiai", "slmg_chhata", "refres_now_manaos", "coca_cola_canners", "quilmes_gatorade", "quilmes_gatorade_antes", "refriko_sjp", "tial_antes", "tial", "tannourine"}
     b = client.post("/factories", json={"name": "A", "template": "bebidas"}, headers=auth).json()
     s = client.post("/factories", json={"name": "B", "template": "suco"}, headers=auth).json()
     assert len(b["machines"]) == 8 and len(b["connections"]) == 7 and b["example"] == "bebidas"
@@ -19,7 +19,8 @@ def test_fabrica_em_branco_e_nome_repetido(client, auth):
     assert client.post("/factories", json={"name": "Vazia"}, headers=auth).status_code == 409
     assert client.post("/factories", json={"name": "  "}, headers=auth).status_code == 422
     assert client.post("/factories", json={"name": "X", "ambient": 50}, headers=auth).status_code == 422
-    assert client.post("/factories", json={"name": "X", "template": "cerveja"}, headers=auth).status_code == 422
+    assert client.post("/factories", json={"name": "X", "template": "cerveja"}, headers=auth).status_code == 404           # exemplo que não existe
+    assert client.post("/factories", json={"name": "X", "template": "Cerveja!"}, headers=auth).status_code == 422          # nome inválido
 
 
 def test_cada_usuario_so_ve_as_suas_fabricas(client, auth, other_auth, factory):

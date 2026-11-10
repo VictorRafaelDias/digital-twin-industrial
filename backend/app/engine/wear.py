@@ -14,6 +14,8 @@ Ideia (versão 2 do desgaste):
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
+from typing import Optional
 
 from .types import MachineType
 
@@ -26,6 +28,12 @@ ACELERACAO_ACIMA_DO_OTIMO = 3.0   # no limite de falha o desgaste anda 1 + 3 = 4
 TEMP_EXTRA_IDADE = 8.0            # no fim da vida útil a máquina esquenta até +8 °C (curva quadrática: rolamentos e vedações gastos)
 TEMP_EXTRA_ATRASO = 4.0           # manutenção muito atrasada soma até +4 °C (lubrificação ruim)
 HORAS_USO_ANO = 4000.0            # horas de trabalho por ano de uso (hipótese: cerca de 1,5 turno por dia)
+DIAS_ANO = 365.25
+
+# Vida útil e intervalo de manutenção por categoria (horas de uso). Iguais aos do front-end e do banco (conferidos por teste).
+# Intervalo: 1.000 h = 3 meses e 2.000 h = 6 meses de calendário (HORAS_USO_ANO). Ver docs/manutencao-intervalos.md.
+LIFE_H_BY_CAT = {"insumos": 60000, "preparo": 40000, "termico": 30000, "envase": 25000, "pos": 30000, "frio": 35000}
+MAINT_H_BY_CAT = {"insumos": 2000, "preparo": 2000, "termico": 1000, "envase": 1000, "pos": 1000, "frio": 2000}
 VALOR_RESIDUAL = 0.10             # depois da vida útil a máquina vale 10% do preço de nova
 RECUPERA_PREVENTIVA = 0.60        # manutenção preventiva recupera 60% do desgaste acumulado
 RECUPERA_CORRETIVA = 0.80         # corretiva (depois de falha, com troca de peças) recupera 80%
@@ -70,14 +78,34 @@ def wear_of(wear_hours: float, maintenance_at_h: float, operating_hours: float, 
     )
 
 
-def hours_from_inputs(age_years: float, months_since_maintenance: float) -> tuple[float, float]:
-    """(horas de desgaste, horas de desgaste na última manutenção) a partir do que a pessoa informa: idade em anos e meses desde a manutenção.
-    Os meses não passam da idade (uma máquina não fica mais tempo sem manutenção do que existe)."""
+def today() -> date:
+    """A data de hoje (uma função à parte para os testes poderem fixá-la)."""
+    return date.today()
+
+
+def days_since(d: Optional[date], hoje: Optional[date] = None) -> float:
+    """Dias desde a data da última manutenção. Sem data (não informada) conta 0: a máquina está em dia."""
+    if d is None:
+        return 0.0
+    return max(0.0, float(((hoje or today()) - d).days))
+
+
+def hours_from_inputs(age_years: float, days_since_maintenance: float) -> tuple[float, float]:
+    """(horas de desgaste, horas de desgaste na última manutenção) a partir da idade em anos e dos dias desde a última manutenção.
+    Os dias não passam da idade (a máquina não ficou mais tempo sem manutenção do que existe)."""
     wear = max(0.0, age_years) * HORAS_USO_ANO
-    since = min(wear, max(0.0, months_since_maintenance) * HORAS_USO_ANO / 12)
+    since = min(wear, max(0.0, days_since_maintenance) * HORAS_USO_ANO / DIAS_ANO)
     return round(wear, 1), round(wear - since, 1)
 
 
-def inputs_from_hours(wear_hours: float, maintenance_at_h: float) -> tuple[float, float]:
-    """O inverso: (idade em anos, meses desde a última manutenção)."""
-    return round(wear_hours / HORAS_USO_ANO, 3), round(max(0.0, wear_hours - maintenance_at_h) / HORAS_USO_ANO * 12, 2)
+def maintenance_at(wear_hours: float, days_since_maintenance: float) -> float:
+    """Horas de desgaste que a máquina tinha na última manutenção (o que o `wear_of` espera)."""
+    return round(wear_hours - min(wear_hours, max(0.0, days_since_maintenance) * HORAS_USO_ANO / DIAS_ANO), 1)
+
+
+def age_from_hours(wear_hours: float) -> float:
+    return round(wear_hours / HORAS_USO_ANO, 3)
+
+
+def months_from_days(days: float) -> float:
+    return round(days / (DIAS_ANO / 12), 1)

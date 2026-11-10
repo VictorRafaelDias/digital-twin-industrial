@@ -116,6 +116,7 @@ erDiagram
         decimal horas_operacao
         decimal horas_desgaste
         decimal manutencao_em_h
+        string ultima_manutencao_em
     }
     fabricas {
         int id PK
@@ -178,11 +179,11 @@ erDiagram
     cenarios ||--o{ cenario_maquinas : "detalha"
     maquinas_catalogo ||--o{ cenario_maquinas : "do tipo"
     maquinas_catalogo |o--o{ simulacoes : "limitou"
-    usuarios ||--o{ simulacoes : "roda"
     fabricas ||--o{ simulacoes : "é simulada em"
+    usuarios ||--o{ simulacoes : "roda"
     simulacoes ||--o{ simulacao_pontos : "simulacao_id"
-    simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"
     fabrica_maquinas |o--o{ simulacao_pontos_maquina : "fabrica_maquina_id"
+    simulacao_pontos ||--o{ simulacao_pontos_maquina : "ponto_id"
     usuarios ||--o{ planos_objetivo : "pede"
     fabricas ||--o{ planos_objetivo : "recebe"
     maquinas_catalogo ||--o{ plano_passos : "afeta tipo"

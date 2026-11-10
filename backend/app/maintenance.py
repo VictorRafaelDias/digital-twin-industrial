@@ -52,8 +52,9 @@ def wear_report(conn: Connection, row) -> dict:
         t, w = catalog[n.type], wears[n.id]
         d = wear_dict(w, t, n.qty, _price_mid(t))
         machines.append({"id": n.id, "type": n.type, "name": t.name, "units_in_parallel": n.qty,
-                         "age_years": n.age_years, "months_since_maintenance": n.maint_months, "life_years": round(t.life_h / W.HORAS_USO_ANO, 1),
-                         "maintenance_interval_months": round(t.maintenance_interval_h / W.HORAS_USO_ANO * 12, 1), **d})
+                         "age_years": n.age_years, "last_maintenance_date": n.maint_date, "days_since_maintenance": int(n.maint_days),
+                         "months_since_maintenance": W.months_from_days(n.maint_days), "life_years": round(t.life_h / W.HORAS_USO_ANO, 1),
+                         "maintenance_interval_months": W.months_from_days(t.maintenance_interval_h / W.HORAS_USO_ANO * W.DIAS_ANO), **d})
         if w.status != "ok":
             alerts.append({"machine_id": n.id, "name": t.name, "status": w.status, "text": f"{t.name}: {STATUS_TEXT[w.status]}."})
     residual = [m["residual_value"] for m in machines if m["residual_value"] is not None]
@@ -83,11 +84,11 @@ def do_maintenance(conn: Connection, row, uid: int, mid: int, kind: str, note: O
     catalog = load_catalog(conn)
     code = conn.execute(select(T["maquinas_catalogo"].c.codigo).where(T["maquinas_catalogo"].c.id == m.maquina_id)).scalar_one()
     antes = float(m.horas_desgaste)
-    meses_antes = round(max(0.0, antes - float(m.manutencao_em_h)) / W.HORAS_USO_ANO * 12, 1)
+    dias_antes = W.days_since(m.ultima_manutencao_em)
     conn.execute(insert(T["manutencoes"]).values(fabrica_maquina_id=mid, usuario_id=uid, tipo=kind, horas_desgaste_antes=antes,
                                                  horas_desgaste_depois=antes, observacao=note))
-    conn.execute(update(T["fabrica_maquinas"]).where(T["fabrica_maquinas"].c.id == mid).values(manutencao_em_h=antes))   # zera o tempo desde a última; a idade continua
-    log_event(conn, row.id, uid, f"{catalog[code].name}: manutenção {kind} registrada (estava há {meses_antes:g} mês(es) sem manutenção)", "ok")
+    conn.execute(update(T["fabrica_maquinas"]).where(T["fabrica_maquinas"].c.id == mid).values(ultima_manutencao_em=W.today()))   # a data volta a ser hoje; a idade continua
+    log_event(conn, row.id, uid, f"{catalog[code].name}: manutenção {kind} registrada (a última era de {int(dias_antes)} dia(s) atrás)", "ok")
     touch(conn, row.id)
     return next(x for x in wear_report(conn, row)["machines"] if x["id"] == mid)
 

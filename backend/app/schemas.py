@@ -1,6 +1,7 @@
 """Corpos dos pedidos (entrada da API), com as regras de validação. Aparecem na documentação interativa (/docs)."""
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal, Optional
 
 from pydantic import BaseModel as _PydanticBase
@@ -38,7 +39,7 @@ class ProfileIn(BaseModel):
 
 class FactoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=100, examples=["Minha fábrica"])
-    template: Optional[Literal["bebidas", "suco"]] = Field(default=None, description="Começar de um exemplo pronto (vazio = fábrica em branco)")
+    template: Optional[str] = Field(default=None, max_length=40, pattern=r"^[a-z_]+$", description="Começar de um exemplo pronto: bebidas, suco ou o de uma empresa real (cocacola_jundiai, slmg_chhata, refres_now_manaos, coca_cola_canners, quilmes_gatorade, quilmes_gatorade_antes, refriko_sjp, tial_antes, tial, tannourine). Vazio = fábrica em branco")
     ambient: int = Field(default=25, ge=0, le=45, description="Temperatura do ambiente, em °C")
     tariff: float = Field(default=0.85, ge=0, le=1000, description="Preço da energia, em R$ por kWh")
 
@@ -58,7 +59,7 @@ class MachineIn(BaseModel):
     units_in_parallel: int = Field(default=1, ge=1, le=6)
     off: bool = False
     age_years: float = Field(default=0, ge=0, le=60, description="Idade da máquina em anos de uso (0 = nova)")
-    months_since_maintenance: float = Field(default=0, ge=0, le=720, description="Meses desde a última manutenção (0 = em dia)")
+    last_maintenance_date: Optional[date] = Field(default=None, description="Data da última manutenção (AAAA-MM-DD). Vazio = não informada: a máquina conta como em dia")
 
 
 class MachinePatch(BaseModel):
@@ -68,7 +69,7 @@ class MachinePatch(BaseModel):
     x: Optional[int] = Field(default=None, ge=0, le=MAX_POS)
     y: Optional[int] = Field(default=None, ge=0, le=MAX_POS)
     age_years: Optional[float] = Field(default=None, ge=0, le=60, description="Idade da máquina em anos de uso")
-    months_since_maintenance: Optional[float] = Field(default=None, ge=0, le=720, description="Meses desde a última manutenção")
+    last_maintenance_date: Optional[date] = Field(default=None, description="Data da última manutenção (AAAA-MM-DD). Mandar null apaga a data (conta como em dia); não mandar o campo mantém o que está")
 
 
 class ConnectionIn(BaseModel):
@@ -86,7 +87,7 @@ class LayoutMachine(BaseModel):
     units_in_parallel: int = Field(default=1, ge=1, le=6)
     off: bool = False
     age_years: Optional[float] = Field(default=None, ge=0, le=60, description="Idade em anos (vazio = mantém o que já estava; máquina nova = 0)")
-    months_since_maintenance: Optional[float] = Field(default=None, ge=0, le=720, description="Meses desde a última manutenção (vazio = mantém)")
+    last_maintenance_date: Optional[date] = Field(default=None, description="Data da última manutenção (AAAA-MM-DD). Não mandar o campo mantém o que está; null apaga a data")
 
 
 class LayoutConnection(BaseModel):

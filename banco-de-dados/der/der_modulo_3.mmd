@@ -18,15 +18,6 @@ erDiagram
         text texto
         datetime criada_em
     }
-    usuarios {
-        int id PK
-        string nome_usuario
-        string nome_exibicao
-        string senha_hash
-        boolean ativo
-        datetime criado_em
-        datetime ultimo_acesso_em
-    }
     fabricas {
         int id PK
         int usuario_id FK
@@ -38,7 +29,16 @@ erDiagram
         datetime criada_em
         datetime atualizada_em
     }
+    usuarios {
+        int id PK
+        string nome_usuario
+        string nome_exibicao
+        string senha_hash
+        boolean ativo
+        datetime criado_em
+        datetime ultimo_acesso_em
+    }
     glossario_termos ||--o{ glossario_palavras : "é chamado por"
-    usuarios ||--o{ mensagens_chat : "escreve"
     fabricas |o--o{ mensagens_chat : "trata de"
+    usuarios ||--o{ mensagens_chat : "escreve"
     usuarios ||--o{ fabricas : "possui"

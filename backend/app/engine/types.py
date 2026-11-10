@@ -84,10 +84,11 @@ class Node:
     wear_risk: float = 0.0
     wear_temp: float = 0.0      # °C a mais por idade/manutenção atrasada (só a temperatura estimada usa)
     age_years: float = 0.0      # o que a pessoa informou: idade da máquina (anos)
-    maint_months: float = 0.0   # e meses desde a última manutenção
+    maint_date: Optional[str] = None   # e a data da última manutenção (AAAA-MM-DD; vazio = não informada, conta como em dia)
+    maint_days: float = 0.0            # dias desde essa data (calculado)
 
     def copy(self) -> "Node":
-        return Node(self.id, self.type, self.x, self.y, self.value, self.qty, self.off, self.wear_cap, self.wear_risk, self.wear_temp, self.age_years, self.maint_months)
+        return Node(self.id, self.type, self.x, self.y, self.value, self.qty, self.off, self.wear_cap, self.wear_risk, self.wear_temp, self.age_years, self.maint_date, self.maint_days)
 
 
 @dataclass(frozen=True)

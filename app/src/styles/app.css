@@ -394,3 +394,4 @@ table.cmp td, table.cmp th{padding:4px 8px;} table.cmp tr.diff td{background:var
 .agegrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px;} .agegrid label{display:flex; flex-direction:column; font-size:11.5px; color:var(--muted); gap:3px;} .agegrid .agein{width:100%;}
 .agepre{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:6px 0;} .agepre .btn{padding:3px 9px; font-size:11.5px;}
 .tag.age{background:#e9eef2; color:#3b4a56;} .tag.age.warn{background:var(--amber-l); color:#8a4e0c;} .tag.age.bad{background:var(--danger-l); color:#7a231a;}
+.agedate{width:140px;} .agegrid .agedate{width:100%;}

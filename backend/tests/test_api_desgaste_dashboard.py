@@ -1,6 +1,8 @@
 """Dashboard (dados dos gráficos, linha do tempo guardada), temperatura estimada, idade e manutenção das máquinas, depreciação."""
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pytest
 
 from app.engine import wear as W
@@ -9,6 +11,11 @@ from app.engine.thermal import machine_temperature
 from app.engine.types import Edge, Node, SimContext
 from tests.conftest import by_type
 from tests.helpers import catalog_from_front
+
+
+def dias_atras(n: int) -> str:
+    """A data (AAAA-MM-DD) de n dias atrás: os testes não dependem do dia em que rodam."""
+    return (date.today() - timedelta(days=n)).isoformat()
 
 
 def machine(s, code):
@@ -40,14 +47,27 @@ def test_curva_de_desgaste_da_idade_e_da_manutencao_atrasada():
     assert ruim.capacity_factor == 0.75 and abs(ruim.temp_add - 12.0) < 1e-12                  # perda máxima: 20% pela idade + 5% pelo atraso
 
 
-def test_idade_e_meses_viram_horas_e_voltam():
+def test_idade_e_data_da_manutencao_viram_horas():
     assert W.hours_from_inputs(0, 0) == (0.0, 0.0)
-    assert W.hours_from_inputs(2.5, 0) == (10000.0, 10000.0)           # manutenção em dia: a última foi agora
-    assert W.hours_from_inputs(2.5, 6) == (10000.0, 8000.0)            # 6 meses = 2.000 h sem manutenção
-    assert W.hours_from_inputs(1, 100) == (4000.0, 0.0)                # nunca fez manutenção: os meses não passam da idade
+    assert W.hours_from_inputs(2.5, 0) == (10000.0, 10000.0)           # manutenção em dia: a última foi hoje
+    assert W.hours_from_inputs(2.5, 91.3125) == (10000.0, 9000.0)      # 91,3 dias = 3 meses = 1.000 h sem manutenção
+    assert W.hours_from_inputs(1, 5000) == (4000.0, 0.0)               # nunca fez manutenção: os dias não passam da idade
     assert W.hours_from_inputs(-3, -3) == (0.0, 0.0)
-    for idade, meses in ((0, 0), (3.125, 0), (6.5, 7.5), (10, 120)):
-        assert W.inputs_from_hours(*W.hours_from_inputs(idade, meses)) == (idade, meses)
+    assert W.maintenance_at(10000, 91.3125) == 9000.0 and W.age_from_hours(10000) == 2.5
+    assert W.months_from_days(365.25) == 12.0 and W.months_from_days(0) == 0.0
+
+
+def test_dias_desde_a_data():
+    hoje = date(2026, 11, 3)
+    assert W.days_since(None, hoje) == 0.0                              # sem data: conta como em dia
+    assert W.days_since(date(2026, 10, 24), hoje) == 10.0
+    assert W.days_since(hoje, hoje) == 0.0
+    assert W.days_since(date(2027, 1, 1), hoje) == 0.0                  # data no futuro não dá dias negativos
+
+
+def test_intervalos_por_categoria_sao_de_3_ou_6_meses():
+    assert W.MAINT_H_BY_CAT == {"insumos": 2000, "preparo": 2000, "termico": 1000, "envase": 1000, "pos": 1000, "frio": 2000}
+    assert {c: round(h / W.HORAS_USO_ANO * 12) for c, h in W.MAINT_H_BY_CAT.items()} == {"insumos": 6, "preparo": 6, "termico": 3, "envase": 3, "pos": 3, "frio": 6}
 
 
 def test_desgaste_entra_na_simulacao_e_nao_estraga_o_calculo_sem_desgaste():
@@ -164,7 +184,7 @@ def test_nao_salvar_nao_grava_a_linha_do_tempo(client, auth, factory):
 def test_maquina_nova_por_padrao_e_o_play_nao_envelhece_nada(client, auth, factory):
     fid = factory["id"]
     for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"]:
-        assert m["age_years"] == 0 and m["months_since_maintenance"] == 0 and m["status"] == "ok" and m["capacity_factor"] == 1
+        assert m["age_years"] == 0 and m["last_maintenance_date"] is None and m["months_since_maintenance"] == 0 and m["status"] == "ok" and m["capacity_factor"] == 1
     antes = client.get(f"/factories/{fid}/simulate", headers=auth).json()["production_per_hour"]
     for _ in range(2):
         client.post(f"/factories/{fid}/play", json={"speed": 60, "duration_min": 480, "apply_wear": True}, headers=auth)   # apply_wear é ignorado
@@ -176,11 +196,11 @@ def test_maquina_nova_por_padrao_e_o_play_nao_envelhece_nada(client, auth, facto
 def test_idade_e_manutencao_atrasada_baixam_o_rendimento_e_sobem_o_risco(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
     antes = client.get(f"/factories/{fid}/simulate", headers=auth).json()
-    # metade da vida útil (a rotuladora é pós-envase: 30.000 h = 7,5 anos, então 3,75 anos) e 12 meses sem manutenção (intervalo de 1.000 h = 3 meses)
-    r = client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 3.75, "months_since_maintenance": 12}, headers=auth)
+    # metade da vida útil (a rotuladora é pós-envase: 30.000 h = 7,5 anos, então 3,75 anos) e última manutenção há 1 ano (intervalo: 3 meses)
+    r = client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 3.75, "last_maintenance_date": dias_atras(365)}, headers=auth)
     assert r.status_code == 200
     w = estado(client, auth, fid, "rotuladora")
-    assert w["age_years"] == 3.75 and w["months_since_maintenance"] == 12 and w["life_used_pct"] == 50
+    assert w["age_years"] == 3.75 and w["last_maintenance_date"] == dias_atras(365) and w["days_since_maintenance"] == 365 and w["months_since_maintenance"] == 12.0 and w["life_used_pct"] == 50
     assert abs(w["capacity_factor"] - 0.85) < 1e-9 and abs(w["risk_added"] - 0.06) < 1e-9 and w["status"] == "manutencao_atrasada"
     assert abs(w["temperature_added_c"] - 6.0) < 1e-9                       # 8 x 0,25 + 4 x 1
     depois = client.get(f"/factories/{fid}/simulate", headers=auth).json()
@@ -193,24 +213,32 @@ def test_idade_e_manutencao_atrasada_baixam_o_rendimento_e_sobem_o_risco(client,
 
 def test_valores_invalidos_de_idade_sao_recusados(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    for corpo in ({"age_years": -1}, {"age_years": 61}, {"months_since_maintenance": -2}, {"months_since_maintenance": 721}, {"age_years": "velha"}):
-        assert client.patch(f"/factories/{fid}/machines/{rot['id']}", json=corpo, headers=auth).status_code == 422, corpo
-    assert estado(client, auth, fid, "rotuladora")["age_years"] == 0
+    amanha = (date.today() + timedelta(days=1)).isoformat()
+    for corpo in ({"age_years": -1}, {"age_years": 61}, {"last_maintenance_date": amanha}, {"last_maintenance_date": "1949-12-31"}, {"last_maintenance_date": "ontem"},
+                  {"last_maintenance_date": "2026-13-45"}, {"age_years": "velha"}):
+        assert client.patch(f"/factories/{fid}/machines/{rot['id']}", json=corpo, headers=auth).status_code in (422,), corpo
+    assert client.post(f"/factories/{fid}/machines", json={"type": "esteira", "last_maintenance_date": amanha}, headers=auth).status_code == 422
+    assert client.put(f"/factories/{fid}/layout", json={"machines": [{"ref": "a", "type": "esteira", "last_maintenance_date": amanha}]}, headers=auth).status_code == 422
+    estado_rot = estado(client, auth, fid, "rotuladora")
+    assert estado_rot["age_years"] == 0 and estado_rot["last_maintenance_date"] is None          # nada foi gravado pela metade
 
 
 def test_maquina_pode_nascer_velha_e_os_meses_nao_passam_da_idade(client, auth, factory):
     fid = factory["id"]
-    r = client.post(f"/factories/{fid}/machines", json={"type": "esteira", "age_years": 1, "months_since_maintenance": 100}, headers=auth)
-    assert r.status_code == 201 and r.json()["age_years"] == 1
+    r = client.post(f"/factories/{fid}/machines", json={"type": "esteira", "age_years": 1, "last_maintenance_date": dias_atras(2000)}, headers=auth)
+    assert r.status_code == 201 and r.json()["age_years"] == 1 and r.json()["last_maintenance_date"] == dias_atras(2000)
     w = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["id"] == r.json()["id"])
-    assert w["age_years"] == 1 and w["months_since_maintenance"] == 12          # nunca fez manutenção: no máximo a idade da máquina
+    igual = client.post(f"/factories/{fid}/machines", json={"type": "esteira", "age_years": 1, "last_maintenance_date": dias_atras(365)}, headers=auth).json()["id"]
+    w2 = next(m for m in client.get(f"/factories/{fid}/wear", headers=auth).json()["machines"] if m["id"] == igual)
+    # a data é anterior à própria máquina (1 ano): conta como nunca ter feito manutenção, igual a uma de 1 ano atrás
+    assert (w["capacity_factor"], w["risk_added"], w["status"]) == (w2["capacity_factor"], w2["risk_added"], w2["status"]) and w["status"] == "manutencao_atrasada"
 
 
 def test_manutencao_zera_os_meses_mas_nao_rejuvenesce_e_fica_no_historico(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 6.25, "months_since_maintenance": 24}, headers=auth)   # 25.000 h de 30.000 h
+    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 6.25, "last_maintenance_date": dias_atras(730)}, headers=auth)   # 25.000 h de 30.000 h; última manutenção há 2 anos
     r = client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "preventiva", "note": "troca de rolamentos"}, headers=auth)
-    assert r.status_code == 201 and r.json()["months_since_maintenance"] == 0 and r.json()["age_years"] == 6.25
+    assert r.status_code == 201 and r.json()["months_since_maintenance"] == 0 and r.json()["last_maintenance_date"] == date.today().isoformat() and r.json()["age_years"] == 6.25
     assert r.json()["maintenance_overdue"] is False and r.json()["status"] == "atencao"      # em dia, mas 80% da vida útil gasta
     assert abs(r.json()["capacity_factor"] - (1 - 0.2 * 25000 / 30000)) < 1e-9                        # a idade continua pesando
     client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "corretiva"}, headers=auth)
@@ -220,7 +248,7 @@ def test_manutencao_zera_os_meses_mas_nao_rejuvenesce_e_fica_no_historico(client
     assert client.get(f"/factories/{fid}/maintenance?machine_id=99999", headers=auth).json() == []
     assert client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "magica"}, headers=auth).status_code == 422
     textos = [e["text"] for e in client.get(f"/factories/{fid}/events", headers=auth).json()]
-    assert any("manutenção preventiva registrada" in t for t in textos) and any("24 mês" in t for t in textos)
+    assert any("manutenção preventiva registrada" in t for t in textos) and any("730 dia" in t for t in textos)
 
 
 def test_o_botao_de_horas_de_uso_deixou_de_existir(client, auth, factory):
@@ -234,7 +262,7 @@ def test_depreciacao_e_valor_residual(client, auth, factory):
     preco = client.get("/catalog/machines/enchedora", headers=auth).json()["price"]
     meio = (preco["min"] + preco["max"]) / 2
     assert abs(novo["replacement_cost"] - meio) < 1e-6 and novo["residual_value"] == novo["replacement_cost"] and novo["depreciation_per_hour"] > 0
-    client.patch(f"/factories/{fid}/machines/{enc['id']}", json={"age_years": 3.125, "months_since_maintenance": 12}, headers=auth)   # metade da vida útil (25.000 h) e manutenção atrasada
+    client.patch(f"/factories/{fid}/machines/{enc['id']}", json={"age_years": 3.125, "last_maintenance_date": dias_atras(365)}, headers=auth)   # metade da vida útil (25.000 h) e manutenção atrasada
     w = client.get(f"/factories/{fid}/wear", headers=auth).json()
     m = next(x for x in w["machines"] if x["type"] == "enchedora")
     assert abs(m["residual_value_fraction"] - 0.55) < 1e-9 and abs(m["residual_value"] - meio * 0.55) < 1e-6
@@ -275,7 +303,7 @@ def test_apagar_maquina_com_manutencao_e_simulacao_nao_quebra(client, auth, fact
 
 def test_salvar_o_desenho_mantem_a_idade_das_maquinas_que_ja_existiam_e_aceita_valores_novos(client, auth, factory):
     fid, rot = factory["id"], by_type(factory, "rotuladora")
-    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 2, "months_since_maintenance": 5}, headers=auth)
+    client.patch(f"/factories/{fid}/machines/{rot['id']}", json={"age_years": 2, "last_maintenance_date": dias_atras(150)}, headers=auth)
     client.post(f"/factories/{fid}/machines/{rot['id']}/maintenance", json={"kind": "preventiva"}, headers=auth)
     atual = client.get(f"/factories/{fid}", headers=auth).json()
     maquinas = [{"ref": f"m{m['id']}", "id": m["id"], "type": m["type"], "x": m["x"] + 5, "y": m["y"], "value": m["value"], "units_in_parallel": m["units_in_parallel"]}
@@ -286,13 +314,13 @@ def test_salvar_o_desenho_mantem_a_idade_das_maquinas_que_ja_existiam_e_aceita_v
     assert r.status_code == 200 and r.json()["ids_by_ref"][f"m{rot['id']}"] == rot["id"]                  # mesma máquina, mesmo id
     assert len(r.json()["machines"]) == 7 and next(m for m in r.json()["machines"] if m["id"] == rot["id"])["x"] == rot["x"] + 5
     w = estado(client, auth, fid, "rotuladora")
-    assert w["age_years"] == 2 and w["months_since_maintenance"] == 0                                      # a idade ficou (sem valor novo no pedido)
+    assert w["age_years"] == 2 and w["last_maintenance_date"] == date.today().isoformat()                  # a idade e a data ficaram (sem valor novo no pedido)
     assert len(client.get(f"/factories/{fid}/maintenance", headers=auth).json()) == 1                      # e o histórico também
     # com valores novos no pedido, a máquina é atualizada no lugar
-    maquinas[[m["id"] for m in atual["machines"] if m["type"] != "esteira"].index(rot["id"])].update({"age_years": 4, "months_since_maintenance": 3})
+    maquinas[[m["id"] for m in atual["machines"] if m["type"] != "esteira"].index(rot["id"])].update({"age_years": 4, "last_maintenance_date": dias_atras(91)})
     client.put(f"/factories/{fid}/layout", json={"machines": maquinas, "connections": ligacoes}, headers=auth)
     w = estado(client, auth, fid, "rotuladora")
-    assert w["age_years"] == 4 and w["months_since_maintenance"] == 3
+    assert w["age_years"] == 4 and w["last_maintenance_date"] == dias_atras(91) and w["months_since_maintenance"] == 3.0
     # uma máquina nova no desenho (sem id) entra do zero; id de outra fábrica é recusado
     nova = client.put(f"/factories/{fid}/layout", json={"machines": maquinas + [{"ref": "n", "type": "esteira"}]}, headers=auth).json()
     assert nova["ids_by_ref"]["n"] not in [m["id"] for m in factory["machines"]]
@@ -301,3 +329,25 @@ def test_salvar_o_desenho_mantem_a_idade_das_maquinas_que_ja_existiam_e_aceita_v
     # trocar o tipo de uma máquina existente cria uma nova (não reaproveita a idade)
     trocado = client.put(f"/factories/{fid}/layout", json={"machines": [{"ref": "t", "id": rot["id"], "type": "enchedora"}]}, headers=auth).json()
     assert trocado["ids_by_ref"]["t"] != rot["id"]
+
+
+def test_apagar_a_data_volta_a_contar_como_em_dia_e_omitir_mantem(client, auth, factory):
+    fid, rot = factory["id"], by_type(factory, "rotuladora")
+    url = f"/factories/{fid}/machines/{rot['id']}"
+    client.patch(url, json={"age_years": 5, "last_maintenance_date": dias_atras(400)}, headers=auth)
+    assert estado(client, auth, fid, "rotuladora")["status"] == "manutencao_atrasada"
+    client.patch(url, json={"age_years": 5}, headers=auth)                                      # sem o campo: a data fica
+    assert estado(client, auth, fid, "rotuladora")["last_maintenance_date"] == dias_atras(400)
+    client.patch(url, json={"last_maintenance_date": None}, headers=auth)                       # null apaga: não informada = em dia
+    w = estado(client, auth, fid, "rotuladora")
+    assert w["last_maintenance_date"] is None and w["months_since_maintenance"] == 0 and w["status"] == "ok"
+    textos = [e["text"] for e in client.get(f"/factories/{fid}/events", headers=auth).json()]
+    assert any("data da última manutenção apagada" in t for t in textos)
+
+
+def test_status_pela_data_atencao_e_atrasada(client, auth, factory):
+    fid, rot = factory["id"], by_type(factory, "rotuladora")                                    # pós-envase: intervalo de 3 meses (1.000 h)
+    url = f"/factories/{fid}/machines/{rot['id']}"
+    for dias, esperado in ((30, "ok"), (80, "atencao"), (95, "manutencao_atrasada")):           # 80% do intervalo = 73 dias; 100% = 91 dias
+        client.patch(url, json={"age_years": 5, "last_maintenance_date": dias_atras(dias)}, headers=auth)
+        assert estado(client, auth, fid, "rotuladora")["status"] == esperado, dias

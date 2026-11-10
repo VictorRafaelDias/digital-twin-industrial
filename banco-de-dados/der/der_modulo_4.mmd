@@ -23,6 +23,7 @@ erDiagram
         decimal horas_operacao
         decimal horas_desgaste
         decimal manutencao_em_h
+        string ultima_manutencao_em
     }
     conexoes {
         int id PK
@@ -87,8 +88,8 @@ erDiagram
     usuarios ||--o{ fabricas : "possui"
     maquinas_catalogo ||--o{ fabrica_maquinas : "instancia"
     fabricas ||--o{ fabrica_maquinas : "contém"
+    fabrica_maquinas ||--o{ conexoes : "recebe por"
     fabricas ||--o{ conexoes : "liga dentro de"
     fabrica_maquinas ||--o{ conexoes : "envia por"
-    fabrica_maquinas ||--o{ conexoes : "recebe por"
     usuarios |o--o{ manutencoes : "usuario_id"
     fabrica_maquinas ||--o{ manutencoes : "fabrica_maquina_id"

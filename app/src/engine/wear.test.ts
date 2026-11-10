@@ -4,7 +4,7 @@ import { buildCatalog } from '../data/catalog';
 import { computeChartData } from '../store/reportData';
 import { useStore } from '../store/useStore';
 import { cfgOf, describeChanges, sameConfig } from '../store/versions';
-import { HORAS_USO_ANO, hoursFromInputs, lifeYears, wearEffects, wearOf, withWear } from './wear';
+import { brDate, daysSince, HORAS_USO_ANO, hoursFromInputs, lifeYears, sinceText, todayISO, wearEffects, wearOf, withWear } from './wear';
 import { machineTemp } from './thermal';
 import { simulate } from './simulate';
 
@@ -12,6 +12,8 @@ const st = () => useStore.getState();
 const find = (type: string) => st().nodes.find((n) => n.type === type)!;
 const prod = () => { const s = st(); return simulate(s.nodes, s.edges, { ...s.simCtx(), run: undefined }).production; };
 const catalog = buildCatalog();
+/** A data (AAAA-MM-DD) de n dias atrás, no mesmo formato que a tela usa. */
+const diasAtras = (n: number) => todayISO(new Date(Date.now() - n * 86400000));
 
 beforeEach(() => {
   useStore.setState({ server: null, serverFactoryId: null, nodes: [], edges: [], undoStack: [], redoStack: [], events: [], ambient: 25, estop: false, goalPlan: null, resTab: 'relatorio' });
@@ -36,18 +38,40 @@ describe('o cálculo (os mesmos números do back-end)', () => {
     expect(ruim.cap).toBe(0.75); expect(ruim.temp).toBeCloseTo(12);              // perda máxima: 20% pela idade + 5% pelo atraso
   });
 
-  it('idade e meses viram horas, e os meses não passam da idade', () => {
+  it('idade e dias viram horas, e os dias não passam da idade', () => {
     expect(hoursFromInputs(0, 0)).toEqual([0, 0]);
     expect(hoursFromInputs(2.5, 0)).toEqual([10000, 10000]);
-    expect(hoursFromInputs(2.5, 6)).toEqual([10000, 8000]);
-    expect(hoursFromInputs(1, 100)).toEqual([4000, 0]);
+    expect(hoursFromInputs(2.5, 91.3125)).toEqual([10000, 9000]);       // 91,3 dias = 3 meses = 1.000 h sem manutenção
+    expect(hoursFromInputs(1, 5000)).toEqual([4000, 0]);
     expect(hoursFromInputs(-3, -3)).toEqual([0, 0]);
+  });
+
+  it('dias desde a data: sem data, data inválida ou no futuro contam 0', () => {
+    const hoje = new Date(2026, 10, 3);                                  // 3 de novembro de 2026
+    expect(daysSince(undefined, hoje)).toBe(0);
+    expect(daysSince('', hoje)).toBe(0);
+    expect(daysSince('lixo', hoje)).toBe(0);
+    expect(daysSince('2026-11-03', hoje)).toBe(0);
+    expect(daysSince('2026-10-24', hoje)).toBe(10);
+    expect(daysSince('2025-11-03', hoje)).toBe(365);
+    expect(daysSince('2027-01-01', hoje)).toBe(0);
+    expect(todayISO(hoje)).toBe('2026-11-03');
+    expect(brDate('2026-03-09')).toBe('09/03/2026');
+  });
+
+  it('texto do tempo sem manutenção', () => {
+    expect([sinceText(0), sinceText(1), sinceText(12), sinceText(91), sinceText(365), sinceText(800)]).toEqual(['hoje', '1 dia', '12 dias', '3 meses', '12 meses', '2 anos e 2 meses']);
+  });
+
+  it('intervalos por categoria: 3 meses (envase, térmico, pós-envase) ou 6 meses (insumos, preparo, frio)', () => {
+    const meses = Object.fromEntries(['tanque_agua', 'misturador', 'pasteurizador', 'enchedora', 'rotuladora', 'camara_fria'].map((k) => [k, Math.round((catalog[k].maintH ?? 0) / HORAS_USO_ANO * 12)]));
+    expect(meses).toEqual({ tanque_agua: 6, misturador: 6, pasteurizador: 3, enchedora: 3, rotuladora: 3, camara_fria: 6 });
   });
 
   it('vida útil por categoria vem do catálogo (iguais às do banco)', () => {
     expect(lifeYears(catalog.enchedora)).toBeCloseTo(25000 / HORAS_USO_ANO);
     expect(lifeYears(catalog.rotuladora)).toBeCloseTo(30000 / HORAS_USO_ANO);
-    expect(wearEffects(catalog.rotuladora, 3.75, 12).cap).toBeCloseTo(0.85);   // metade da vida + manutenção muito atrasada
+    expect(wearEffects(catalog.rotuladora, 3.75, 365).cap).toBeCloseTo(0.85);   // metade da vida + última manutenção há 1 ano (muito atrasada)
   });
 
   it('withWear deixa a máquina nova sem campos e preenche os efeitos da velha', () => {
@@ -59,32 +83,54 @@ describe('o cálculo (os mesmos números do back-end)', () => {
 });
 
 describe('ações da tela', () => {
-  it('a idade baixa o rendimento, sobe o risco e esquenta mais; nova de novo volta ao normal', () => {
+  it('a idade e a manutenção atrasada baixam o rendimento, sobem o risco e esquentam mais; nova de novo volta ao normal', () => {
     const antes = prod();
     const ro = find('rotuladora');
     const t0 = machineTemp(st().catalog.rotuladora, ro, simulate(st().nodes, st().edges, { ...st().simCtx(), run: undefined }).res[ro.id], 25);
     st().setAge(ro.id, 3.75);
-    st().setMaintMonths(ro.id, 12);
+    st().setMaintDate(ro.id, diasAtras(365));
     const r = find('rotuladora');
-    expect(r.ageYears).toBe(3.75); expect(r.maintMonths).toBe(12);
+    expect(r.ageYears).toBe(3.75); expect(r.maintDate).toBe(diasAtras(365));
     expect(prod()).toBeCloseTo(antes * 0.85);
     const sim = simulate(st().nodes, st().edges, { ...st().simCtx(), run: undefined });
     expect(sim.res[r.id].risk).toBeCloseTo(0.02 + 0.02 + 0.04);
     expect(machineTemp(st().catalog.rotuladora, r, sim.res[r.id], 25)).toBeGreaterThan(t0 + 5);
     st().agePreset([r.id], 0);
     expect(find('rotuladora').wearCap).toBeUndefined();
-    expect(find('rotuladora').maintMonths).toBeUndefined();     // sem idade não há meses
+    expect(find('rotuladora').maintDate).toBeUndefined();       // sem idade não há data
     expect(prod()).toBeCloseTo(antes);
   });
 
-  it('valores absurdos são ajustados: idade 0 a 60 anos, e os meses não passam da idade', () => {
+  it('o status pela data: em dia, atenção (80% do intervalo) e atrasada (rotuladora: 3 meses)', () => {
+    const ro = find('rotuladora');
+    st().setAge(ro.id, 5);
+    const status = (d: number) => { st().setMaintDate(ro.id, diasAtras(d)); return wearEffects(st().catalog.rotuladora, 5, daysSince(find('rotuladora').maintDate)).status; };
+    expect([status(30), status(80), status(95)]).toEqual(['ok', 'atencao', 'manutencao_atrasada']);
+  });
+
+  it('sem data informada a máquina conta como em dia, mesmo velha', () => {
+    const ro = find('rotuladora');
+    st().setAge(ro.id, 3.75);
+    expect(find('rotuladora').maintDate).toBeUndefined();
+    expect(find('rotuladora').wearCap).toBeCloseTo(0.9);           // só a perda da idade
+    st().setMaintDate(ro.id, diasAtras(500));
+    expect(find('rotuladora').wearCap).toBeCloseTo(0.85);
+    st().setMaintDate(ro.id, null);
+    expect(find('rotuladora').maintDate).toBeUndefined();
+    expect(find('rotuladora').wearCap).toBeCloseTo(0.9);
+  });
+
+  it('valores absurdos: idade de 0 a 60 anos; data no futuro, antes de 1950 ou inválida é recusada', () => {
     const en = find('enchedora');
     st().setAge(en.id, -5); expect(find('enchedora').ageYears).toBeUndefined();
     st().setAge(en.id, 500); expect(find('enchedora').ageYears).toBe(60);
-    st().setMaintMonths(en.id, 5000); expect(find('enchedora').maintMonths).toBe(720);
-    st().setAge(en.id, 2); expect(find('enchedora').maintMonths).toBe(24);          // a idade diminuiu: os meses acompanham
-    st().setAge(en.id, NaN); expect(find('enchedora').ageYears).toBe(2);
-    st().setMaintMonths(en.id, Infinity); expect(find('enchedora').maintMonths).toBe(24);
+    st().setAge(en.id, NaN); expect(find('enchedora').ageYears).toBe(60);
+    const amanha = todayISO(new Date(Date.now() + 86400000 * 2));
+    st().setMaintDate(en.id, amanha); expect(find('enchedora').maintDate).toBeUndefined(); expect(st().toast).toContain('futuro');
+    st().setMaintDate(en.id, '1949-12-31'); expect(find('enchedora').maintDate).toBeUndefined(); expect(st().toast).toContain('antiga');
+    st().setMaintDate(en.id, '12/03/2026'); expect(find('enchedora').maintDate).toBeUndefined(); expect(st().toast).toContain('inválida');
+    st().setMaintDate(en.id, diasAtras(10)); expect(find('enchedora').maintDate).toBe(diasAtras(10));
+    st().setMaintDate(en.id, todayISO()); expect(find('enchedora').maintDate).toBe(todayISO());      // hoje vale
   });
 
   it('presets usam a vida útil de cada máquina; "Fim de vida" = 100%', () => {
@@ -96,20 +142,20 @@ describe('ações da tela', () => {
     expect(st().nodes.every((n) => n.ageYears === undefined && n.wearCap === undefined)).toBe(true);
   });
 
-  it('"Fiz a manutenção" zera os meses e a idade continua; dá para desfazer', () => {
+  it('"Fiz a manutenção" põe a data de hoje e a idade continua; dá para desfazer', () => {
     const en = find('enchedora');
-    st().setAge(en.id, 6.25); st().setMaintMonths(en.id, 24);
+    st().setAge(en.id, 6.25); st().setMaintDate(en.id, diasAtras(730));
     const lento = prod();
     st().doMaintenance(en.id);
-    expect(find('enchedora').maintMonths).toBeUndefined();
+    expect(find('enchedora').maintDate).toBe(todayISO());
     expect(find('enchedora').ageYears).toBe(6.25);
     expect(find('enchedora').wearCap).toBeCloseTo(0.8);                    // fim de vida: só a perda da idade (sem o atraso)
     expect(prod()).toBeGreaterThanOrEqual(lento);
     st().undo();
-    expect(find('enchedora').maintMonths).toBe(24);
+    expect(find('enchedora').maintDate).toBe(diasAtras(730));
   });
 
-  it('máquina nova no quadro entra nova; trocar de fábrica não leva a idade junto', () => {
+  it('trocar de fábrica não leva a idade junto', () => {
     st().setAge(find('enchedora').id, 5);
     st().loadTemplate('suco');
     expect(st().nodes.every((n) => n.ageYears === undefined && n.wearCap === undefined)).toBe(true);
@@ -119,14 +165,14 @@ describe('ações da tela', () => {
 describe('simular não gasta a fábrica', () => {
   it('rodar o Play várias vezes não muda idade, manutenção nem produção', () => {
     const en = find('enchedora');
-    st().setAge(en.id, 3); st().setMaintMonths(en.id, 6);
-    const antes = JSON.stringify(st().nodes.map((n) => [n.ageYears, n.maintMonths, n.wearCap]));
+    st().setAge(en.id, 3); st().setMaintDate(en.id, diasAtras(180));
+    const antes = JSON.stringify(st().nodes.map((n) => [n.ageYears, n.maintDate, n.wearCap]));
     const p0 = prod();
     for (let k = 0; k < 3; k++) {
       st().stopRun(); st().setRunSpeed(60); st().setRunDur(30); st().startOrToggleRun();
       for (let i = 0; i < 4; i++) st().tickRun();
     }
-    expect(JSON.stringify(st().nodes.map((n) => [n.ageYears, n.maintMonths, n.wearCap]))).toBe(antes);
+    expect(JSON.stringify(st().nodes.map((n) => [n.ageYears, n.maintDate, n.wearCap]))).toBe(antes);
     expect(prod()).toBe(p0);
   });
 });
@@ -146,18 +192,18 @@ describe('gráficos e versões', () => {
   it('a idade conta na versão: configuração diferente, frases do que mudou e voltar restaura a idade', () => {
     st().saveVersion();
     const en = find('enchedora');
-    st().setAge(en.id, 4); st().setMaintMonths(en.id, 10);
+    st().setAge(en.id, 4); st().setMaintDate(en.id, diasAtras(300));
     expect(sameConfig(st().versions[0], st().nodes)).toBe(false);
     st().saveVersion();
     expect(st().versions).toHaveLength(2);
-    const txt = describeChanges(cfgOf(st().nodes.map((n) => ({ ...n, ageYears: undefined, maintMonths: undefined })), st().catalog), cfgOf(st().nodes, st().catalog), st().catalog);
+    const txt = describeChanges(cfgOf(st().nodes.map((n) => ({ ...n, ageYears: undefined, maintDate: undefined })), st().catalog), cfgOf(st().nodes, st().catalog), st().catalog);
     expect(txt).toContain('Enchedora: idade 0 → 4 anos');
-    expect(txt).toContain('Enchedora: 0 → 10 meses sem manutenção');
+    expect(txt).toContain(`Enchedora: última manutenção sem data → ${brDate(diasAtras(300))}`);
     st().restoreVersion(1);
     expect(find('enchedora').ageYears).toBeUndefined();
     expect(find('enchedora').wearCap).toBeUndefined();
     st().restoreVersion(2);
-    expect(find('enchedora').ageYears).toBe(4); expect(find('enchedora').maintMonths).toBe(10);
+    expect(find('enchedora').ageYears).toBe(4); expect(find('enchedora').maintDate).toBe(diasAtras(300));
     expect(find('enchedora').wearCap).toBeLessThan(1);
   });
 

@@ -170,7 +170,7 @@ class VersaoDois(unittest.TestCase):
     def test_maquinas_ja_trazem_versao_origem_e_vida_util(self):
         linhas = self.con.execute("SELECT versao, origem, grupo_codigo = codigo, vida_util_h > 0, intervalo_manutencao_h > 0 FROM maquinas_catalogo").fetchall()
         self.assertEqual(set(linhas), {(1, "embutida", 1, 1, 1)})
-        self.assertEqual(self.con.execute("SELECT vida_util_h, intervalo_manutencao_h FROM maquinas_catalogo WHERE codigo='enchedora'").fetchone(), (25000, 800))
+        self.assertEqual(self.con.execute("SELECT vida_util_h, intervalo_manutencao_h FROM maquinas_catalogo WHERE codigo='enchedora'").fetchone(), (25000, 1000))
 
     def test_maquinas_da_fabrica_comecam_sem_desgaste(self):
         self.assertEqual(self.con.execute("SELECT DISTINCT horas_operacao, horas_desgaste, manutencao_em_h FROM fabrica_maquinas").fetchall(), [(0, 0, 0)])

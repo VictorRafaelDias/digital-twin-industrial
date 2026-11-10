@@ -32,8 +32,8 @@ export interface FNode {
   id: string; type: string; x: number; y: number; value: number; qty: number; off: boolean;
   /** id da máquina no servidor (modo servidor) */
   sid?: number;
-  /** idade da máquina (anos de uso) e meses desde a última manutenção: informados por quem monta a fábrica (padrão: nova e em dia) */
-  ageYears?: number; maintMonths?: number;
+  /** idade da máquina (anos de uso) e data da última manutenção: informadas por quem monta a fábrica (padrão: nova e em dia) */
+  ageYears?: number; maintDate?: string;   // maintDate: AAAA-MM-DD; vazio = não informada (conta como em dia)
   /** efeitos da idade, calculados a partir dos dois campos acima (engine/wear.ts): multiplicam a capacidade, somam ao risco e à temperatura; neutros quando ausentes */
   wearCap?: number; wearRisk?: number; wearTemp?: number;
 }

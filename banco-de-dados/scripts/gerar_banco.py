@@ -130,7 +130,7 @@ def tipo_da_fonte(url: str | None, titulo: str, confianca: str, finalidade: str)
 # Vida útil e intervalo de manutenção por tipo de máquina (HIPÓTESE DIDÁTICA: não vêm de ficha de fabricante;
 # servem para o simulador mostrar desgaste, depreciação e previsão de manutenção).
 VIDA_UTIL_H = {"insumos": 60000, "preparo": 40000, "termico": 30000, "envase": 25000, "pos": 30000, "frio": 35000}
-INTERVALO_MANUTENCAO_H = {"insumos": 2000, "preparo": 1500, "termico": 1000, "envase": 800, "pos": 1000, "frio": 1500}
+INTERVALO_MANUTENCAO_H = {"insumos": 2000, "preparo": 2000, "termico": 1000, "envase": 1000, "pos": 1000, "frio": 2000}   # 1.000 h de uso = 3 meses; 2.000 h = 6 meses (ver docs)
 
 
 def montar_sementes() -> Semente:

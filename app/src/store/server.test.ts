@@ -1,6 +1,7 @@
 /* Modo servidor: login, catálogo do servidor, abrir e guardar fábricas, desgaste. O servidor é simulado (fetch falso). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiLogin } from '../api/client';
+import { todayISO } from '../engine/wear';
 import { useStore } from './useStore';
 
 const st = () => useStore.getState();
@@ -110,7 +111,7 @@ describe('modo servidor', () => {
     fakeServer({
       'GET /factories/9': {
         id: 9, name: 'Do servidor', ambient: 32, tariff: 1.1, emergency_stop: false,
-        machines: [{ id: 41, type: 'tanque_agua', x: 10, y: 20, value: 8, units_in_parallel: 1, off: false }, { id: 42, type: 'enchedora', x: 200, y: 20, value: 200, units_in_parallel: 2, off: true, age_years: 3.75, months_since_maintenance: 12 }],
+        machines: [{ id: 41, type: 'tanque_agua', x: 10, y: 20, value: 8, units_in_parallel: 1, off: false }, { id: 42, type: 'enchedora', x: 200, y: 20, value: 200, units_in_parallel: 2, off: true, age_years: 3.75, last_maintenance_date: '2025-11-03' }],
         connections: [{ id: 5, from: 41, to: 42 }],
       },
       'GET /factories/9/simulations': [],
@@ -121,8 +122,8 @@ describe('modo servidor', () => {
     expect([s.ambient, s.tariff, s.serverFactoryId]).toEqual([32, 1.1, 9]);
     expect(s.nodes.map((n) => [n.id, n.sid, n.qty, n.off])).toEqual([['s41', 41, 1, false], ['s42', 42, 2, true]]);
     expect(s.edges).toEqual([{ id: 'e5', from: 's41', to: 's42' }]);
-    // idade e manutenção vêm do servidor: enchedora (vida de 25.000 h) com 3,75 anos (60%) e 12 meses sem manutenção (atrasada)
-    expect([s.nodes[1].ageYears, s.nodes[1].maintMonths]).toEqual([3.75, 12]);
+    // idade e manutenção vêm do servidor: enchedora (vida de 25.000 h) com 3,75 anos (60%) e última manutenção há mais de 1 ano (atrasada)
+    expect([s.nodes[1].ageYears, s.nodes[1].maintDate]).toEqual([3.75, '2025-11-03']);
     expect(s.nodes[1].wearCap).toBeCloseTo(1 - 0.2 * 0.6 - 0.05);       // vira capacidade menor, risco maior e temperatura maior na simulação
     expect(s.nodes[1].wearRisk).toBeCloseTo(0.08 * 0.36 + 0.04);
     expect(s.nodes[1].wearTemp).toBeCloseTo(8 * 0.36 + 4);
@@ -197,7 +198,7 @@ describe('modo servidor', () => {
     expect(st().versionSeq).toBe(2);
   });
 
-  it('idade e manutenção vão para o servidor ao guardar, e "Fiz a manutenção" zera os meses e registra no histórico', async () => {
+  it('idade e data da manutenção vão para o servidor ao guardar, e "Fiz a manutenção" põe a data de hoje e registra no histórico', async () => {
     useStore.setState({ server: { url: 'http://srv', token: 't' }, serverFactoryId: 9 });
     useStore.setState((s) => ({ nodes: s.nodes.map((n, i) => ({ ...n, sid: 100 + i })) }));
     const alvo = st().nodes.find((n) => n.type === 'enchedora')!;
@@ -207,14 +208,14 @@ describe('modo servidor', () => {
       [`POST /factories/9/machines/${alvo.sid}/maintenance`]: {},
     });
     st().setAge(alvo.id, 3.75);
-    st().setMaintMonths(alvo.id, 12);
+    st().setMaintDate(alvo.id, '2025-11-03');
     expect(st().nodes.find((n) => n.id === alvo.id)!.wearCap).toBeLessThan(1);
     await st().saveServerFactory({ silent: true });
-    const put = calls.find((c) => c.method === 'PUT')!.body as { machines: { ref: string; age_years: number; months_since_maintenance: number }[] };
-    expect(put.machines.find((m) => m.ref === alvo.id)).toMatchObject({ age_years: 3.75, months_since_maintenance: 12 });
-    expect(put.machines.filter((m) => m.age_years === 0)).toHaveLength(7);       // as outras continuam novas
+    const put = calls.find((c) => c.method === 'PUT')!.body as { machines: { ref: string; age_years: number; last_maintenance_date: string | null }[] };
+    expect(put.machines.find((m) => m.ref === alvo.id)).toMatchObject({ age_years: 3.75, last_maintenance_date: '2025-11-03' });
+    expect(put.machines.filter((m) => m.age_years === 0 && m.last_maintenance_date === null)).toHaveLength(7);       // as outras continuam novas
     st().doMaintenance(alvo.id);
-    expect(st().nodes.find((n) => n.id === alvo.id)!.maintMonths).toBeUndefined();
+    expect(st().nodes.find((n) => n.id === alvo.id)!.maintDate).toBe(todayISO());
     await vi.waitFor(() => expect(calls.some((c) => c.url.endsWith('/maintenance') && (c.body as { kind: string }).kind === 'preventiva')).toBe(true));
   });
 

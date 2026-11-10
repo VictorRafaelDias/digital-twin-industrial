@@ -102,9 +102,9 @@ Catálogo: os tipos de máquina que podem ser colocados numa fábrica, com limit
 
 Regras de integridade:
 
+- **Regra** `ck_maquinas_catalogo_ordem`: `ordem_processo IS NULL OR (ordem_processo >= 0 AND ordem_processo <= 9)`
 - **Regra** `ck_maquinas_catalogo_origem`: `origem IN ('embutida', 'importada')`
 - **Regra** `ck_maquinas_catalogo_limites`: `valor_min <= valor_otimo AND valor_otimo <= valor_atencao AND valor_atencao <= valor_falha AND valor_falha <= valor_max`
-- **Regra** `ck_maquinas_catalogo_ordem`: `ordem_processo IS NULL OR (ordem_processo >= 0 AND ordem_processo <= 9)`
 - **Regra** `ck_maquinas_catalogo_versao`: `versao >= 1`
 - **Regra** `ck_maquinas_catalogo_capacidade`: `capacidade_otima > 0`
 - **Regra** `ck_maquinas_catalogo_fluxo`: `fluxo IN ('geral', 'suco')`
@@ -291,10 +291,10 @@ Fábricas salvas pelos usuários (cada uma é um mapa de máquinas ligadas entre
 
 Regras de integridade:
 
-- **Regra** `ck_fabricas_temperatura`: `temperatura_ambiente >= 0 AND temperatura_ambiente <= 45`
 - **Regra** `ck_fabricas_tarifa`: `tarifa_energia >= 0`
 - **Único** `uq_fabricas_usuario_nome`: combinação de `usuario_id, nome`
 - **Regra** `ck_fabricas_exemplo`: `exemplo_origem IS NULL OR exemplo_origem IN ('bebidas', 'suco')`
+- **Regra** `ck_fabricas_temperatura`: `temperatura_ambiente >= 0 AND temperatura_ambiente <= 45`
 
 Índices: `ix_fabricas_usuario_id`
 
@@ -315,15 +315,16 @@ Máquinas colocadas numa fábrica (um tipo do catálogo + ritmo, posição e uni
 | `instalada_em` | DATETIME |  | sim | agora | Quando a máquina foi colocada na fábrica |
 | `horas_operacao` | NUMERIC(12, 1) |  | sim | 0 | Horas de uso da máquina informadas ao montar a fábrica (idade em anos x 4.000 h por ano; igual a horas_desgaste). A simulação NÃO altera |
 | `horas_desgaste` | NUMERIC(12, 1) |  | sim | 0 | Idade da máquina em horas de desgaste (idade em anos x 4.000 h por ano; 0 = nova). Informada por quem monta a fábrica (hipótese didática) |
-| `manutencao_em_h` | NUMERIC(12, 1) |  | sim | 0 | Idade (em horas) que a máquina tinha na última manutenção; horas_desgaste menos este valor = tempo sem manutenção |
+| `manutencao_em_h` | NUMERIC(12, 1) |  | sim | 0 | (Não usada desde a versão com data) antes guardava a idade na última manutenção; hoje vale ultima_manutencao_em |
+| `ultima_manutencao_em` | DATE |  | não |  | Data da última manutenção informada (vazio = não informada: a máquina conta como em dia). O tempo sem manutenção é calculado a partir dela |
 
 Regras de integridade:
 
-- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
-- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
-- **Regra** `ck_fabrica_maquinas_posicao`: `pos_x >= 0 AND pos_y >= 0`
 - **Regra** `ck_fabrica_maquinas_horas`: `horas_operacao >= 0 AND horas_desgaste >= 0 AND manutencao_em_h >= 0 AND manutencao_em_h <= horas_desgaste`
 - **Regra** `ck_fabrica_maquinas_ritmo`: `ritmo >= 0`
+- **Único** `uq_fabrica_maquinas_fabrica_id`: combinação de `fabrica_id, id`
+- **Regra** `ck_fabrica_maquinas_paralelo`: `unidades_paralelo >= 1 AND unidades_paralelo <= 6`
+- **Regra** `ck_fabrica_maquinas_posicao`: `pos_x >= 0 AND pos_y >= 0`
 
 Índices: `ix_fabrica_maquinas_fabrica_id`, `ix_fabrica_maquinas_maquina_id`
 
@@ -340,10 +341,10 @@ Ligações entre duas máquinas da mesma fábrica (por onde o produto passa)
 
 Regras de integridade:
 
-- **Único** `uq_conexoes_origem_destino`: combinação de `origem_id, destino_id`
 - **Chave estrangeira composta** `fk_conexoes_origem`: `(fabrica_id, origem_id)` → `fabrica_maquinas` (garante que as duas pontas pertencem à mesma fábrica)
 - **Regra** `ck_conexoes_sem_laco`: `origem_id <> destino_id`
 - **Chave estrangeira composta** `fk_conexoes_destino`: `(fabrica_id, destino_id)` → `fabrica_maquinas` (garante que as duas pontas pertencem à mesma fábrica)
+- **Único** `uq_conexoes_origem_destino`: combinação de `origem_id, destino_id`
 
 Índices: `ix_conexoes_destino_id`, `ix_conexoes_fabrica_id`
 
@@ -416,8 +417,8 @@ Situação de cada máquina dentro de um cenário (capacidade, saída, fila, ris
 
 Regras de integridade:
 
-- **Regra** `ck_cenario_maquinas_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
 - **Regra** `ck_cenario_maquinas_risco`: `risco >= 0 AND risco <= 1`
+- **Regra** `ck_cenario_maquinas_estado`: `estado IN ('normal', 'alerta', 'critico', 'falha', 'desligada')`
 
 Índices: `ix_cenario_maquinas_cenario_id`
 
@@ -443,10 +444,10 @@ Resultado final de cada vez que o usuário roda o Play
 
 Regras de integridade:
 
+- **Regra** `ck_simulacoes_duracao`: `duracao_min > 0`
 - **Regra** `ck_simulacoes_risco`: `risco_max >= 0 AND risco_max <= 1`
 - **Regra** `ck_simulacoes_velocidade`: `velocidade IN (1, 5, 20, 60)`
 - **Regra** `ck_simulacoes_valores`: `garrafas_produzidas >= 0 AND energia_kwh >= 0 AND fila_total >= 0`
-- **Regra** `ck_simulacoes_duracao`: `duracao_min > 0`
 
 Índices: `ix_simulacoes_fabrica_id`
 
@@ -467,8 +468,8 @@ Linha do tempo de cada simulação (alimenta os gráficos do dashboard da fábri
 
 Regras de integridade:
 
-- **Regra** `ck_simulacao_pontos_risco`: `risco_max >= 0 AND risco_max <= 1`
 - **Único** `uq_simulacao_pontos_minuto`: combinação de `simulacao_id, minuto`
+- **Regra** `ck_simulacao_pontos_risco`: `risco_max >= 0 AND risco_max <= 1`
 
 ### `simulacao_pontos_maquina`
 
@@ -518,9 +519,9 @@ Planos do tipo 'quero +10% de produção': o que fazer, o resultado esperado e o
 
 Regras de integridade:
 
+- **Regra** `ck_planos_objetivo_investimento`: `investimento_min >= 0 AND investimento_min <= investimento_max`
 - **Regra** `ck_planos_objetivo_risco`: `risco_antes >= 0 AND risco_antes <= 1 AND risco_depois >= 0 AND risco_depois <= 1`
 - **Regra** `ck_planos_objetivo_tipo`: `tipo_objetivo IN ('pct', 'abs', 'risk')`
-- **Regra** `ck_planos_objetivo_investimento`: `investimento_min >= 0 AND investimento_min <= investimento_max`
 
 Índices: `ix_planos_objetivo_fabrica_id`
 
@@ -546,9 +547,9 @@ Passos de um plano (qual máquina mexer, de quanto para quanto, por quê e quant
 
 Regras de integridade:
 
-- **Regra** `ck_plano_passos_ordem`: `ordem >= 1`
 - **Único** `uq_plano_passos_plano_ordem`: combinação de `plano_id, ordem`
 - **Regra** `ck_plano_passos_acao`: `acao IN ('ligar', 'paralelo', 'ritmo')`
+- **Regra** `ck_plano_passos_ordem`: `ordem >= 1`
 
 Índices: `ix_plano_passos_plano_id`
 

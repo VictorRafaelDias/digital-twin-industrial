@@ -4,6 +4,7 @@ Cada função recebe a conexão do pedido e o dono (usuário) e confere se a fá
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from fastapi import HTTPException
@@ -14,17 +15,70 @@ from .engine.connect import can_connect
 from .engine.format import fmt
 from .engine.simulate import simulate
 from .engine.types import Catalog, Edge, Node, SimContext
-from .engine.wear import Wear, hours_from_inputs, inputs_from_hours, wear_of
+from .engine import wear as W
+from .engine.wear import Wear, wear_of
 from .schema import T
 
-# exemplos prontos (mesmas máquinas e posições do front-end): cada uma ligada à seguinte
+# exemplos prontos (mesmas máquinas, posições, unidades e ritmos do front-end, conferidos por teste): cada uma ligada à seguinte.
+# Cada nó é (tipo, x, y) ou (tipo, x, y, unidades em paralelo, ritmo). Os de empresas reais vêm de app/src/data/realCases.ts.
 TEMPLATES: dict[str, dict] = {
     "bebidas": {"name": "Bebidas em geral", "nodes": [
-        ("tanque_agua", 40, 60), ("tanque_xarope", 270, 60), ("misturador", 500, 60), ("pasteurizador", 730, 60),
-        ("carbonatador", 730, 250), ("enchedora", 500, 250), ("esteira", 270, 250), ("rotuladora", 40, 250)]},
+        ("tanque_agua", 40, 60), ("tanque_xarope", 270, 60),
+        ("misturador", 500, 60), ("pasteurizador", 730, 60),
+        ("carbonatador", 730, 250), ("enchedora", 500, 250),
+        ("esteira", 270, 250), ("rotuladora", 40, 250)]},
     "suco": {"name": "Suco de laranja natural", "nodes": [
-        ("recepcao_fruta", 40, 60), ("lavadora_frutas", 270, 60), ("extratora", 500, 60),
-        ("filtro_despolpadeira", 500, 250), ("envasadora_suco", 270, 250), ("camara_fria", 40, 250)]},
+        ("recepcao_fruta", 40, 60), ("lavadora_frutas", 270, 60),
+        ("extratora", 500, 60), ("filtro_despolpadeira", 500, 250),
+        ("envasadora_suco", 270, 250), ("camara_fria", 40, 250)]},
+    "cocacola_jundiai": {"name": "Coca-Cola FEMSA · Jundiaí (linha 17, vidro retornável)", "nodes": [
+        ("tanque_agua", 40, 60, 4), ("tanque_xarope", 270, 60, 4),
+        ("misturador", 500, 60, 4), ("pasteurizador", 730, 60, 5),
+        ("carbonatador", 730, 250, 4), ("enchedora", 500, 250, 5, 166.7),
+        ("esteira", 270, 250, 4), ("rotuladora", 40, 250, 5)]},
+    "slmg_chhata": {"name": "SLMG Beverages · Chhata (linha PET KHS)", "nodes": [
+        ("tanque_agua", 40, 60, 4), ("tanque_xarope", 270, 60, 4),
+        ("misturador", 500, 60, 4), ("pasteurizador", 730, 60, 4),
+        ("carbonatador", 730, 250, 4), ("enchedora", 500, 250, 4, 200),
+        ("esteira", 270, 250, 4), ("rotuladora", 40, 250, 5)]},
+    "refres_now_manaos": {"name": "Refres Now (Manaos) · La Matanza (Combi 2,5 L)", "nodes": [
+        ("tanque_agua", 40, 60, 2), ("tanque_xarope", 270, 60, 3),
+        ("misturador", 500, 60, 3), ("pasteurizador", 730, 60, 3),
+        ("carbonatador", 730, 250, 3), ("enchedora", 500, 250, 3, 166.7),
+        ("esteira", 270, 250, 3), ("rotuladora", 40, 250, 3)]},
+    "coca_cola_canners": {"name": "Coca-Cola Canners · Wadeville (hot-fill KHS)", "nodes": [
+        ("tanque_agua", 40, 60, 4), ("tanque_xarope", 270, 60, 4),
+        ("misturador", 500, 60, 4), ("pasteurizador", 730, 60, 4),
+        ("enchedora", 730, 250, 4, 200), ("esteira", 500, 250, 4),
+        ("rotuladora", 270, 250, 5)]},
+    "quilmes_gatorade": {"name": "Quilmes · Buenos Aires Sul (Gatorade, depois da ampliação)", "nodes": [
+        ("tanque_agua", 40, 60, 3), ("tanque_xarope", 270, 60, 4),
+        ("misturador", 500, 60, 4), ("pasteurizador", 730, 60, 4),
+        ("enchedora", 730, 250, 4, 187.5), ("esteira", 500, 250, 4),
+        ("rotuladora", 270, 250, 5)]},
+    "quilmes_gatorade_antes": {"name": "Quilmes · Gatorade ANTES da ampliação (22 mil/h)", "nodes": [
+        ("tanque_agua", 40, 60, 2), ("tanque_xarope", 270, 60, 2),
+        ("misturador", 500, 60, 2), ("pasteurizador", 730, 60, 2),
+        ("enchedora", 730, 250, 2, 183.3), ("esteira", 500, 250, 2),
+        ("rotuladora", 270, 250, 3)]},
+    "refriko_sjp": {"name": "Refriko (Grupo RFK) · São José dos Pinhais (linha de refrigerantes)", "nodes": [
+        ("tanque_agua", 40, 60, 3), ("tanque_xarope", 270, 60, 3),
+        ("misturador", 500, 60, 3), ("pasteurizador", 730, 60, 3),
+        ("carbonatador", 730, 250, 3), ("enchedora", 500, 250, 3, 183.3),
+        ("esteira", 270, 250, 3), ("rotuladora", 40, 250, 4)]},
+    "tial_antes": {"name": "Tial · suco pronto ANTES da nova linha (11 mil L/h)", "nodes": [
+        ("tanque_agua", 40, 60, 1), ("tanque_xarope", 270, 60, 1),
+        ("misturador", 500, 60, 1), ("pasteurizador", 730, 60, 1, 5.5),
+        ("enchedora", 730, 250, 1), ("esteira", 500, 250, 1),
+        ("rotuladora", 270, 250, 2)]},
+    "tial": {"name": "Tial · suco pronto DEPOIS da nova linha (37 mil L/h)", "nodes": [
+        ("tanque_agua", 40, 60, 3), ("tanque_xarope", 270, 60, 3),
+        ("misturador", 500, 60, 3), ("pasteurizador", 730, 60, 3, 6.2),
+        ("enchedora", 730, 250, 4), ("esteira", 500, 250, 3),
+        ("rotuladora", 270, 250, 4)]},
+    "tannourine": {"name": "Tannourine Water · linha Sidel (água mineral)", "nodes": [
+        ("tanque_agua", 40, 60, 3), ("enchedora", 270, 60, 3, 175),
+        ("esteira", 500, 60, 3), ("rotuladora", 730, 60, 3)]},
 }
 
 KIND_DB = {"": "info", "ok": "ok", "warn": "warn", "bad": "bad", "info": "info"}
@@ -57,10 +111,11 @@ def load_graph(conn: Connection, fid: int, catalog: Catalog, with_wear: bool = F
     wears: dict[int, Wear] = {}
     for r in conn.execute(select(fm, mc.c.codigo).join(mc, mc.c.id == fm.c.maquina_id).where(fm.c.fabrica_id == fid).order_by(fm.c.id)).all():
         t = catalog[r.codigo]
-        w = wear_of(float(r.horas_desgaste), float(r.manutencao_em_h), float(r.horas_operacao), t.life_h, t.maintenance_interval_h)
+        dias = W.days_since(r.ultima_manutencao_em)
+        w = wear_of(float(r.horas_desgaste), W.maintenance_at(float(r.horas_desgaste), dias), float(r.horas_operacao), t.life_h, t.maintenance_interval_h)
         wears[r.id] = w
-        idade, meses = inputs_from_hours(float(r.horas_desgaste), float(r.manutencao_em_h))
-        nodes.append(Node(r.id, r.codigo, r.pos_x, r.pos_y, float(r.ritmo), int(r.unidades_paralelo), bool(r.desligada), w.capacity_factor, w.risk_add, w.temp_add, idade, meses))
+        nodes.append(Node(r.id, r.codigo, r.pos_x, r.pos_y, float(r.ritmo), int(r.unidades_paralelo), bool(r.desligada), w.capacity_factor, w.risk_add, w.temp_add,
+                          W.age_from_hours(float(r.horas_desgaste)), r.ultima_manutencao_em.isoformat() if r.ultima_manutencao_em else None, dias))
     edges = [Edge(r.id, r.origem_id, r.destino_id) for r in conn.execute(select(co).where(co.c.fabrica_id == fid).order_by(co.c.id)).all()]
     return (nodes, edges, wears) if with_wear else (nodes, edges)
 
@@ -116,13 +171,15 @@ def create_factory(conn: Connection, uid: int, name: str, ambient: int = 25, tar
         raise not_found(f"Exemplo '{template}' não existe. Use: {', '.join(TEMPLATES)}.")
     name = _check_name(conn, uid, name)
     fid = conn.execute(insert(T["fabricas"]).values(
-        usuario_id=uid, nome=name, exemplo_origem=template, temperatura_ambiente=ambient, tarifa_energia=tariff,
+        usuario_id=uid, nome=name, exemplo_origem=template if template in ("bebidas", "suco") else None, temperatura_ambiente=ambient, tarifa_energia=tariff,
         parada_emergencia=False)).inserted_primary_key[0]
     if template:
         catalog = load_catalog(conn)
         previous = None
-        for code, x, y in TEMPLATES[template]["nodes"]:
-            mid = _insert_machine(conn, fid, catalog[code], x, y, None, 1, False)
+        for code, x, y, *extra in TEMPLATES[template]["nodes"]:
+            qty = extra[0] if extra else 1
+            value = extra[1] if len(extra) > 1 else None
+            mid = _insert_machine(conn, fid, catalog[code], x, y, value, qty, False)
             if previous is not None:
                 conn.execute(insert(T["conexoes"]).values(fabrica_id=fid, origem_id=previous, destino_id=mid))
             previous = mid
@@ -159,13 +216,24 @@ def delete_factory(conn: Connection, fid: int) -> None:
 # ------------------------------------------------------------------------------------------------------------
 # máquinas
 # ------------------------------------------------------------------------------------------------------------
+def check_maint_date(d: Optional[date]) -> None:
+    """A data da última manutenção não pode estar no futuro nem ser absurdamente antiga."""
+    if d is None:
+        return
+    if d > W.today():
+        raise invalid("A data da última manutenção não pode estar no futuro.")
+    if d.year < 1950:
+        raise invalid("A data da última manutenção é antiga demais (de 1950 em diante).")
+
+
 def _insert_machine(conn: Connection, fid: int, t, x: int, y: int, value: Optional[float], qty: int, off: bool,
-                    age_years: float = 0.0, maint_months: float = 0.0) -> int:
-    desgaste, manutencao = hours_from_inputs(age_years, maint_months)
+                    age_years: float = 0.0, maint_date: Optional[date] = None) -> int:
+    check_maint_date(maint_date)
+    desgaste = round(max(0.0, age_years) * W.HORAS_USO_ANO, 1)
     return conn.execute(insert(T["fabrica_maquinas"]).values(
         fabrica_id=fid, maquina_id=t.db_id, pos_x=max(0, int(x)), pos_y=max(0, int(y)),
         ritmo=t.opt if value is None else value, unidades_paralelo=qty, desligada=off,
-        horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)).inserted_primary_key[0]
+        horas_operacao=desgaste, horas_desgaste=desgaste, ultima_manutencao_em=maint_date)).inserted_primary_key[0]
 
 
 def _check_value(t, value: float) -> None:
@@ -174,7 +242,7 @@ def _check_value(t, value: float) -> None:
 
 
 def add_machine(conn: Connection, row, uid: int, code: str, x: int = 0, y: int = 0, value: Optional[float] = None, qty: int = 1, off: bool = False,
-                age_years: float = 0.0, maint_months: float = 0.0) -> int:
+                age_years: float = 0.0, maint_date: Optional[date] = None) -> int:
     catalog = load_catalog(conn)
     t = catalog.get(code)
     if t is None:
@@ -184,7 +252,7 @@ def add_machine(conn: Connection, row, uid: int, code: str, x: int = 0, y: int =
         raise invalid(f"{t.name} está desativada no catálogo.")
     if value is not None:
         _check_value(t, value)
-    mid = _insert_machine(conn, row.id, t, x, y, value, qty, off, age_years, maint_months)
+    mid = _insert_machine(conn, row.id, t, x, y, value, qty, off, age_years, maint_date)
     log_event(conn, row.id, uid, f"Adicionou: {t.name}")
     touch(conn, row.id)
     return mid
@@ -229,13 +297,16 @@ def update_machine(conn: Connection, row, uid: int, mid: int, patch: dict) -> No
     if patch.get("off") is not None and patch["off"] != n.off:
         values["desligada"] = patch["off"]
         log_event(conn, row.id, uid, f"{t.name}: {'desligada' if patch['off'] else 'ligada'}", "warn" if patch["off"] else "ok")
-    if patch.get("age_years") is not None or patch.get("maint_months") is not None:
-        idade = n.age_years if patch.get("age_years") is None else patch["age_years"]
-        meses = n.maint_months if patch.get("maint_months") is None else patch["maint_months"]
-        if abs(idade - n.age_years) > 1e-9 or abs(meses - n.maint_months) > 1e-9:
-            desgaste, manutencao = hours_from_inputs(idade, meses)
-            values.update(horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)
-            log_event(conn, row.id, uid, f"{t.name}: idade {fmt(idade, 1)} ano(s), {fmt(meses, 1)} mês(es) desde a última manutenção", "info")
+    if patch.get("age_years") is not None and abs(patch["age_years"] - n.age_years) > 1e-9:
+        desgaste = round(max(0.0, patch["age_years"]) * W.HORAS_USO_ANO, 1)
+        values.update(horas_operacao=desgaste, horas_desgaste=desgaste)
+        log_event(conn, row.id, uid, f"{t.name}: idade {fmt(patch['age_years'], 1)} ano(s)", "info")
+    if "last_maintenance_date" in patch:                       # a chave presente com valor vazio apaga a data
+        nova = patch["last_maintenance_date"]
+        check_maint_date(nova)
+        if (nova.isoformat() if nova else None) != n.maint_date:
+            values["ultima_manutencao_em"] = nova
+            log_event(conn, row.id, uid, f"{t.name}: última manutenção em {nova.strftime('%d/%m/%Y')}" if nova else f"{t.name}: data da última manutenção apagada", "info")
     if patch.get("x") is not None:
         values["pos_x"] = max(0, int(patch["x"]))
     if patch.get("y") is not None:
@@ -336,16 +407,17 @@ def replace_layout(conn: Connection, row, uid: int, machines: list[dict], connec
             valores = {"pos_x": max(0, int(m.get("x", 0))), "pos_y": max(0, int(m.get("y", 0))), "unidades_paralelo": m.get("qty", 1), "desligada": m.get("off", False)}
             if m.get("value") is not None:
                 valores["ritmo"] = m["value"]
-            if m.get("age_years") is not None or m.get("maint_months") is not None:
-                atual = conn.execute(select(fm.c.horas_desgaste, fm.c.manutencao_em_h).where(fm.c.id == m["id"])).first()
-                idade0, meses0 = inputs_from_hours(float(atual.horas_desgaste), float(atual.manutencao_em_h))
-                desgaste, manutencao = hours_from_inputs(idade0 if m.get("age_years") is None else m["age_years"], meses0 if m.get("maint_months") is None else m["maint_months"])
-                valores.update(horas_operacao=desgaste, horas_desgaste=desgaste, manutencao_em_h=manutencao)
+            if m.get("age_years") is not None:
+                desgaste = round(max(0.0, m["age_years"]) * W.HORAS_USO_ANO, 1)
+                valores.update(horas_operacao=desgaste, horas_desgaste=desgaste)
+            if "last_maintenance_date" in m:
+                check_maint_date(m["last_maintenance_date"])
+                valores["ultima_manutencao_em"] = m["last_maintenance_date"]
             conn.execute(update(fm).where(fm.c.id == m["id"]).values(**valores))
             ids[m["ref"]] = m["id"]
         else:
             ids[m["ref"]] = _insert_machine(conn, row.id, t, m.get("x", 0), m.get("y", 0), m.get("value"), m.get("qty", 1), m.get("off", False),
-                                           m.get("age_years") or 0.0, m.get("maint_months") or 0.0)
+                                           m.get("age_years") or 0.0, m.get("last_maintenance_date"))
     for c in connections:
         conn.execute(insert(T["conexoes"]).values(fabrica_id=row.id, origem_id=ids[c["from_ref"]], destino_id=ids[c["to_ref"]]))
     log_event(conn, row.id, uid, f"Fábrica salva: {len(machines)} máquina(s) e {len(connections)} conexão(ões)", "ok")

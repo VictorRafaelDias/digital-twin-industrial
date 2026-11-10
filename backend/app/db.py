@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Iterator
 
 from fastapi import Request
-from sqlalchemy import Connection, Engine, create_engine, event, func, inspect, select, text
+from sqlalchemy import Connection, Engine, create_engine, event, func, inspect, select, text, update
 from sqlalchemy.schema import CreateColumn
 
 from .config import Settings
@@ -59,10 +59,22 @@ def migrate(engine: Engine) -> list[str]:
     return feitos
 
 
+def ajustar_intervalos(engine: Engine) -> None:
+    """Os intervalos de manutenção por categoria foram revistos (engine/wear.py): atualiza as máquinas que vieram com o sistema num banco já existente."""
+    from .engine.wear import MAINT_H_BY_CAT
+    mc, cat = T["maquinas_catalogo"], T["categorias"]
+    with engine.begin() as conn:
+        for codigo, horas in MAINT_H_BY_CAT.items():
+            cid = conn.execute(select(cat.c.id).where(cat.c.codigo == codigo)).scalar()
+            if cid is not None:
+                conn.execute(update(mc).where(mc.c.origem == "embutida", mc.c.categoria_id == cid).values(intervalo_manutencao_h=horas))
+
+
 def init_db(engine: Engine, settings: Settings) -> None:
     """Cria as tabelas que faltam, acrescenta as colunas novas e, se o catálogo estiver vazio, carrega os dados iniciais e as views."""
     metadata.create_all(engine)
     migrate(engine)
+    ajustar_intervalos(engine)
     if not settings.seed_on_start:
         return
     with engine.connect() as conn:

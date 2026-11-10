@@ -177,6 +177,7 @@ CREATE TABLE fabrica_maquinas (
 	horas_operacao NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	horas_desgaste NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
 	manutencao_em_h NUMERIC(12, 1) DEFAULT '0' NOT NULL, 
+	ultima_manutencao_em DATE, 
 	CONSTRAINT pk_fabrica_maquinas PRIMARY KEY (id), 
 	CONSTRAINT uq_fabrica_maquinas_fabrica_id UNIQUE (fabrica_id, id), 
 	CONSTRAINT ck_fabrica_maquinas_posicao CHECK (pos_x >= 0 AND pos_y >= 0), 
@@ -575,7 +576,8 @@ COMMENT ON COLUMN fabrica_maquinas.desligada IS 'Verdadeiro = máquina desligada
 COMMENT ON COLUMN fabrica_maquinas.instalada_em IS 'Quando a máquina foi colocada na fábrica';
 COMMENT ON COLUMN fabrica_maquinas.horas_operacao IS 'Horas de uso da máquina informadas ao montar a fábrica (idade em anos x 4.000 h por ano; igual a horas_desgaste). A simulação NÃO altera';
 COMMENT ON COLUMN fabrica_maquinas.horas_desgaste IS 'Idade da máquina em horas de desgaste (idade em anos x 4.000 h por ano; 0 = nova). Informada por quem monta a fábrica (hipótese didática)';
-COMMENT ON COLUMN fabrica_maquinas.manutencao_em_h IS 'Idade (em horas) que a máquina tinha na última manutenção; horas_desgaste menos este valor = tempo sem manutenção';
+COMMENT ON COLUMN fabrica_maquinas.manutencao_em_h IS '(Não usada desde a versão com data) antes guardava a idade na última manutenção; hoje vale ultima_manutencao_em';
+COMMENT ON COLUMN fabrica_maquinas.ultima_manutencao_em IS 'Data da última manutenção informada (vazio = não informada: a máquina conta como em dia). O tempo sem manutenção é calculado a partir dela';
 COMMENT ON TABLE manuais_maquina IS 'Texto do Manual das máquinas (relação 1 para 1 com o catálogo)';
 COMMENT ON COLUMN manuais_maquina.maquina_id IS 'Máquina a que o manual pertence (1 manual por máquina)';
 COMMENT ON COLUMN manuais_maquina.o_que_faz IS 'Descrição completa da máquina';
