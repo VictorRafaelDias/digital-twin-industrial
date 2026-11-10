@@ -11,7 +11,7 @@
 
 export type TemplateNode = [type: string, x: number, y: number, qty?: number, value?: number];
 
-/** Preço de referência por garrafa (R$), só para estimar o ganho em reais: faixa publicada, nunca o preço que a fábrica recebe. */
+/** Preço de referência por garrafa (R$), só para estimar o lucro por versão (aba Perspectiva de receita): faixa publicada, nunca o preço que a fábrica recebe. */
 export interface PriceRef {
   min: number; max: number;
   unit: string;               // a que garrafa o preço se refere
@@ -27,7 +27,7 @@ export interface RealCase {
   ratedBph: number;           // garrafas por hora publicadas
   /** quem limita a linha, quando não é a enchedora (ex.: o pasteurizador, quando o dado publicado é de processamento em L/h) */
   bottleneck?: string;
-  /** preço médio por garrafa (faixa publicada) para o ganho em reais; vazio = não achamos preço público */
+  /** preço médio por garrafa (faixa publicada) para a perspectiva de receita; vazio = não achamos preço público */
   price?: PriceRef;
   /** receita anual publicada da empresa, para conferir a ordem de grandeza das contas em reais */
   revenueRef?: { brl: number; year: number; text: string };

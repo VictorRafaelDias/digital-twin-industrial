@@ -8,6 +8,7 @@ import { canConnect, edgeKind } from '../engine/connect';
 import { fmt, fv } from '../engine/format';
 import { daysSince, STATUS_SHORT, wearEffects } from '../engine/wear';
 import { useStore } from '../store/useStore';
+import { cfgOf, changedIds as changedOf } from '../store/versions';
 
 interface Rect { x: number; y: number; w: number; h: number }
 type Pt = [number, number];
@@ -89,6 +90,8 @@ export function MontarView() {
     if (t === e.currentTarget || t.id === 'logicInner' || t.tagName === 'svg' || t.classList.contains('empty')) { s.select(null); s.setSelEdge(null); }
   };
 
+  /** máquinas aplicadas e ainda não simuladas (comparadas com a base guardada ao aplicar): ficam em destaque no quadro */
+  const changedIds = changedOf(s.pendingBase, cfgOf(s.nodes, s.catalog));
   return (
     <section className="view active canvas-grid" onDragOver={(e) => e.preventDefault()} onDrop={onDrop} onClick={clickBackground}>
       <div id="logicInner" ref={innerRef} style={{ transform: `scale(${s.zoom})` }}>
@@ -120,11 +123,12 @@ export function MontarView() {
         </svg>
         <div id="nodes">
           {s.nodes.map((n) => {
+            const mudou = changedIds.has(n.id);
             const t = s.catalog[n.type], r = sim.res[n.id];
             const q = s.run.active ? s.run.queue[n.id] || 0 : 0;
             const ageW = wearEffects(t, n.ageYears ?? 0, daysSince(n.maintDate));
             let cls = 'node' + (r.state === 'falha' ? ' danger' : r.state === 'desligada' ? ' off' : r.state !== 'normal' ? ' warn' : '')
-              + (s.selected === n.id ? ' selected' : '') + (s.connectFrom === n.id ? ' src' : '');
+              + (s.selected === n.id ? ' selected' : '') + (s.connectFrom === n.id ? ' src' : '') + (mudou ? ' changed' : '');
             if (s.tool === 'link' && s.connectFrom && s.connectFrom !== n.id) cls += canConnect(s.connectFrom, n.id, s.nodes, s.edges, ctx.catalog).ok ? ' can' : ' cant';
             return (
               <div key={n.id} ref={(el) => { nodeEls.current[n.id] = el; }} className={cls} style={{ left: n.x, top: n.y }} data-id={n.id} onMouseDown={(e) => onNodeDown(e, n.id)}>
@@ -137,6 +141,7 @@ export function MontarView() {
                   {s.run.active && r.waiting && <><br /><i style={{ color: 'var(--muted)' }}>aguardando produto…</i></>}
                   {q >= 1 && <><br /><span className="m">Fila</span> <b>{fmt(q)}</b> garrafas</>}
                 </div>
+                {mudou && <span className="tag chg" title="Aplicada agora e ainda não simulada">mudou</span>}
                 {sim.bn === n.id && <span className="tag bn">gargalo</span>}
                 {affected.has(n.id) && <span className="tag up">afetada a montante</span>}
                 {(n.ageYears ?? 0) > 0 && <span className={'tag age ' + (ageW.status === 'ok' ? '' : ageW.status === 'atencao' ? 'warn' : 'bad')} title="Idade da máquina (Estado das máquinas)">{fv(n.ageYears ?? 0)} anos{ageW.status === 'ok' ? '' : ' · ' + STATUS_SHORT[ageW.status]}</span>}

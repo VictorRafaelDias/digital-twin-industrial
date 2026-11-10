@@ -55,7 +55,7 @@ export function moneyDelta(r: Range | null): string {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Ganho em reais: quanto a melhoria de produção vale em dinheiro (estimativa didática, nunca previsão)
+// Perspectiva de receita: quanto cada versão rende e quanto a melhoria de produção vale em dinheiro (estimativa didática, nunca previsão)
 // ---------------------------------------------------------------------------------------------------------
 
 /** Dados que a pessoa pode ajustar: preço por garrafa, horas de operação por ano e % de lucro sobre o preço. */
@@ -104,10 +104,60 @@ export function paybackText(months: number | null): string {
 }
 
 /** Valores padrão: 4.000 h/ano (o mesmo do desgaste) e 15% (margem operacional pública da Coca-Cola FEMSA: 14,3% no 3T25 e 16,1% no 4T25 sem ganhos extraordinários). */
-export const ECON_DEFAULTS = { hoursYear: 4000, margin: 15 };
+export const ECON_DEFAULTS = {
+  hoursYear: 4000, margin: 15,
+  /** calendário padrão: 2 turnos de 8 h (16 h por dia), de segunda a sexta, o ano todo ≈ 4.170 h por ano */
+  mode: 'calendario' as 'calendario' | 'horas', hoursDay: 16,
+  days: [true, true, true, true, true, false, false],                                   // segunda a domingo
+  months: [true, true, true, true, true, true, true, true, true, true, true, true],    // janeiro a dezembro
+};
+
+export const DAY_NAMES = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+export const DAY_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+export const MONTH_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+/** dias de cada mês (fevereiro com 28,25: média de 4 anos), para o ano médio ter 365,25 dias */
+const DAYS_IN_MONTH = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/** Como a pessoa informa o funcionamento da fábrica: por calendário (horas por dia + dias da semana + meses) ou direto em horas por ano. */
+export interface Schedule { mode: 'calendario' | 'horas'; hoursYear: number; hoursDay: number; days: boolean[]; months: boolean[] }
+
+/** Dias de funcionamento por ano: cada mês marcado × a fração de dias da semana marcados (n/7). Ex.: segunda a sexta, o ano todo = 365,25 × 5/7 ≈ 261 dias. */
+export function operatingDays(days: boolean[], months: boolean[]): number {
+  const frac = days.filter(Boolean).length / 7;
+  return months.reduce((s, on, i) => (on ? s + DAYS_IN_MONTH[i] * frac : s), 0);
+}
+
+/** Horas de operação por ano: horas por dia × dias de funcionamento, ou o valor digitado direto. */
+export function scheduleHours(sc: Schedule): number {
+  return sc.mode === 'horas' ? sc.hoursYear : sc.hoursDay * operatingDays(sc.days, sc.months);
+}
+
+/** "16 h por dia, segunda a sexta, 12 meses (261 dias → 4.174 h por ano)", ou "4.000 h por ano (digitado)". */
+export function scheduleText(sc: Schedule): string {
+  if (sc.mode === 'horas') return `${fmt(sc.hoursYear)} h por ano (digitado direto)`;
+  const nd = sc.days.filter(Boolean).length, nm = sc.months.filter(Boolean).length;
+  const dias = nd === 7 ? 'todos os dias' : nd === 0 ? 'nenhum dia' : sc.days.map((on, i) => (on ? DAY_SHORT[i] : '')).filter(Boolean).join(', ');
+  const seq = sc.days.slice(0, nd).every(Boolean) && nd > 1 && nd < 7 ? `${DAY_SHORT[0]} a ${DAY_SHORT[nd - 1]}` : dias;
+  return `${fmt(sc.hoursDay, 1).replace(/,0$/, '')} h por dia, ${seq}, ${nm} ${nm === 1 ? 'mês' : 'meses'} (${fmt(operatingDays(sc.days, sc.months))} dias → ${fmt(scheduleHours(sc))} h por ano)`;
+}
+
+/** O calendário guardado na loja, pronto para calcular. */
+export function scheduleOf(s: { econMode: 'calendario' | 'horas'; econHours: number; econHoursDay: number; econDays: boolean[]; econMonths: boolean[] }): Schedule {
+  return { mode: s.econMode, hoursYear: s.econHours, hoursDay: s.econHoursDay, days: s.econDays, months: s.econMonths };
+}
 
 /** Preço por garrafa que vale agora: o digitado ou, se não houver, o ponto médio da faixa publicada do exemplo real carregado. */
 export function effectivePrice(econPrice: number | null, ref?: { min: number; max: number } | null): number | null {
   if (econPrice != null && econPrice > 0) return econPrice;
   return ref ? Math.round(((ref.min + ref.max) / 2) * 100) / 100 : null;
+}
+
+/** O que UMA versão rende por ano com os números informados (produção/h × horas × preço × lucro %). */
+export interface VersionProfit { bph: number; bottlesYear: number; revenueYear: number; profitYear: number; equipment: number }
+
+export function versionProfit(v: ReportVersion, e: Econ, catalog: Catalog): VersionProfit | null {
+  if (e.price == null || !(e.price > 0) || !(e.hoursYear > 0)) return null;
+  const bottlesYear = v.prod * e.hoursYear, revenueYear = bottlesYear * e.price;
+  const val = versionValue(v, catalog);
+  return { bph: v.prod, bottlesYear, revenueYear, profitYear: revenueYear * (Math.max(0, e.margin) / 100), equipment: (val.min + val.max) / 2 };
 }

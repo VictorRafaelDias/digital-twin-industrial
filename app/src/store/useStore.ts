@@ -61,11 +61,13 @@ export interface AppState {
   /** versões do relatório (V1, V2...) e, depois de aplicar uma melhoria, como a fábrica estava antes dela (para listar o que mudou) */
   versions: ReportVersion[]; versionSeq: number; pendingBase: Cfg[] | null;
   /** sub-aba de Resultados e Dash ampliado (ocupa a tela toda) */
-  resTab: 'relatorio' | 'comparacoes'; dashFull: boolean;
+  resTab: 'relatorio' | 'comparacoes' | 'receita'; dashFull: boolean;
   /** exemplo de empresa real carregado (data/realCases.ts); vazio quando a fábrica não é um deles */
   caseKey: string | null;
-  /** ganho em reais: preço por garrafa digitado (null = usa o do exemplo real, se houver), horas de operação por ano e % de lucro sobre o preço */
+  /** perspectiva de receita: preço por garrafa digitado (null = usa o do exemplo real, se houver), horas de operação por ano e % de lucro sobre o preço */
   econPrice: number | null; econHours: number; econMargin: number;
+  /** funcionamento da fábrica: por calendário (horas por dia, dias da semana, meses) ou direto em horas por ano (econHours) */
+  econMode: 'calendario' | 'horas'; econHoursDay: number; econDays: boolean[]; econMonths: boolean[];
   /** versões escolhidas na comparação (null = as duas mais recentes) */
   cmp: { a: number | null; b: number | null };
   whatIf: { n: number; pct: number; over: boolean; res: WhatIfResult | null; plan: Plan | null };
@@ -118,13 +120,13 @@ export interface Actions {
   saveServerFactory: (opts?: { silent?: boolean; asNew?: boolean }) => Promise<void>;
   deleteServerFactory: (id: number) => Promise<void>;
   saveVersion: () => void; discardPending: () => void; loadVersions: () => Promise<void>;
-  setResTab: (t: 'relatorio' | 'comparacoes') => void; setDashFull: (v: boolean) => void;
+  setResTab: (t: 'relatorio' | 'comparacoes' | 'receita') => void; setDashFull: (v: boolean) => void;
   setCmp: (c: Partial<{ a: number | null; b: number | null }>) => void; restoreVersion: (n: number) => void;
   loadSims: () => Promise<void>;
   /** idade e manutenção das máquinas (dados de entrada da fábrica) */
   setAge: (id: string, years: number) => void;
   setMaintDate: (id: string, iso: string | null) => void;
-  setEcon: (p: { price?: number | null; hours?: number; margin?: number }) => void;
+  setEcon: (p: { price?: number | null; hours?: number; margin?: number; mode?: 'calendario' | 'horas'; hoursDay?: number; days?: boolean[]; months?: boolean[] }) => void;
   agePreset: (ids: string[], fractionOfLife: number) => void;
   doMaintenance: (id: string) => void;
 }
@@ -206,7 +208,7 @@ export const useStore = create<AppState & Actions>((set, get) => {
   const log = (text: string, kind: LogEvent['kind'] = '') => set((s) => ({ events: [{ time: now(), text, kind }, ...s.events].slice(0, 80) }));
 
   return {
-    user: saved, server: savedServer, serverFactoryId: null, serverBusy: false, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null, resTab: 'relatorio', dashFull: false, caseKey: null, econPrice: null, econHours: ECON_DEFAULTS.hoursYear, econMargin: ECON_DEFAULTS.margin, cmp: { a: null, b: null }, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
+    user: saved, server: savedServer, serverFactoryId: null, serverBusy: false, serverFactories: [], serverSims: [], versions: [], versionSeq: 0, pendingBase: null, resTab: 'relatorio', dashFull: false, caseKey: null, econPrice: null, econHours: ECON_DEFAULTS.hoursYear, econMargin: ECON_DEFAULTS.margin, econMode: ECON_DEFAULTS.mode, econHoursDay: ECON_DEFAULTS.hoursDay, econDays: [...ECON_DEFAULTS.days], econMonths: [...ECON_DEFAULTS.months], cmp: { a: null, b: null }, view: 'logic', tool: 'select', tab: 'goal', sideHidden: false, palMin: false, modal: null, toast: null,
     plantName: 'Minha fábrica', catalog: buildCatalog(), typeInfo,
     nodes: [], edges: [], seq: 1, selected: null, selEdge: null, connectFrom: null, hmiSel: null, zoom: 1,
     undoStack: [], redoStack: [], ambient: 25, tariff: 0.85, estop: false, baseline: null,
@@ -582,6 +584,10 @@ export const useStore = create<AppState & Actions>((set, get) => {
       econPrice: p.price !== undefined ? (p.price == null || !(p.price > 0) ? null : p.price) : st.econPrice,
       econHours: p.hours !== undefined && p.hours > 0 ? Math.min(8784, p.hours) : st.econHours,
       econMargin: p.margin !== undefined && p.margin >= 0 ? Math.min(100, p.margin) : st.econMargin,
+      econMode: p.mode ?? st.econMode,
+      econHoursDay: p.hoursDay !== undefined && p.hoursDay >= 0 ? Math.min(24, p.hoursDay) : st.econHoursDay,
+      econDays: p.days && p.days.length === 7 ? [...p.days] : st.econDays,
+      econMonths: p.months && p.months.length === 12 ? [...p.months] : st.econMonths,
     })),
     setMaintDate: (id, iso) => {
       const s0 = get(); const n = s0.nodes.find((x) => x.id === id); if (!n) return;

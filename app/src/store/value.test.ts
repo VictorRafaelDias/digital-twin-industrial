@@ -5,7 +5,7 @@ import { bottleneckReport } from '../engine/bottleneck';
 import { costOf } from '../engine/cost';
 import { computeChartData } from './reportData';
 import { useStore } from './useStore';
-import { effectivePrice, gainReais, moneyBig, moneyDelta, paybackText, valueCompare, versionValue } from './value';
+import { ECON_DEFAULTS, effectivePrice, gainReais, moneyBig, moneyDelta, operatingDays, paybackText, scheduleHours, scheduleOf, scheduleText, valueCompare, versionProfit, versionValue } from './value';
 import { pickCompare } from './versions';
 
 const st = () => useStore.getState();
@@ -233,6 +233,31 @@ describe('ganho em reais', () => {
     st().setEcon({ hours: 4000, margin: 15 });
   });
 
+  it('cada versão tem o seu próprio resultado por ano (e a diferença entre duas é a conta do ganho)', () => {
+    st().loadTemplate('quilmes_gatorade_antes');
+    st().saveVersion();
+    const ench = find('enchedora');
+    st().applyChange({ id: ench.id, value: ench.value, qty: ench.qty + 1, off: false });
+    st().saveVersion();
+    const [v1, v2] = st().versions;
+    const e = { price: 5, hoursYear: 4000, margin: 15 };
+    const p1 = versionProfit(v1, e, st().catalog)!, p2 = versionProfit(v2, e, st().catalog)!;
+    expect(p1.bph).toBe(v1.prod); expect(p1.bottlesYear).toBe(v1.prod * 4000);
+    expect(p1.revenueYear).toBe(v1.prod * 4000 * 5); expect(p1.profitYear).toBeCloseTo(p1.revenueYear * 0.15);
+    expect(p2.equipment).toBeGreaterThan(p1.equipment);                          // a V2 tem uma enchedora a mais
+    const g = gainReais(v1, v2, valueCompare(v1, v2, st().catalog).delta, e)!;
+    expect(g.profitYear).toBeCloseTo(p2.profitYear - p1.profitYear);             // diferença = depois − antes
+    expect(g.revenueYear).toBeCloseTo(p2.revenueYear - p1.revenueYear);
+    expect(versionProfit(v1, { ...e, price: null }, st().catalog)).toBeNull();   // sem preço, não há conta
+  });
+
+  it('trocar antes e depois inverte o sinal (a aba mostra "faz perder" em vez de "rende")', () => {
+    const a = { prod: 11_000 } as never, b = { prod: 10_000 } as never;
+    const g = gainReais(a, b, { min: 0, max: 0 }, { price: 5, hoursYear: 4000, margin: 15 })!;
+    const inv = gainReais(b, a, { min: 0, max: 0 }, { price: 5, hoursYear: 4000, margin: 15 })!;
+    expect(g.profitYear).toBeLessThan(0); expect(inv.profitYear).toBeCloseTo(-g.profitYear);
+  });
+
   it('o PDF da comparação traz o bloco de ganho em reais com o preço e o aviso de teto', () => {
     st().loadTemplate('quilmes_gatorade_antes');
     st().saveVersion();
@@ -242,7 +267,55 @@ describe('ganho em reais', () => {
     const [v1, v2] = st().versions;
     const ctx = { ...st().simCtx(), run: undefined };
     const cd = computeChartData({ nodes: st().nodes, edges: st().edges, catalog: st().catalog, ambient: st().ambient, ctx });
-    const html = buildReportHtml({ kind: 'comparacao', factory: 'X', ambient: 25, tariff: 0.85, server: false, generatedAt: 'hoje', cd, nodes: st().nodes, catalog: st().catalog, bn: bottleneckReport(st().nodes, st().edges, ctx), versions: st().versions, a: v1, b: v2, econ: { price: 5.2, hoursYear: 4000, margin: 15 } });
-    expect(html).toContain('Ganho em reais'); expect(html).toContain('teto'); expect(html).toContain('R$ 5,20');
+    const html = buildReportHtml({ kind: 'comparacao', factory: 'X', ambient: 25, tariff: 0.85, server: false, generatedAt: 'hoje', scheduleText: scheduleText(scheduleOf(st())), cd, nodes: st().nodes, catalog: st().catalog, bn: bottleneckReport(st().nodes, st().edges, ctx), versions: st().versions, a: v1, b: v2, econ: { price: 5.2, hoursYear: 4000, margin: 15 } });
+    expect(html).toContain('Perspectiva de receita'); expect(html).toContain('teto'); expect(html).toContain('R$ 5,20');
+    expect(html).toContain(`Antes (V${v1.n})`); expect(html).toContain(`Depois (V${v2.n})`);
+    expect(html).toContain('Receita por ano'); expect(html).toContain('antes de qualquer custo'); expect(html).toContain('16 h por dia');
+  });
+});
+
+
+describe('calendário de funcionamento da fábrica (horas por dia, dias da semana e meses)', () => {
+  const todos = Array(12).fill(true) as boolean[];
+  const segSex = [true, true, true, true, true, false, false];
+
+  it('o padrão é 2 turnos de 8 h, de segunda a sexta, o ano todo: cerca de 261 dias e 4.170 horas', () => {
+    const sc = { mode: ECON_DEFAULTS.mode, hoursYear: ECON_DEFAULTS.hoursYear, hoursDay: ECON_DEFAULTS.hoursDay, days: ECON_DEFAULTS.days, months: ECON_DEFAULTS.months };
+    expect(operatingDays(segSex, todos)).toBeCloseTo(365.25 * 5 / 7, 6);          // ≈ 260,9 dias
+    expect(scheduleHours(sc)).toBeCloseTo(16 * 365.25 * 5 / 7, 6);                 // ≈ 4.174 h
+    expect(scheduleHours(sc)).toBeGreaterThan(4000); expect(scheduleHours(sc)).toBeLessThan(4300);
+    expect(scheduleText(sc)).toMatch(/^16 h por dia, Seg a Sex, 12 meses \(261 dias → 4\.174 h por ano\)$/);
+  });
+
+  it('fábrica sazonal: só de julho a dezembro, produz cerca de metade dos dias do ano', () => {
+    const jul_dez = Array.from({ length: 12 }, (_, i) => i >= 6);
+    const anoTodo = operatingDays(segSex, todos), sazonal = operatingDays(segSex, jul_dez);
+    expect(sazonal / anoTodo).toBeCloseTo(184 / 365.25, 3);                        // jul a dez = 184 dias
+    expect(scheduleHours({ mode: 'calendario', hoursYear: 0, hoursDay: 24, days: [true, true, true, true, true, true, true], months: jul_dez })).toBeCloseTo(24 * 184, 6);
+  });
+
+  it('o modo "horas por ano" usa o número digitado e ignora o calendário', () => {
+    expect(scheduleHours({ mode: 'horas', hoursYear: 6000, hoursDay: 1, days: [false, false, false, false, false, false, false], months: todos })).toBe(6000);
+    expect(scheduleText({ mode: 'horas', hoursYear: 6000, hoursDay: 1, days: segSex, months: todos })).toBe('6.000 h por ano (digitado direto)');
+  });
+
+  it('sem nenhum dia ou nenhum mês marcado não há horas (e a receita não é calculada)', () => {
+    expect(scheduleHours({ mode: 'calendario', hoursYear: 0, hoursDay: 16, days: [false, false, false, false, false, false, false], months: todos })).toBe(0);
+    expect(scheduleHours({ mode: 'calendario', hoursYear: 0, hoursDay: 16, days: segSex, months: Array(12).fill(false) })).toBe(0);
+    expect(gainReais({ prod: 1 } as never, { prod: 2 } as never, { min: 0, max: 0 }, { price: 5, hoursYear: 0, margin: 15 })).toBeNull();
+  });
+
+  it('a loja guarda o calendário, valida os limites e carregar uma empresa não apaga a escolha do calendário', () => {
+    st().setEcon({ mode: 'calendario', hoursDay: 99, days: [true, false, true, false, true, false, true], months: Array.from({ length: 12 }, (_, i) => i === 11) });
+    expect(st().econHoursDay).toBe(24);                                              // máximo de 24 h por dia
+    expect(st().econDays).toEqual([true, false, true, false, true, false, true]);
+    expect(st().econMonths.filter(Boolean)).toHaveLength(1);
+    st().setEcon({ days: [true], months: [true] });                                  // listas de tamanho errado são ignoradas
+    expect(st().econDays).toHaveLength(7); expect(st().econMonths).toHaveLength(12);
+    st().setEcon({ hoursDay: -3 }); expect(st().econHoursDay).toBe(24);
+    st().setEcon({ mode: 'horas' }); expect(st().econMode).toBe('horas');
+    // volta ao padrão para não afetar os outros testes
+    st().setEcon({ mode: ECON_DEFAULTS.mode, hoursDay: ECON_DEFAULTS.hoursDay, days: ECON_DEFAULTS.days, months: ECON_DEFAULTS.months });
+    expect(scheduleHours(scheduleOf(st()))).toBeCloseTo(16 * 365.25 * 5 / 7, 6);
   });
 });

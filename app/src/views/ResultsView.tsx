@@ -1,4 +1,5 @@
-import { BottleneckBlock } from '../components/BottleneckBlock';
+import { BottleneckBlock, ImproveBlock } from '../components/BottleneckBlock';
+import { RevenueTab } from '../components/Revenue';
 import { Donut, HBars } from '../components/Charts';
 import { ReportActions, UtilBars, UtilByVersion, ValueCompare, VersionsPanel } from '../components/Versions';
 import { Rich } from '../components/Rich';
@@ -27,7 +28,8 @@ export function ResultsView() {
         <div className="restabs c12">
           <button className={aba === 'relatorio' ? 'active' : ''} onClick={() => s.setResTab('relatorio')}>Relatório</button>
           <button className={aba === 'comparacoes' ? 'active' : ''} onClick={() => s.setResTab('comparacoes')}>Comparações{s.versions.length ? ` (${s.versions.length} versões)` : ''}</button>
-          <span className="sub" style={{ margin: '0 0 0 12px' }}>{aba === 'relatorio' ? 'O que está acontecendo na fábrica agora.' : 'Compare versões da fábrica (V1, V2...) para ver o efeito de cada melhoria.'}</span>
+          <button className={aba === 'receita' ? 'active' : ''} onClick={() => s.setResTab('receita')}>Perspectiva de receita</button>
+          <span className="sub" style={{ margin: '0 0 0 12px' }}>{aba === 'relatorio' ? 'O que está acontecendo na fábrica agora.' : aba === 'comparacoes' ? 'Compare versões da fábrica (V1, V2...) para ver o efeito de cada melhoria.' : 'Quanto cada versão fatura em reais por ano (receita, antes dos custos).'}</span>
           <ReportActions />
         </div>
 
@@ -52,6 +54,8 @@ export function ResultsView() {
                 </>
               ) : <div className="sub">Nenhuma máquina fora do ótimo.</div>}
             </div>
+
+            <ImproveBlock />
 
             <div className="card c12">
               <h4>O que cada máquina consegue entregar × o que entrega de fato</h4>
@@ -80,10 +84,10 @@ export function ResultsView() {
               <UtilBars />
             </div>
 
-            <div className="card c6">
+            <div className="card c6 donutcard">
               <h4>Quem gasta energia</h4>
               <div className="sub" style={{ marginTop: 0 }}>Parte do consumo de cada máquina.</div>
-              <Donut slices={cd.slices} center={`${fmt(sim.energy, 1)} kW`} />
+              <Donut large slices={cd.slices} center={`${fmt(sim.energy, 1)} kW`} />
             </div>
 
             <div className="card c6">
@@ -109,8 +113,11 @@ export function ResultsView() {
               <div className="sub" style={{ marginTop: 0 }}>Quanto da vida útil cada máquina já gastou, pela idade que você informou. Passando do intervalo de manutenção, ela rende menos e arrisca mais.</div>
               {cd.hasWear ? <HBars rows={cd.wearRows} max={100} unit="%" /> : <div className="nodata">Todas as máquinas estão novas. Informe a idade delas em <b>Estado das máquinas</b>, no canto do quadro (Montar), ou no painel de cada máquina.</div>}
             </div>
+
           </>
         )}
+
+        {aba === 'receita' && <RevenueTab />}
 
         {aba === 'comparacoes' && (
           <>

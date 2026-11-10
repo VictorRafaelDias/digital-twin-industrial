@@ -6,7 +6,7 @@ import { fmt, fv } from '../engine/format';
 import type { BarRow } from '../components/Charts';
 import type { ChartData } from '../store/reportData';
 import type { RealCase } from '../data/realCases';
-import { gainReais, moneyBig, moneyDelta, paybackText, valueCompare, type Econ } from '../store/value';
+import { gainReais, moneyBig, moneyDelta, paybackText, valueCompare, versionProfit, type Econ } from '../store/value';
 import { diffVersions, utilization, UTIL_TEXT, utilLevel, type ReportVersion } from '../store/versions';
 import type { BnReport, Catalog, FNode } from '../types';
 
@@ -16,8 +16,8 @@ export interface ExportInput {
   kind: ExportKind; factory: string; ambient: number; tariff: number; generatedAt: string; server: boolean;
   cd: ChartData; nodes: FNode[]; catalog: Catalog; bn: BnReport | null;
   versions: ReportVersion[]; a?: ReportVersion; b?: ReportVersion;
-  /** ganho em reais: preço por garrafa, horas por ano e % de lucro; e o exemplo de empresa real carregado (preço, custo real, fontes) */
-  econ?: Econ; realCase?: RealCase;
+  /** perspectiva de receita: preço por garrafa, horas por ano e % de lucro; e o exemplo de empresa real carregado (preço, custo real, fontes) */
+  econ?: Econ; scheduleText?: string; realCase?: RealCase;
 }
 
 export const esc = (s: unknown): string => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -114,11 +114,13 @@ function compareSection(i: ExportInput, n: number): string {
   const names = (id: string) => (mb(id) ?? ma(id))!.name;
   const cmp = valueCompare(a, b, catalog);
   const g = i.econ ? gainReais(a, b, cmp.delta, i.econ, i.realCase?.investRef?.perThousand) : null;
+  const pA = i.econ ? versionProfit(a, i.econ, catalog) : null, pB = i.econ ? versionProfit(b, i.econ, catalog) : null;
   const pr = i.realCase?.price;
-  const gainHtml = g && i.econ
-    ? box('Ganho em reais (estimativa)', 'Garrafas a mais por hora × horas de operação por ano × preço da garrafa.',
-      `<table><tbody><tr><td>Preço por garrafa</td><td class="n">R$ ${fmt(i.econ.price ?? 0, 2)}</td></tr><tr><td>Horas de operação por ano</td><td class="n">${fmt(i.econ.hoursYear)}</td></tr><tr><td>Garrafas a mais por hora</td><td class="n">${g.gainPerHour >= 0 ? '+' : ''}${fmt(g.gainPerHour)}</td></tr><tr><td>Garrafas a mais por ano</td><td class="n">${g.bottlesYear >= 0 ? '+' : ''}${fmt(g.bottlesYear)}</td></tr><tr><td>Vendas a mais por ano (preço de prateleira)</td><td class="n"><b>${esc(moneyBig(g.revenueYear))}</b></td></tr><tr><td>Lucro a mais por ano, no máximo (${fmt(i.econ.margin)}% do valor)</td><td class="n"><b>${esc(moneyBig(g.profitYear))}</b></td></tr><tr><td>Investimento adicional (catálogo)</td><td class="n">${g.invest != null ? esc(moneyBig(g.invest)) : 'nenhum'}</td></tr><tr><td>Retorno do investimento (catálogo)</td><td class="n"><b>${g.invest != null ? esc(paybackText(g.paybackMonths)) : '—'}</b></td></tr>${g.investRef != null ? `<tr><td>Com o custo real da linha</td><td class="n">${esc(moneyBig(g.investRef))} · retorno em <b>${esc(paybackText(g.paybackRefMonths))}</b></td></tr>` : ''}</tbody></table>
-       <div class="sub">O preço é de prateleira (a fábrica recebe menos), então os valores são um teto; não entram custo de matéria-prima, mão de obra nem a demanda do mercado. As máquinas do catálogo são de escala menor que as de uma linha real.${pr ? ' ' + esc(pr.basis) + ' Fontes: ' + pr.sources.map((r) => esc(r.t) + ' (' + esc(r.u) + ')').join('; ') + '.' : ''}${i.realCase?.investRef ? ' ' + esc(i.realCase.investRef.text) : ''}${i.realCase?.revenueRef ? ` Conferência: a receita publicada da empresa foi ${esc(moneyBig(i.realCase.revenueRef.brl))} em ${i.realCase.revenueRef.year}; com a V${a.n} o simulador dá ${esc(moneyBig(a.prod * i.econ.hoursYear * (i.econ.price ?? 0)))} no preço de prateleira. O ganho é capacidade nova: só vira dinheiro se o mercado comprar.` : ''}</div>`)
+  const sg = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + moneyBig(Math.abs(v));
+  const gainHtml = g && pA && pB && i.econ
+    ? box('Perspectiva de receita (estimativa)', `Antes = V${a.n}, depois = V${b.n}. Receita = produção por hora × horas de operação por ano × preço da garrafa. Não desconta nenhum custo.`,
+      `<table><thead><tr><th>Preço R$ ${fmt(i.econ.price ?? 0, 2)}</th><th class="n">Antes (V${a.n})</th><th class="n">Depois (V${b.n})</th><th class="n">Diferença</th></tr></thead><tbody><tr><td>Produção por hora</td><td class="n">${fmt(a.prod)}</td><td class="n">${fmt(b.prod)}</td><td class="n">${g.gainPerHour >= 0 ? '+' : '−'}${fmt(Math.abs(g.gainPerHour))}</td></tr><tr><td>Garrafas por ano</td><td class="n">${fmt(pA.bottlesYear)}</td><td class="n">${fmt(pB.bottlesYear)}</td><td class="n">${g.bottlesYear >= 0 ? '+' : '−'}${fmt(Math.abs(g.bottlesYear))}</td></tr><tr><td><b>Receita por ano (preço de prateleira)</b></td><td class="n"><b>${esc(moneyBig(pA.revenueYear))}</b></td><td class="n"><b>${esc(moneyBig(pB.revenueYear))}</b></td><td class="n"><b>${esc(sg(g.revenueYear))}</b></td></tr><tr><td>Lucro estimado por ano (${fmt(i.econ.margin)}% da receita)</td><td class="n">${esc(moneyBig(pA.profitYear))}</td><td class="n">${esc(moneyBig(pB.profitYear))}</td><td class="n">${esc(sg(g.profitYear))}</td></tr><tr><td>Investimento adicional (catálogo)</td><td></td><td></td><td class="n">${g.invest != null ? esc(moneyBig(g.invest)) : 'nenhum'}</td></tr><tr><td>Retorno do investimento (catálogo, com o lucro estimado)</td><td></td><td></td><td class="n"><b>${g.invest != null ? esc(paybackText(g.paybackMonths)) : '—'}</b></td></tr>${g.investRef != null ? `<tr><td>Com o custo real da linha</td><td></td><td></td><td class="n">${esc(moneyBig(g.investRef))} · retorno em <b>${esc(paybackText(g.paybackRefMonths))}</b></td></tr>` : ''}</tbody></table>
+       <div class="sub"><b>Funcionamento da fábrica:</b> ${esc(i.scheduleText ?? `${fmt(i.econ.hoursYear)} h por ano`)}. A receita é o que entra de vendas, <b>antes de qualquer custo</b>; o lucro é só uma estimativa. O preço é de prateleira (a fábrica recebe menos), então os valores são um teto; não entram matéria-prima, mão de obra, impostos nem a demanda do mercado. As máquinas do catálogo são de escala menor que as de uma linha real.${pr ? ' ' + esc(pr.basis) + ' Fontes: ' + pr.sources.map((r) => esc(r.t) + ' (' + esc(r.u) + ')').join('; ') + '.' : ''}${i.realCase?.investRef ? ' ' + esc(i.realCase.investRef.text) : ''}${i.realCase?.revenueRef ? ` Conferência: a receita publicada da empresa foi ${esc(moneyBig(i.realCase.revenueRef.brl))} em ${i.realCase.revenueRef.year}; com a V${a.n} o simulador dá ${esc(moneyBig(a.prod * i.econ.hoursYear * (i.econ.price ?? 0)))} no preço de prateleira. O ganho é capacidade nova: só vira dinheiro se o mercado comprar.` : ''}</div>`)
     : '';
   const uvRows = ids.map((id) => `<div class="box"><div class="bar" style="grid-template-columns:112px 1fr 0"><b>${esc(names(id))}</b><span></span><span></span></div>${[a, b].map((v, k) => { const m = v.machines.find((x) => x.id === id); const u = m && !m.off && m.cap > 0 ? utilization(m.cap, m.eff) * 100 : 0; return `<div class="bar"><span>V${v.n}</span><div class="trk"><i style="width:${u}%;background:${k ? '#E8871E' : '#1C7293'}"></i></div><span>${m ? (m.off || m.cap <= 0 ? 'desligada' : fmt(u) + '%') : '—'}</span></div>`; }).join('')}</div>`).join('');
   return `

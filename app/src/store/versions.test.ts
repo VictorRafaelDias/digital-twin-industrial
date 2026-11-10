@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { simulate } from '../engine/simulate';
 import { useStore } from './useStore';
-import { cfgOf, describeChanges, diffVersions, machineNames, realFlow, sameConfig, utilLevel, utilization } from './versions';
+import { cfgOf, changedIds, describeChanges, diffVersions, machineNames, realFlow, sameConfig, utilLevel, utilization } from './versions';
 
 const st = () => useStore.getState();
 const find = (type: string) => st().nodes.find((n) => n.type === type)!;
@@ -164,5 +164,26 @@ describe('fluxo: aplicar → quadro → simular → comparar', () => {
     st().loadTemplate('suco');
     expect(st().versions).toHaveLength(0);
     expect(st().versionSeq).toBe(0);
+  });
+});
+
+
+describe('destaque no quadro das máquinas aplicadas e ainda não simuladas', () => {
+  it('só as máquinas mudadas entram; sem mudança pendente ou depois de desfazer, nenhuma', () => {
+    st().loadTemplate('bebidas');
+    expect(changedIds(st().pendingBase, cfgOf(st().nodes, st().catalog)).size).toBe(0);
+    const ench = find('enchedora');
+    st().applyChange({ id: ench.id, value: ench.value, qty: ench.qty + 1, off: false, label: 'mais uma enchedora' });
+    const ids = changedIds(st().pendingBase, cfgOf(st().nodes, st().catalog));
+    expect([...ids]).toEqual([ench.id]);
+    st().discardPending();
+    expect(changedIds(st().pendingBase, cfgOf(st().nodes, st().catalog)).size).toBe(0);
+  });
+
+  it('uma máquina nova (que não existia na base) também fica em destaque', () => {
+    const base = [{ id: 'a', type: 'x', name: 'A', value: 1, qty: 1, off: false }];
+    const cur = [...base, { id: 'b', type: 'x', name: 'B', value: 1, qty: 1, off: false }];
+    expect([...changedIds(base, cur)]).toEqual(['b']);
+    expect(changedIds(null, cur).size).toBe(0);
   });
 });

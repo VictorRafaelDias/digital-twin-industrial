@@ -358,10 +358,10 @@ table.cmp td, table.cmp th{padding:4px 8px;} table.cmp tr.diff td{background:var
 .vers tr.vsel td{background:#eaf4f8;} .vers tr.vchg td{background:#fff8e8;}
 .vers .chg{margin:4px 0 0; padding-left:18px;} .vers .chg li{margin:2px 0;}
 .vers .delta-pos{color:var(--ok); font-weight:700;} .vers .delta-neg{color:var(--danger); font-weight:700;}
-.pending{position:absolute; right:16px; top:16px; width:330px; max-width:calc(100% - 32px); background:#fff; border:2px solid var(--amber); border-radius:12px; box-shadow:0 10px 30px rgba(23,35,46,.18); z-index:9; padding:12px 14px;}
-.pending .ph{font-size:13px;} .pending .ph span{color:var(--muted); font-size:12px;}
-.pending ul{margin:6px 0 8px; padding-left:18px; font-size:12.5px;} .pending li{margin:2px 0;}
-.pending .pf{display:flex; gap:8px; flex-wrap:wrap;}
+.pending{position:absolute; left:170px; right:16px; top:4px; background:#fff; border:3px solid var(--amber); border-radius:12px; box-shadow:0 10px 30px rgba(23,35,46,.18); z-index:9; padding:4px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:2px 16px;} .pending .btn{padding:6px 12px;}
+.pending .ph{font-size:13px;} .pending .ph b{font-size:14px;} .pending .ph span{color:var(--muted); font-size:12px;}
+.pending ul{margin:0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:2px 14px; font-size:12.5px; flex:1 1 200px;} .pending li{margin:0;} .pending li::before{content:'• '; color:var(--amber);}
+.pending .pf{display:flex; gap:8px; flex-wrap:wrap; margin-left:auto;}
 
 /* sub-abas de Resultados, rótulos das barras, uso por versão e Dash ampliado */
 .restabs{display:flex; align-items:center; gap:6px; border-bottom:2px solid var(--line); flex-wrap:wrap;}
@@ -395,3 +395,55 @@ table.cmp td, table.cmp th{padding:4px 8px;} table.cmp tr.diff td{background:var
 .agepre{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:6px 0;} .agepre .btn{padding:3px 9px; font-size:11.5px;}
 .tag.age{background:#e9eef2; color:#3b4a56;} .tag.age.warn{background:var(--amber-l); color:#8a4e0c;} .tag.age.bad{background:var(--danger-l); color:#7a231a;}
 .agedate{width:140px;} .agegrid .agedate{width:100%;}
+
+/* --- Como melhorar no fim do relatório, plano recolhido, máquinas mudadas em destaque --- */
+.improve{border:2px solid var(--teal);} .improve h4{font-size:15px; color:var(--teal);}
+.improve .t td{vertical-align:middle;}
+.planbox{margin-top:18px; border-top:1px solid var(--line); padding-top:10px;}
+.planbox summary{cursor:pointer; font-weight:700; color:var(--muted); font-size:13px;}
+.planbox[open] summary{color:var(--text);}
+.planbox .wfrow{margin-top:10px;}
+.node.changed{outline:4px solid var(--amber); outline-offset:3px; animation:chgpulse 1.8s ease-in-out infinite;}
+.tag.chg{background:var(--amber); color:#fff;}
+@keyframes chgpulse{0%,100%{outline-color:var(--amber);}50%{outline-color:rgba(232,135,30,.25);}}
+
+/* --- Ganho em reais: campos editáveis bem claros --- */
+.gainbox{margin-top:22px; padding:18px; border:2px solid var(--line); border-radius:14px; background:#fbfcfd;}
+.gainbox h5{margin:0 0 6px; font-size:17px; text-transform:none; letter-spacing:0; color:var(--text);}
+.gsub{margin:0 0 12px; font-size:14px; line-height:1.5; text-transform:none; letter-spacing:0; color:var(--text);}
+.gfields{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin:12px 0 16px;}
+.gf{display:flex; flex-direction:column; gap:8px; padding:14px; border:2px dashed var(--amber); background:#fffaf2; border-radius:12px; cursor:text;}
+.gl{font-size:14px; font-weight:700; color:var(--text);} .gh{font-size:12.5px; color:var(--muted); line-height:1.45;}
+.gin{display:flex; align-items:center; gap:8px;} .gin i{font-style:normal; font-weight:700; color:var(--muted); font-size:14px;}
+.gin input{width:140px; font-size:20px; font-weight:700; padding:8px 10px; border:2px solid var(--amber); border-radius:8px; background:#fff; color:var(--text);}
+.gin input:focus{outline:3px solid var(--amber-l);}
+.gks{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin:14px 0;}
+.gk{display:flex; flex-direction:column; gap:3px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:#fff;}
+.gk small{font-size:12.5px; color:var(--muted); font-weight:700;} .gk b{font-size:26px; line-height:1.15;} .gk span{font-size:12.5px; color:var(--muted);}
+.gk.main{border:2px solid var(--ok); background:#f3fbf6;} .gk.main b{color:var(--ok); font-size:30px;}
+.gcalc{margin:6px 0 12px;} .gcalc summary{cursor:pointer; font-weight:700; font-size:13px; color:var(--teal); margin-bottom:6px;}
+.gwarn{font-size:12.5px; line-height:1.5; color:#6b5a3a; background:#fff8ea; border:1px solid #f0d9a8; border-radius:10px; padding:10px 14px;}
+
+/* Resultados: o gráfico de energia ocupa o cartão (antes ficava pequeno e perdido ao lado do cartão alto de Uso das máquinas) */
+.donutcard{display:flex; flex-direction:column;} .donutcard .donutwrap{flex:1;}
+.donutwrap.lg{justify-content:center; gap:36px; flex-wrap:wrap; padding:6px 0;} .donutwrap.lg .donut{width:min(250px,100%);}
+.donutwrap.lg .dlegend{font-size:15px; gap:9px;} .donutwrap.lg .dlegend i{width:12px; height:12px; margin-right:8px;}
+
+/* Perspectiva de receita */
+.profit td.n,.profit th.n{text-align:right; white-space:nowrap;} .profit td{vertical-align:middle;}
+.vtag{display:inline-block; margin-left:6px; font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:9px; vertical-align:middle;}
+.vtag.a{background:var(--teal-l); color:var(--teal);} .vtag.b{background:var(--amber-l); color:#8a4e0c;}
+.gk.main.neg{border-color:var(--danger); background:var(--danger-l);} .gk.main.neg b{color:var(--danger);}
+
+/* Perspectiva de receita: calendário de funcionamento (dias da semana e meses clicáveis; preenchido = conta) */
+.gf.wide{grid-column:1/-1;}
+.gmode{display:inline-flex; border:2px solid var(--amber); border-radius:10px; overflow:hidden; width:max-content; max-width:100%;}
+.gmode button{border:none; background:#fff; padding:7px 14px; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer;}
+.gmode button.on{background:var(--amber); color:#fff;}
+.gcal{display:grid; gap:12px;} .gcal h6{margin:0 0 6px; font-size:13px; color:var(--text);}
+.gchips{display:flex; flex-wrap:wrap; gap:6px;}
+.gchip{border:2px solid var(--line); background:#fff; color:var(--muted); font-weight:700; font-size:13px; border-radius:9px; padding:6px 12px; cursor:pointer; min-width:52px; text-align:center;}
+.gchip.on{background:var(--teal); border-color:var(--teal); color:#fff;}
+.gchip:focus-visible{outline:3px solid var(--amber-l);}
+.gquick{font-size:12.5px; margin-left:8px;} .gquick a{cursor:pointer; margin-right:10px;}
+.gsum{font-size:14px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 12px;}

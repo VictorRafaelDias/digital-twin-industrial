@@ -101,13 +101,13 @@ O catálogo de 14 máquinas é **dado** (não código fixo), para permitir outro
 - **Efeito cascata:** uma máquina com problema pinta as conexões seguintes e mostra quem fica sem produto.
 - **Simulação com tempo (Play):** velocidades ×1 a ×60, filas entre máquinas, energia e resultado final.
 - **Gargalo explicado:** por que existe, como melhorar e **quanto custa** (preços estimados com fontes).
-- **Simular uma melhoria:** "e se eu colocar mais 2 máquinas?", com recálculo em cascata quando outra máquina passa a limitar.
+- **Como melhorar:** é o 2º bloco do Relatório (logo depois de Avisos), com opções de melhoria com custo, cada uma com **Aplicar no quadro**; a máquina mudada fica em destaque no quadro até rodar a simulação (V2). O cálculo de um plano completo (meta de +% de produção) ficou no fim, em "Avançado".
 - **Objetivo:** "quero +10% de produção" gera um plano passo a passo, com o porquê de cada passo.
 - **Temperatura ambiente:** efeito do calor e do frio nas máquinas e a dilatação da água.
 - **Painel da máquina** (como o painel de um operador), **fábrica vista de cima**, **assistente de conversa** e **registro** de tudo o que acontece.
 - **Ajuda completa:** guia da plataforma, manual das máquinas e glossário, com termos explicados nas próprias telas.
 - **Dash:** aba na lateral com gráficos que acompanham a simulação ao vivo (medidor da fábrica, linha do tempo, capacidade × saída, filas, energia, risco, temperatura estimada das máquinas e desgaste) e mini-gráficos ao clicar numa máquina.
-- **Empresas reais:** em `Exemplos` há dez mapas de oito empresas (Coca-Cola FEMSA, SLMG Beverages, Refres Now/Manaos, Coca-Cola Canners, Quilmes, Refriko, Tial e Tannourine Water), cada um com a velocidade de linha publicada, fontes e histórico (ver [docs/empresas-reais.md](docs/empresas-reais.md) e o dossiê [docs/evidencias-empresas.md](docs/evidencias-empresas.md)). Em Resultados › Comparações, o bloco **Ganho em reais** converte a melhoria em dinheiro por ano e em tempo de retorno, com preços médios pesquisados.
+- **Empresas reais:** em `Exemplos` há dez mapas de oito empresas (Coca-Cola FEMSA, SLMG Beverages, Refres Now/Manaos, Coca-Cola Canners, Quilmes, Refriko, Tial e Tannourine Water), cada um com a velocidade de linha publicada, fontes e histórico (ver [docs/empresas-reais.md](docs/empresas-reais.md) e o dossiê [docs/evidencias-empresas.md](docs/evidencias-empresas.md)). Em Resultados › Comparações, a aba **Perspectiva de receita** (Resultados) mostra quanto **cada versão** fatura por ano (receita, antes dos custos) e, escolhendo "antes" e "depois", quanto a melhoria muda a receita e em quanto tempo se paga; o funcionamento da fábrica é informado por **calendário** (horas por dia, dias da semana e meses, útil para fábrica sazonal) ou direto em horas por ano, com preços médios pesquisados.
 - **Idade e manutenção das máquinas:** você informa a idade e a **data da última manutenção** de cada máquina (intervalo de 3 ou 6 meses por tipo, ver [manutencao-intervalos.md](docs/manutencao-intervalos.md)) (painel **Estado das máquinas** no quadro, ou no painel da máquina); máquina velha rende menos, arrisca mais e esquenta mais (hipótese didática). Por padrão todas são novas. Funciona também sem servidor.
 - **Dados reais:** anexar a ficha técnica (PDF) de uma máquina; o sistema lê por regras (sem IA e sem custo), você confere e edita, ele avisa se já existe uma máquina parecida (lado a lado) e você escolhe atualizar, salvar como nova versão ou criar.
 - **Modo servidor:** login de verdade, fábricas guardadas por usuário, resultados do Play e desgaste guardados no banco; sem servidor o sistema continua funcionando sozinho no navegador.
@@ -184,7 +184,7 @@ cd app
 npm test
 ```
 
-São 125 testes: motor de simulação (gargalo, risco, falha em cascata, paralelo e fila, temperatura, **desgaste**, play), temperatura estimada das máquinas, regras de conexão, planejador de objetivo, relatório de gargalo, "e se..." com cascata, o estado da aplicação, as **versões do relatório (V1, V2) e o uso das máquinas** e o **modo servidor** (login, catálogo do servidor, guardar e abrir fábricas, desgaste, Play guardado), com um servidor de mentira.
+São 134 testes: motor de simulação (gargalo, risco, falha em cascata, paralelo e fila, temperatura, **desgaste**, play), temperatura estimada das máquinas, regras de conexão, planejador de objetivo, relatório de gargalo, "e se..." com cascata, o estado da aplicação, as **versões do relatório (V1, V2) e o uso das máquinas** e o **modo servidor** (login, catálogo do servidor, guardar e abrir fábricas, desgaste, Play guardado), com um servidor de mentira.
 
 O back-end tem os próprios testes (446), em [`backend/`](backend/README.md#testes).
 

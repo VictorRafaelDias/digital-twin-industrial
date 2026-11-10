@@ -66,9 +66,21 @@ Efeitos (hipótese didática): até −20% de rendimento pela idade e −5% pela
 
 O menu **Exemplos** tem, além de "Bebidas em geral" e "Suco de laranja natural", **dez mapas de oito empresas reais** (Coca-Cola FEMSA em Jundiaí, SLMG Beverages na Índia, Refres Now/Manaos na Argentina, Coca-Cola Canners na África do Sul, Quilmes na Argentina e Tial em Minas Gerais, ambas antes e depois de uma ampliação, Refriko no Paraná e Tannourine Water no Líbano). Cada um reproduz **uma linha de envase** com a velocidade em garrafas por hora publicada, e ao carregar abre a janela **Sobre a fábrica**: o que é dado documentado (com links), o que foi assumido para montar o mapa e o histórico da empresa. `Exemplos › Sobre a fábrica carregada…` abre de novo. Detalhes, fontes e método em [empresas-reais.md](empresas-reais.md).
 
-## Ganho em reais
+## Perspectiva de receita (3ª aba de Resultados)
 
-Em **Resultados › Comparações**, abaixo do valor estimado dos equipamentos, o bloco **Ganho em reais (estimativa)** converte a diferença de produção entre duas versões em dinheiro: garrafas a mais por hora × horas de operação por ano × preço da garrafa, lucro máximo (porcentagem do preço) e retorno do investimento. Os três números (preço, horas por ano, lucro %) podem ser ajustados; nos exemplos de empresas reais o preço vem pesquisado, com fonte. Há conferência com a receita publicada da empresa (Tial) e comparação com o custo real da linha (Coca-Cola FEMSA). O PDF da comparação inclui o bloco. Detalhes em [empresas-reais.md](empresas-reais.md).
+A aba **Perspectiva de receita** responde "quanto isso fatura em reais". **Receita** é o que entra de vendas, **antes de qualquer custo** (o simulador não tem custos de matéria-prima, mão de obra ou impostos). A pessoa informa **uma vez**, nos quadros amarelos numerados:
+
+1. **Preço de venda de cada garrafa.** Nos exemplos de empresas reais vem pesquisado, com fonte.
+2. **Lucro sobre a receita (opcional).** Só serve para *estimar* o lucro e o prazo de retorno do investimento (padrão 15%); a receita não depende dele.
+3. **Quando a fábrica trabalha.** Dois jeitos, escolhidos em dois botões:
+   - **Por calendário (padrão):** *horas trabalhadas por dia* (8 h = 1 turno, 16 h = 2 turnos, 24 h = ligada o dia todo), **caixinhas dos dias da semana** (Seg a Dom; padrão segunda a sexta) e **caixinhas dos meses** (Jan a Dez; padrão o ano todo). Caixinha preenchida = entra na conta. Há atalhos ("Seg a Sex", "Seg a Sáb", "Todos", "O ano todo", "Jul a Dez"). Serve para a **fábrica sazonal** (por exemplo, de panetone, que só produz na segunda metade do ano). As horas por ano são: horas por dia × dias de funcionamento, onde os dias = (dias de cada mês marcado) × (dias da semana marcados ÷ 7), com o ano médio de 365,25 dias. O padrão (16 h, segunda a sexta, o ano todo) dá cerca de 261 dias e **4.174 horas por ano**. Uma linha embaixo mostra a conta, por exemplo "16 h por dia, Seg a Sáb, 6 meses (158 dias → 2.523 h por ano)".
+   - **Direto em horas por ano:** a pessoa digita o número (4.000 h ≈ 1,5 turno por dia).
+
+O que a tela mostra:
+- **Quanto cada versão fatura por ano:** tabela com **todas** as versões (V1, V2, V3...): produção por hora, garrafas por ano, **receita por ano** (em destaque), lucro estimado (em cinza) e valor dos equipamentos.
+- **Antes × depois:** a pessoa escolhe a versão de "antes" e a de "depois" (as mesmas escolhas da aba Comparações); a tela mostra a receita de cada uma, a **diferença de receita** (depois − antes; fica vermelha se for negativa), o lucro estimado a mais e em quanto tempo o investimento adicional se paga (calculado com o lucro estimado). A conta passo a passo fica recolhida.
+- Há conferência com a receita publicada da empresa (Tial) e comparação com o custo real da linha (Coca-Cola FEMSA). O PDF da comparação traz o mesmo quadro "antes (Vx), depois (Vy) e diferença" e a descrição do calendário.
+- Mudamos isto em 10/11/2026: antes o bloco ficava dentro de Comparações e mostrava só a diferença, sem dizer quais versões comparava; depois chamou-se "Perspectiva de lucro", e o Victor lembrou que, sem custos, o que se calcula é **receita**.
 
 ## Dash ampliado
 
@@ -80,9 +92,10 @@ Na aba **Dash** do painel lateral, o botão **⤢ Ampliar** faz o Dash ocupar a 
 - **Explorar no chat:** abre a aba Conversa já com a pergunta e a resposta orientada. Na Conversa também dá para perguntar "quanto custa melhorar o gargalo?" ou "quanto custa o pasteurizador?".
 - O **Objetivo** também mostra o **investimento estimado** quando o plano pede máquinas a mais. Preços: [precos-maquinas.md](precos-maquinas.md).
 
-## Simular uma melhoria (Resultados › Avisos)
-- **"E se eu colocar N máquinas a mais na [gargalo]?"** (N de 1 a 5, botões − e +) → **Simular**: mostra produção antes → depois, risco e custo estimado.
-- Se **outra máquina passar a ser o gargalo** (ex.: a Rotuladora passaria a entregar 34.200/h, mas a Enchedora segura em 12.000/h), o sistema **recalcula em cascata** e mostra o **plano completo**: tudo o que precisa mudar, passo a passo, com o investimento total. **Aplicar só esta mudança** ou **Aplicar o plano**.
+## Como melhorar (2º bloco de Resultados › Relatório)
+- O **diagnóstico** (qual máquina limita e por quê) fica em **Avisos**, no alto. As **ações** ficam logo abaixo, no 2º bloco, o cartão **Como melhorar**: cada opção tem produção antes → depois, risco, custo estimado e o botão **Aplicar no quadro**. Aplicar leva ao quadro, onde a máquina mudada fica **em destaque** (contorno laranja e a marca "mudou") e uma faixa no topo oferece **Rodar a simulação (V2)** ou **Desfazer as mudanças**.
+- Mudamos isto em 10/11/2026: antes havia um "simular uma melhoria" ("e se eu colocar N máquinas a mais?") logo abaixo das opções, e as pessoas aplicavam 4 ou 5 máquinas sem sentido. Ele saiu da tela (a rota `/what-if` da API continua existindo).
+- **Avançado: calcular um plano completo** (recolhido, no fim do cartão): **"Quero produzir X% a mais"** (com opção de aceitar a zona de atenção) → **Calcular o plano completo**. O sistema calcula, em cascata, tudo o que precisa mudar, passo a passo, com o investimento total, e só aplica se a pessoa clicar. Quando outra máquina passaria a ser o gargalo (ex.: a Rotuladora passaria a entregar 34.200/h, mas a Enchedora segura em 12.000/h), o plano mostra isso: tudo o que precisa mudar, passo a passo, com o investimento total. **Aplicar só esta mudança** ou **Aplicar o plano**.
 - **"Quero produzir X% a mais e saber tudo o que precisa mudar"** (com opção de aceitar a zona de atenção) → **Calcular o plano completo**.
 - O motor é o mesmo do Objetivo (`planGoal`), que agora aceita um ponto de partida diferente.
 

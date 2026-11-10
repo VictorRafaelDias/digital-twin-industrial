@@ -147,11 +147,11 @@ function RealCaseModal({ onClose }: { onClose: () => void }) {
         <ul>{c.assumptions.map((f) => <li key={f}>{f}</li>)}</ul>
         <h5>Um pouco do histórico da empresa</h5>
         <ul>{c.history.map((f) => <li key={f}>{f}</li>)}</ul>
-        <h5>Preço usado no ganho em reais</h5>
+        <h5>Preço usado na perspectiva de receita</h5>
         {c.price
           ? <ul><li><b>R$ {fmt(c.price.min, 2)} a R$ {fmt(c.price.max, 2)} por {c.price.unit}.</b> {c.price.basis} {c.price.sources.map((r, i) => <span key={r.u}>{i ? ' · ' : ''}<a href={r.u} target="_blank" rel="noreferrer">{r.t}</a></span>)}</li>
               {c.investRef && <li><b>Custo real da linha:</b> {c.investRef.text} Dá R$ {fmt(c.investRef.perThousand / 1e6, 2)} milhões por cada 1.000 garrafas/h. <a href={c.investRef.source.u} target="_blank" rel="noreferrer">{c.investRef.source.t}</a></li>}</ul>
-          : <ul><li>Não encontramos preço público de referência para esta empresa: digite o preço por garrafa em Resultados › Comparações › Ganho em reais.</li></ul>}
+          : <ul><li>Não encontramos preço público de referência para esta empresa: digite o preço por garrafa em Resultados › Perspectiva de receita.</li></ul>}
         <h5>Fontes</h5>
         <ul>{c.sources.map((r) => <li key={r.u}><a href={r.u} target="_blank" rel="noreferrer">{r.t}</a></li>)}</ul>
         <div className="sub">Mapa reconstruído a partir de dados públicos, para fins didáticos: não é o projeto real da fábrica, que as empresas não divulgam.</div>

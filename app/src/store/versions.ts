@@ -89,6 +89,14 @@ export function sameConfig(v: ReportVersion | undefined, nodes: FNode[]): boolea
 }
 
 export type Cfg = { id: string; type: string; name: string; value: number; qty: number; off: boolean; ageYears?: number; maintDate?: string };
+/** Máquinas aplicadas e ainda não simuladas: as que mudaram de ritmo, de unidades ou de liga/desliga em relação à base guardada ao aplicar. */
+export function changedIds(base: Cfg[] | null, cur: Cfg[]): Set<string> {
+  const out = new Set<string>();
+  if (!base) return out;
+  cur.forEach((c) => { const b = base.find((x) => x.id === c.id); if (!b || b.value !== c.value || b.qty !== c.qty || b.off !== c.off) out.add(c.id); });
+  return out;
+}
+
 export const cfgOf = (nodes: FNode[], catalog: Catalog): Cfg[] => {
   const names = machineNames(nodes, catalog);
   return nodes.map((x) => ({ id: x.id, type: x.type, name: names[x.id], value: x.value, qty: x.qty || 1, off: !!x.off, ageYears: x.ageYears ?? 0, maintDate: x.maintDate ?? '' }));

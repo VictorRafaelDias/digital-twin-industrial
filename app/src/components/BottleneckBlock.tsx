@@ -6,77 +6,71 @@ import { Rich } from './Rich';
 import { PlanResult, gainTxt } from './Shared';
 import { useBottleneck } from './hooks';
 
-/** Dentro de Resultados › Avisos: por que existe o gargalo, como melhorar (com custo) e "simular uma melhoria". */
+/** Resultados › Avisos: só o diagnóstico. Qual máquina limita a fábrica e por quê. (As ações ficam logo abaixo, no 2º bloco do relatório: ver ImproveBlock.) */
 export function BottleneckBlock() {
   const rep = useBottleneck();
   const s = useStore();
   if (!rep) return null;
-  const w = s.whatIf, res = w.res;
-
   return (
     <>
       <div className="bnhead"><Icon name="alert" size={20} />
         <div style={{ flex: 1 }}><b style={{ fontSize: 15 }}>Gargalo: {rep.name}</b><div className="sub" style={{ margin: 0 }}>Ela limita a fábrica a {fmt(rep.prod)} garrafas/h.</div></div>
         <button className="btn" onClick={s.exploreBottleneck}>Explorar no chat ›</button>
       </div>
-      <div className="bncols">
-        <div><h5>Por que isso acontece</h5><ul className="why">{rep.why.map((x, i) => <li key={i}><Rich text={x} terms /></li>)}</ul></div>
-        <div>
-          <h5>Como melhorar</h5>
-          {rep.options.length ? (
-            <>
-              <table className="t"><thead><tr><th>Opção</th><th>Produção</th><th>Risco</th><th>Custo estimado</th><th /></tr></thead><tbody>
-                {rep.options.map((o) => (
-                  <tr key={o.key}>
-                    <td><b>{o.title}</b><div className="sub" style={{ margin: 0 }}><Rich text={o.detail} terms />{o.next && ` Depois, o gargalo passa a ser: ${o.next}.`}</div></td>
-                    <td>{fmt(rep.prod)} → <b>{fmt(o.prod)}</b><br /><b>{gainTxt(o.gain)}</b></td>
-                    <td>{fmt(o.risk * 100, 1)}%</td>
-                    <td>{o.cost ? <b>{moneyRange(o.cost)}</b> : <span style={{ color: 'var(--muted)' }}>R$ 0</span>}</td>
-                    <td><button className="btn sec" style={{ padding: '5px 10px' }} onClick={() => s.applyChange(o.change)}>Aplicar no quadro</button></td>
-                  </tr>
-                ))}
-              </tbody></table>
-              <div className="sub">Ao aplicar, você volta para o quadro com a lista do que mudou e pode rodar a simulação para ver o resultado (V2) e compará-lo com o de antes (V1) aqui em Resultados.</div>
-              {rep.hasCost && <div className="sub">Preços: estimativas tiradas de anúncios de fornecedores (<a onClick={() => s.openSettings('precos')}>ver de onde vêm</a>). Para comprar, peça cotação.</div>}
-            </>
-          ) : <p>Não há ajuste simples que aumente a produção: a máquina já está no limite. O caminho é um <b>modelo de maior capacidade</b> (consulte o fabricante) ou uma segunda linha.</p>}
-        </div>
-      </div>
-
-      <div className="whatif">
-        <h5>Simular uma melhoria</h5>
-        <div className="wfrow">
-          <span>E se eu colocar</span>
-          <div className="stepper">
-            <button onClick={() => s.setWhatIf({ n: Math.max(1, w.n - 1), res: null })}>−</button>
-            <input type="number" min={1} max={5} value={w.n} onChange={(e) => s.setWhatIf({ n: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)), res: null })} />
-            <button onClick={() => s.setWhatIf({ n: Math.min(5, w.n + 1), res: null })}>+</button>
-          </div>
-          <span>máquina(s) a mais na <b>{rep.name}</b>?</span>
-          <button className="btn" onClick={s.simulateWhatIf}>Simular</button>
-        </div>
-        {res && (
-          <div className={'gres ' + (res.enough ? 'ok' : 'warn')}>
-            <div className="gh2">Com {res.n} máquina(s) a mais na {res.name}: {fmt(res.before)} → {fmt(res.after)} garrafas/h ({(res.after - res.before) >= 0 ? '+' : ''}{fmt(((res.after - res.before) / Math.max(1, res.before)) * 100, 1)}%)</div>
-            <div>Risco máximo <b>{fmt(res.risk * 100, 1)}%</b> · custo estimado <b>{moneyRange(res.cost)}</b></div>
-            {res.enough
-              ? <div className="gnote" style={{ color: 'var(--ok)' }}>Resolveu: nenhuma outra máquina passou a limitar a fábrica.</div>
-              : <div className="gnote">Só isso <b>não basta</b>: a {res.name} passaria a entregar <b>{fmt(res.capNew)}</b>/h, mas a fábrica fica em <b>{fmt(res.after)}</b>/h porque agora o gargalo é a <b>{res.next}</b>. A {res.name} ficaria usando só <b>{fmt(Math.min(1, res.after / Math.max(1, res.capNew)) * 100)}%</b> da capacidade que passa a ter. Para aproveitar de verdade, este é o plano completo, em cascata:</div>}
-            {res.plan && <PlanResult plan={res.plan} onApply={() => s.applyPlan(res.plan!)} onDrop={() => s.setWhatIf({ res: null })} />}
-            <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn sec" onClick={s.applyWhatIfOnly}>Aplicar só esta mudança no quadro</button>
-            </div>
-          </div>
-        )}
-        <div className="wfrow" style={{ marginTop: 14 }}>
-          <span>Ou: quero produzir</span>
-          <input type="number" value={w.pct} style={{ width: 80 }} onChange={(e) => s.setWhatIf({ pct: Math.max(1, parseFloat(e.target.value) || 10), plan: null })} />
-          <span>% a mais e saber <b>tudo</b> o que precisa mudar</span>
-          <label className="chk" style={{ padding: 0 }}><input type="checkbox" checked={w.over} onChange={(e) => s.setWhatIf({ over: e.target.checked, plan: null })} /><span>aceitar a zona de atenção</span></label>
-          <button className="btn" onClick={s.planWhatIf}>Calcular o plano completo</button>
-        </div>
-        {w.plan && <PlanResult plan={w.plan} onApply={() => s.applyPlan(w.plan!)} onDrop={() => s.setWhatIf({ plan: null })} />}
-      </div>
+      <div><h5>Por que isso acontece</h5><ul className="why">{rep.why.map((x, i) => <li key={i}><Rich text={x} terms /></li>)}</ul></div>
+      <div className="sub" style={{ marginTop: 8 }}>O que fazer a respeito está logo abaixo, em <a onClick={() => document.getElementById('como-melhorar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><b>Como melhorar</b></a>.</div>
     </>
+  );
+}
+
+/** 2º bloco do relatório, logo depois de Avisos: as melhorias sugeridas, cada uma com "Aplicar no quadro". Aplicar leva ao quadro, onde a mudança fica em destaque até rodar a simulação. */
+export function ImproveBlock() {
+  const rep = useBottleneck();
+  const s = useStore();
+  if (!rep) return null;
+  return (
+    <div className="card c12 improve" id="como-melhorar">
+      <h4>Como melhorar</h4>
+      <div className="sub" style={{ marginTop: 0 }}>
+        Escolha uma opção e clique em <b>Aplicar no quadro</b>. A mudança aparece <b>em destaque</b> no quadro; depois é só rodar a simulação para gerar a V2 e comparar com a V1 em <b>Comparações</b>.
+      </div>
+      {rep.options.length ? (
+        <>
+          <table className="t"><thead><tr><th>Opção</th><th>Produção</th><th>Risco</th><th>Custo estimado</th><th /></tr></thead><tbody>
+            {rep.options.map((o) => (
+              <tr key={o.key}>
+                <td><b>{o.title}</b><div className="sub" style={{ margin: 0 }}><Rich text={o.detail} terms />{o.next && ` Depois, o gargalo passa a ser: ${o.next}.`}</div></td>
+                <td>{fmt(rep.prod)} → <b>{fmt(o.prod)}</b><br /><b>{gainTxt(o.gain)}</b></td>
+                <td>{fmt(o.risk * 100, 1)}%</td>
+                <td>{o.cost ? <b>{moneyRange(o.cost)}</b> : <span style={{ color: 'var(--muted)' }}>R$ 0</span>}</td>
+                <td><button className="btn" style={{ padding: '7px 12px' }} onClick={() => s.applyChange(o.change)}>Aplicar no quadro</button></td>
+              </tr>
+            ))}
+          </tbody></table>
+          {rep.hasCost && <div className="sub">Preços: estimativas tiradas de anúncios de fornecedores (<a onClick={() => s.openSettings('precos')}>ver de onde vêm</a>). Para comprar, peça cotação.</div>}
+        </>
+      ) : <p>Não há ajuste simples que aumente a produção: a máquina já está no limite. O caminho é um <b>modelo de maior capacidade</b> (consulte o fabricante) ou uma segunda linha.</p>}
+      <PlanCalculator />
+    </div>
+  );
+}
+
+/** Opcional, recolhido no fim do cartão: "quero produzir X% a mais" calcula todas as mudanças em cascata. Fica recolhido para não competir com as melhorias acima. */
+function PlanCalculator() {
+  const s = useStore();
+  const w = s.whatIf;
+  return (
+    <details className="planbox" open={!!w.plan}>
+      <summary>Avançado: calcular um plano completo (todas as máquinas de uma vez)</summary>
+      <div className="sub">Use só se quiser uma meta de produção: o sistema calcula tudo o que precisa mudar, máquina por máquina, em cascata. Depois você escolhe se aplica.</div>
+      <div className="wfrow">
+        <span>Quero produzir</span>
+        <input type="number" value={w.pct} style={{ width: 80 }} onChange={(e) => s.setWhatIf({ pct: Math.max(1, parseFloat(e.target.value) || 10), plan: null })} />
+        <span>% a mais</span>
+        <label className="chk" style={{ padding: 0 }}><input type="checkbox" checked={w.over} onChange={(e) => s.setWhatIf({ over: e.target.checked, plan: null })} /><span>aceitar a zona de atenção</span></label>
+        <button className="btn sec" onClick={s.planWhatIf}>Calcular o plano completo</button>
+      </div>
+      {w.plan && <PlanResult plan={w.plan} onApply={() => s.applyPlan(w.plan!)} onDrop={() => s.setWhatIf({ plan: null })} />}
+    </details>
   );
 }

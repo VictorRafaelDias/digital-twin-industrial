@@ -7,7 +7,7 @@ import { bottleneckReport } from '../engine/bottleneck';
 import { moneyRange } from '../engine/cost';
 import { computeChartData } from '../store/reportData';
 import { REAL_BY_KEY } from '../data/realCases';
-import { effectivePrice, gainReais, moneyBig, moneyDelta, paybackText, valueCompare } from '../store/value';
+import { effectivePrice, moneyDelta, scheduleHours, scheduleOf, scheduleText, valueCompare } from '../store/value';
 import { cfgOf, describeChanges, diffVersions, machineNames, pickCompare, UTIL_TEXT, utilLevel, utilization, type ReportVersion } from '../store/versions';
 import { COLORS, sliceColor } from './Charts';
 import { useFlow, useSim } from './hooks';
@@ -229,6 +229,7 @@ export function ValueCompare() {
   const versions = useStore((s) => s.versions);
   const catalog = useStore((s) => s.catalog);
   const cmp = useStore((s) => s.cmp);
+  const setResTab = useStore((s) => s.setResTab);
   const { a, b } = pickCompare(versions, cmp);
   if (!a || !b) return <div className="nodata">Precisa de duas versões para estimar o valor da mudança.</div>;
   const v = valueCompare(a, b, catalog);
@@ -254,61 +255,8 @@ export function ValueCompare() {
       )}
       {v.gainPerHour > 0 && v.perThousand == null && <div className="sub">A produção subiu {fmt(v.gainPerHour)} garrafas/h sem gasto em equipamentos (só ajuste de ritmo).</div>}
       {v.unpriced.length > 0 && <div className="sub">Sem preço no catálogo (não entram na soma): {v.unpriced.join(', ')}. Você pode informar preços em Configurações › Preços das máquinas.</div>}
-      <GainBlock a={a} b={b} delta={v.delta} />
+      <div className="say">💰 Quanto isso fatura em <b>reais por ano</b>? Veja a aba <a onClick={() => setResTab('receita')}><b>Perspectiva de receita</b></a>: você digita o preço da garrafa e o calendário da fábrica e vê a receita de cada versão.</div>
     </div>
-  );
-}
-
-/** Quanto o ganho de produção vale em reais por ano e em quanto tempo paga o investimento. Tudo estimativa, com o preço e as contas à vista. */
-function GainBlock({ a, b, delta }: { a: ReportVersion; b: ReportVersion; delta: { min: number; max: number } }) {
-  const caseKey = useStore((s) => s.caseKey), econPrice = useStore((s) => s.econPrice), hours = useStore((s) => s.econHours), margin = useStore((s) => s.econMargin);
-  const setEcon = useStore((s) => s.setEcon);
-  const real = caseKey ? REAL_BY_KEY[caseKey] : null;
-  const ref = real?.price ?? null;
-  const price = effectivePrice(econPrice, ref);
-  const g = gainReais(a, b, delta, { price, hoursYear: hours, margin }, real?.investRef?.perThousand);
-  return (
-    <div className="gainbox">
-      <h5 style={{ margin: '12px 0 4px' }}>💰 Ganho em reais (estimativa)</h5>
-      <div className="sub" style={{ marginTop: 0 }}>Garrafas a mais por hora × horas de operação por ano × preço da garrafa. Ajuste os três números abaixo: o resultado muda na hora.</div>
-      <div className="agegrid">
-        <label>Preço por garrafa (R$){ref ? <span className="sub" style={{ margin: 0 }}>referência: R$ {fmt(ref.min, 2)} a R$ {fmt(ref.max, 2)}</span> : null}<EconNum value={price ?? 0} step={0.1} onCommit={(v) => setEcon({ price: v })} /></label>
-        <label>Horas de operação por ano<span className="sub" style={{ margin: 0 }}>4.000 h ≈ 1,5 turno por dia</span><EconNum value={hours} step={100} onCommit={(v) => setEcon({ hours: v })} /></label>
-        <label>Lucro sobre o preço (%)<span className="sub" style={{ margin: 0 }}>padrão 15%: margem operacional pública da Coca-Cola FEMSA</span><EconNum value={margin} step={1} onCommit={(v) => setEcon({ margin: v })} /></label>
-      </div>
-      {real?.revenueRef && price != null && (() => { const base = a.prod * hours * price; return (
-        <div className="say">🔎 <b>Conferência com a realidade:</b> a receita publicada da empresa foi {moneyBig(real.revenueRef.brl)} em {real.revenueRef.year}. Com a V{a.n} ({fmt(a.prod)} garrafas/h × {fmt(hours)} h × R$ {fmt(price, 2)}) o simulador dá {moneyBig(base)} no preço de prateleira: mesma ordem de grandeza, e maior porque a fábrica recebe menos que o preço de prateleira. Já o ganho abaixo é a <b>capacidade nova</b>: ele só vira dinheiro se o mercado comprar essa produção a mais.</div>
-      ); })()}
-      {price == null && <div className="sub">Digite o preço de venda por garrafa para ver o ganho em reais{caseKey && !ref ? ' (não encontramos preço público para esta empresa)' : ''}.</div>}
-      {g && (
-        <>
-          <table className="t"><tbody>
-            <tr><td>Garrafas a mais por hora</td><td><b>{g.gainPerHour >= 0 ? '+' : ''}{fmt(g.gainPerHour)}</b></td></tr>
-            <tr><td>Garrafas a mais por ano</td><td><b>{g.bottlesYear >= 0 ? '+' : ''}{fmt(g.bottlesYear)}</b></td></tr>
-            <tr><td>Vendas a mais por ano (no preço de prateleira)</td><td><b>{moneyBig(g.revenueYear)}</b></td></tr>
-            <tr><td>Lucro a mais por ano, no máximo ({fmt(margin)}% desse valor)</td><td><b>{moneyBig(g.profitYear)}</b></td></tr>
-            <tr><td>Investimento adicional (catálogo, ponto médio)</td><td>{g.invest != null ? moneyBig(g.invest) : 'nenhum (só ajuste de ritmo)'}</td></tr>
-            <tr><td>Retorno do investimento (catálogo)</td><td><b>{g.invest != null ? paybackText(g.paybackMonths) : '—'}</b></td></tr>
-            {g.investRef != null && <tr><td>Com o custo real da linha ({moneyBig(real!.investRef!.perThousand)} por 1.000 garrafas/h)</td><td><b>{moneyBig(g.investRef)}</b> · retorno em <b>{paybackText(g.paybackRefMonths)}</b></td></tr>}
-          </tbody></table>
-          <div className="sub">
-            Cuidado ao ler: o preço é o de <b>prateleira</b> (a fábrica recebe menos: imposto e varejo ficam com a diferença), então os valores são um <b>teto</b>; o simulador não considera custo de matéria-prima, mão de obra nem se o mercado compra a produção a mais. As máquinas do catálogo são de escala menor que as de uma linha real, por isso o retorno pelo catálogo sai mais rápido do que seria na vida real.
-            {ref && <> <b>Preço:</b> {ref.basis} {ref.sources.map((r, i) => <span key={r.u}>{i ? ' · ' : ''}<a href={r.u} target="_blank" rel="noreferrer">{r.t}</a></span>)}</>}
-            {real?.investRef && <> <b>Custo real:</b> {real.investRef.text}</>}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Campo numérico que aceita digitar com vírgula ou ponto e grava ao digitar; ao sair, volta a mostrar o valor guardado. */
-function EconNum({ value, step, onCommit }: { value: number; step: number; onCommit: (v: number) => void }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  return (
-    <input className="agein" type="number" min={0} step={step} value={draft ?? String(Math.round(value * 100) / 100)}
-      onChange={(e) => { setDraft(e.target.value); const v = parseFloat(e.target.value.replace(',', '.')); if (Number.isFinite(v)) onCommit(v); }}
-      onBlur={() => setDraft(null)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
   );
 }
 
@@ -328,7 +276,8 @@ export function ReportActions() {
     const html = buildReportHtml({
       kind, factory: s.plantName, ambient: s.ambient, tariff: s.tariff, server: !!s.server, generatedAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
       cd, nodes: s.nodes, catalog: s.catalog, bn: bottleneckReport(s.nodes, s.edges, ctx), versions: s.versions, a, b,
-      econ: { price: effectivePrice(s.econPrice, s.caseKey ? REAL_BY_KEY[s.caseKey]?.price : null), hoursYear: s.econHours, margin: s.econMargin },
+      econ: { price: effectivePrice(s.econPrice, s.caseKey ? REAL_BY_KEY[s.caseKey]?.price : null), hoursYear: scheduleHours(scheduleOf(s)), margin: s.econMargin },
+      scheduleText: scheduleText(scheduleOf(s)),
       realCase: s.caseKey ? REAL_BY_KEY[s.caseKey] : undefined,
     });
     printHtml(html);

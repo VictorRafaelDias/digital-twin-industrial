@@ -96,13 +96,14 @@ const PALETTE = ['#1C7293', '#E8871E', '#2E8B57', '#7A4E9E', '#C0392B', '#2F4B7C
 export const sliceColor = (i: number) => PALETTE[i % PALETTE.length];
 
 /** Rosca: fatias proporcionais ao valor. */
-export function Donut({ slices, center }: { slices: Slice[]; center: string }) {
+/** `large`: versão grande, para cartões largos (Resultados); sem ele, o tamanho pequeno do painel lateral. */
+export function Donut({ slices, center, large }: { slices: Slice[]; center: string; large?: boolean }) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return <div className="nodata">Sem consumo para mostrar.</div>;
   const R = 46, C = 2 * Math.PI * R;
   let acc = 0;
   return (
-    <div className="donutwrap">
+    <div className={'donutwrap' + (large ? ' lg' : '')}>
       <svg viewBox="0 0 120 120" className="donut" role="img" aria-label="Consumo de energia por máquina">
         <circle cx="60" cy="60" r={R} fill="none" stroke={COLORS.line} strokeWidth="18" />
         {slices.map((s) => {

@@ -37,7 +37,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A lavagem das garrafas retornáveis e a inspeção eletrônica existem na linha real, mas não há essas máquinas no catálogo: ficam de fora.
 - A fábrica toda tem 17 linhas; este mapa é só a linha 17.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,94 a R$ 5,92 por garrafa de vidro retornável de 1 L. Refrigerantes em vidro retornável de 1 L: Pepsi e Guaraná Antarctica R$ 4,94; Coca-Cola R$ 5,92. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -65,7 +65,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A cadeia de etapas e a quantidade de cada máquina são hipóteses (a empresa não publica o arranjo interno): foram calculadas para a linha sustentar a velocidade publicada, com a enchedora como gargalo.
 - O sopro das garrafas PET e as máquinas que aplicam a camada de vidro interna (Plasmax) não existem no catálogo: ficam de fora.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 5,98 a R$ 7,31 por garrafa PET de 1 L. Refrigerantes PET de 1 L: Pepsi R$ 5,98; Coca-Cola R$ 7,31. É uma referência brasileira: a fábrica fica em outro país. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -93,7 +93,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A cadeia de etapas e a quantidade de cada máquina são hipóteses (a empresa não publica o arranjo interno): foram calculadas para a linha sustentar a velocidade publicada, com a enchedora como gargalo.
 - Os 30 mil/h são de 2014 (antes da ampliação de 2017). Sopro e tampagem não existem no catálogo: ficam de fora.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,11 a R$ 5,80 por garrafa PET de 2 L (marcas regionais). Refrigerantes PET de 2 L de marcas regionais: Ei! Tubaína R$ 4,11; Kitubaína Jota Efe R$ 5,80. Referência brasileira de marca de segunda linha. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -121,7 +121,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - No hot-fill não há carbonatação: a cadeia não tem carbonatador, e o pasteurizador representa o aquecimento a quente.
 - Os 48 mil/h são da matéria de 2016.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,07 a R$ 6,47 por garrafa PET de isotônico (400 ml a 1 L). Gatorade: até 400 ml R$ 4,07; 500 ml R$ 6,05; 1 L R$ 6,47. Referência brasileira. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -148,7 +148,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A cadeia de etapas e a quantidade de cada máquina são hipóteses (a empresa não publica o arranjo interno): foram calculadas para a linha sustentar a velocidade publicada, com a enchedora como gargalo.
 - No hot-fill não há carbonatação: a cadeia não tem carbonatador. O sopro, o resfriador e a paletização não existem no catálogo.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,07 a R$ 6,47 por garrafa PET de isotônico (400 ml a 1 L). Gatorade: até 400 ml R$ 4,07; 500 ml R$ 6,05; 1 L R$ 6,47. Referência brasileira. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -172,7 +172,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A cadeia de etapas e a quantidade de cada máquina são hipóteses (a empresa não publica o arranjo interno): foram calculadas para a linha sustentar a velocidade publicada, com a enchedora como gargalo.
 - Quantidades escalonadas na mesma proporção do mapa "depois da ampliação".
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,07 a R$ 6,47 por garrafa PET de isotônico (400 ml a 1 L). Gatorade: até 400 ml R$ 4,07; 500 ml R$ 6,05; 1 L R$ 6,47. Referência brasileira. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -199,7 +199,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A matéria não diz se a garrafa é PET nem o tamanho: para o preço usamos o PET de 2 L de marcas regionais.
 - A linha de latas de cerveja (60 mil/h), os energéticos e a água (que é engarrafada perto da fonte, em outra unidade) ficam de fora.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 4,11 a R$ 5,80 por garrafa PET de 2 L (marcas regionais). Refrigerantes PET de 2 L de marcas regionais: Ei! Tubaína R$ 4,11; Kitubaína Jota Efe R$ 5,80. Referência brasileira de marca de segunda linha. PMPF é o preço médio ao consumidor final que o governo de Minas Gerais usa para calcular imposto (vigência de jul a dez/2026): é preço de prateleira, não o que a fábrica recebe, e vale para o Brasil.
   - [Portaria SAIF nº 93/2026 (Minas Gerais): preços médios ao consumidor final (PMPF) de refrigerantes e isotônicos](https://www.legisweb.com.br/legislacao/?id=497278)
@@ -224,7 +224,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - O dado publicado é de processamento em litros por hora: assumimos garrafa de 1 L (1 L = 1 garrafa) para caber no simulador. Por isso o gargalo deste mapa é o pasteurizador, e não a enchedora.
 - A matéria descreve suco feito de água e concentrado: a cadeia tem tanque de concentrado e misturador, e não tem carbonatador.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 10,59 a R$ 10,99 por caixa de 1 L de néctar de marca líder. Preços de loja online (sem data de coleta): néctar de manga Del Valle 1 L R$ 10,59 (Pão de Açúcar) e néctar de maracujá 1 L R$ 10,99 (Extrafarma). São de marca líder; uma marca regional pode custar menos.
   - [Pão de Açúcar: néctar de manga Del Valle 1 L](https://www.paodeacucar.com/produto/80070/nectar-manga-del-valle-caixa-1l)
@@ -253,7 +253,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - A economia de vapor, de água e de perdas aparece na matéria, mas o simulador só calcula capacidade, risco e energia elétrica: esses ganhos NÃO entram no cálculo em reais daqui.
 - A matéria é conteúdo patrocinado pelo fornecedor (Tetra Pak) e os números não foram verificados de forma independente.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - R$ 10,59 a R$ 10,99 por caixa de 1 L de néctar de marca líder. Preços de loja online (sem data de coleta): néctar de manga Del Valle 1 L R$ 10,59 (Pão de Açúcar) e néctar de maracujá 1 L R$ 10,99 (Extrafarma). São de marca líder; uma marca regional pode custar menos.
   - [Pão de Açúcar: néctar de manga Del Valle 1 L](https://www.paodeacucar.com/produto/80070/nectar-manga-del-valle-caixa-1l)
@@ -282,7 +282,7 @@ isso é **hipótese nossa**, calculada para a linha sustentar a velocidade publi
 - Água mineral natural não leva xarope, mistura, pasteurização nem gás: a cadeia é só água, enchedora, esteira e rotuladora. Quantidades calculadas para sustentar 31.500/h.
 - O tratamento da água e o sopro das garrafas não existem no catálogo: ficam de fora. O sistema avisa que a ligação "pula etapas" do processo se você refizer a conexão à mão.
 
-**Preço usado no ganho em reais**
+**Preço usado na perspectiva de receita**
 
 - Não encontramos preço público de referência: o usuário digita o preço.
 

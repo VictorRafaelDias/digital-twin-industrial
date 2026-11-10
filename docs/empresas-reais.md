@@ -74,9 +74,9 @@ A Quilmes tem **dois mapas** (antes e depois da ampliação de 2020), para repet
 - Fabricante de sucos prontos, líder regional em Minas Gerais (19% do mercado) e com receita de R$ 350 milhões em 2024. A nova linha de pasteurização leva o processamento de 11 mil para até 37 mil litros por hora e substitui as duas linhas antigas.
 - Fonte: [Exame, conteúdo patrocinado pela Tetra Pak](https://exame.com/negocios/tecnologia-tetra-pak/)
 
-## Ganho em reais (pedido do Enzo)
+## Perspectiva de receita (pedido do Enzo)
 
-Em **Resultados › Comparações** há o bloco **"Ganho em reais (estimativa)"**: compara duas versões e converte a diferença de produção em dinheiro.
+Em **Resultados › Perspectiva de receita** (3ª aba) a pessoa informa o preço da garrafa e o funcionamento da fábrica (calendário de horas por dia, dias da semana e meses, ou direto em horas por ano) uma vez e vê a **receita de cada versão** (V1, V2...) e, escolhendo "antes" e "depois", o que a melhoria muda na receita.
 
 - **Conta:** garrafas a mais por hora × horas de operação por ano × preço por garrafa = vendas a mais por ano. O lucro a mais é uma porcentagem desse valor. O retorno do investimento é o investimento adicional (do catálogo de máquinas) ÷ lucro por mês.
 - **Três números que a pessoa ajusta:** preço por garrafa (vem preenchido com o ponto médio da faixa pesquisada de cada empresa), horas de operação por ano (padrão **4.000 h**, o mesmo do desgaste) e lucro sobre o preço (padrão **15%**).
@@ -109,6 +109,6 @@ Como achamos duas empresas brasileiras com dado público (Refriko e Tial), **nã
 
 1. `Exemplos › Empresa real: ...` carrega o mapa e abre a janela com fontes e histórico.
 2. **Resultados** mostra a produção (igual ao número publicado), o gargalo (enchedora), o uso de cada máquina e as folgas.
-3. Pergunte "e se...": **Resultados › Avisos** sugere melhorias (mais uma enchedora, subir o ritmo) com custo estimado. Aplique, rode o **Play** e compare as versões em **Comparações** (inclui valor estimado dos equipamentos e PDF).
+3. Em **Resultados**, logo abaixo de Avisos, está **Como melhorar**: as opções (mais uma enchedora, subir o ritmo) têm custo estimado. **Aplicar no quadro** (a máquina mudada fica em destaque), rode a simulação ou o **Play** e compare as versões em **Comparações** (inclui valor estimado dos equipamentos e PDF).
 4. Para um caso real de ampliação, use as duas versões da Quilmes (22 mil → 45 mil por hora) ou da Tial (11 mil → 37 mil litros por hora, com a melhoria da nova linha de pasteurização).
-5. Abra **Comparações › Ganho em reais**: veja quanto a ampliação vale por ano, em quanto tempo paga e a conferência com a receita publicada da empresa. Exporte o PDF para o relatório final.
+5. Abra **Resultados › Perspectiva de receita**: veja o lucro por ano de cada versão, escolha antes e depois, e veja quanto a ampliação rende, em quanto tempo paga e a conferência com a receita publicada da empresa. Exporte o PDF para o relatório final.
