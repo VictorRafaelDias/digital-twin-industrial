@@ -26,6 +26,7 @@ docker info >nul 2>nul
 if not errorlevel 1 goto :docker_ok
 echo  O Docker Desktop esta fechado. Abrindo...
 if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+if exist "%LocalAppData%\Programs\DockerDesktop\Docker Desktop.exe" start "" "%LocalAppData%\Programs\DockerDesktop\Docker Desktop.exe"
 echo  Aguardando o Docker ficar pronto - ate uns 3 minutos...
 set /a N=0
 :espera_docker
