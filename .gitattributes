@@ -6,3 +6,6 @@
 *.jpg binary
 *.jpeg binary
 *.db binary
+
+# Atalhos do Windows precisam de CRLF
+*.bat text eol=crlf

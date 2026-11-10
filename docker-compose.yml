@@ -1,0 +1,45 @@
+# Sobe o sistema inteiro: banco (PostgreSQL) + servidor (API) + site.
+#   docker compose up --build        (ou duplo clique em INICIAR_DOCKER.bat)
+# Site:     http://localhost:8080
+# Servidor: http://127.0.0.1:8000/docs   (usuário de demonstração: victor.dias / senha1234)
+# Desligar: docker compose down     (os dados ficam guardados; "down -v" apaga o banco)
+services:
+  banco:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: digital_twin
+      POSTGRES_USER: digital_twin
+      POSTGRES_PASSWORD: digital_twin      # apenas para uso local
+    volumes:
+      - dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digital_twin -d digital_twin"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://digital_twin:digital_twin@banco:5432/digital_twin
+      SECRET_KEY: troque-esta-chave
+    depends_on:
+      banco:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  site:
+    build:
+      context: ./app
+      args:
+        VITE_API_URL: http://127.0.0.1:8000     # o navegador fala com a API por aqui; já deixa "Usar o servidor" marcado
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  dados:

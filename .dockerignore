@@ -1,0 +1,8 @@
+.git
+app
+ABRIR_AQUI
+docs
+**/node_modules
+**/__pycache__
+backend/data
+backend/tests
