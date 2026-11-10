@@ -46,7 +46,7 @@ Na pasta do projeto há quatro atalhos para Windows:
 
 O arquivo [`docker-compose.yml`](docker-compose.yml) da raiz descreve os três serviços (`banco`, `api`, `site`); o da pasta `backend/` sobe só o banco e a API.
 
-> **Se o Docker Desktop abrir e mostrar "unexpected error" citando um arquivo `.sock`:** sobraram arquivos temporários de uma sessão anterior que o Windows não consegue renomear. Feche o Docker Desktop, rode `wsl --shutdown` e renomeie as pastas `%LOCALAPPDATA%\Dockerun` e `%LOCALAPPDATA%\docker-secrets-engine` (por exemplo, acrescentando `.old`); o Docker recria as pastas limpas. Testado em 09/11/2026: depois disso o `INICIAR_DOCKER.bat` subiu banco, API e site (a API respondeu com PostgreSQL e 25 tabelas).
+> **Se o Docker Desktop abrir e mostrar "unexpected error" citando um arquivo `.sock`:** sobraram arquivos temporários de uma sessão anterior que o Windows não consegue renomear. Feche o Docker Desktop, rode `wsl --shutdown` e renomeie as pastas `%LOCALAPPDATA%\Docker\run` e `%LOCALAPPDATA%\docker-secrets-engine` (por exemplo, acrescentando `.old`); o Docker recria as pastas limpas. Testado em 09/11/2026: depois disso o `INICIAR_DOCKER.bat` subiu banco, API e site (a API respondeu com PostgreSQL e 25 tabelas).
 
 ## Professor, para ver o back-end (API)
 
