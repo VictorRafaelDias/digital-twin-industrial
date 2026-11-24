@@ -66,6 +66,10 @@ ROTULOS = {  # (tabela filha, coluna): "verbo" lido do pai para o filho
     ("planos_objetivo", "fabrica_id"): "recebe", ("planos_objetivo", "usuario_id"): "pede", ("plano_passos", "plano_id"): "é feito de",
     ("plano_passos", "fabrica_maquina_id"): "mexe em", ("plano_passos", "maquina_id"): "afeta tipo", ("mensagens_chat", "usuario_id"): "escreve",
     ("mensagens_chat", "fabrica_id"): "trata de",
+    ("documentos_maquina", "maquina_id"): "tem ficha", ("documentos_maquina", "usuario_id"): "anexa",
+    ("manutencoes", "fabrica_maquina_id"): "recebe", ("manutencoes", "usuario_id"): "registra",
+    ("simulacao_pontos", "simulacao_id"): "tem pontos", ("simulacao_pontos_maquina", "ponto_id"): "detalha",
+    ("simulacao_pontos_maquina", "fabrica_maquina_id"): "mede",
 }
 COLUNAS_CHAVE_EXTRA = ("nome", "nome_usuario", "codigo", "titulo", "termo")
 

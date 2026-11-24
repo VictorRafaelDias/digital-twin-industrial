@@ -11,7 +11,7 @@ SUB = "Digital Twin Industrial · base de dados PostgreSQL · gerado de banco-de
 LAYOUTS = {
     "visao_geral": {
         "arquivo": "DER-visao-geral.png",
-        "titulo": "Digital Twin Industrial: DER, visão geral (21 tabelas)",
+        "titulo": "Digital Twin Industrial: DER, visão geral (25 tabelas)",
         "subtitulo": "Cada caixa mostra as chaves (PK, FK) e o nome da tabela. Todas as colunas estão em DER-completo.png. " + "Lê-se: um(a) pai … vários(as) filho(s).",
         "modo": "chaves",
         "canal": 150,
@@ -20,10 +20,11 @@ LAYOUTS = {
         "colunas": [
             ["glossario_termos", "glossario_palavras", ("fontes", {"y": 330})],
             [("categorias", {"y": 0}), ("maquina_fontes", {"y": 200}), "modelos_reais", "precos_maquina", "manuais_maquina"],
-            [("etapas", {"y": 0}), ("maquinas_catalogo", {"y": 200})],
-            [("fabrica_maquinas", {"y": 200}), "conexoes", "cenario_maquinas"],
+            [("etapas", {"y": 0}), ("maquinas_catalogo", {"y": 200}), "documentos_maquina"],
+            [("fabrica_maquinas", {"y": 200}), "conexoes", "cenario_maquinas", "manutencoes"],
             [("fabricas", {"y": 200}), ("cenarios", {"com": "cenario_maquinas"}), "plano_passos"],
             [("usuarios", {"y": 0}), ("simulacoes", {"y": 200}), "eventos_registro", ("planos_objetivo", {"com": "plano_passos"}), "mensagens_chat"],
+            [("simulacao_pontos", {"y": 200}), "simulacao_pontos_maquina"],
         ],
         "lados": {
             ("usuarios", "fabricas"): ("left", "top"),
@@ -36,7 +37,7 @@ LAYOUTS = {
     "completo": {
         "arquivo": "DER-completo.png",
         "titulo": "Digital Twin Industrial: DER, modelo completo (todas as colunas)",
-        "subtitulo": "As 21 tabelas com todas as colunas e os tipos. " + "Lê-se: um(a) pai … vários(as) filho(s).",
+        "subtitulo": "As 25 tabelas com todas as colunas e os tipos. " + "Lê-se: um(a) pai … vários(as) filho(s).",
         "modo": "completo",
         "canal": 170,
         "gap": 100,
@@ -44,10 +45,11 @@ LAYOUTS = {
         "colunas": [
             ["glossario_termos", "glossario_palavras", ("fontes", {"y": 330})],
             [("categorias", {"y": 0}), ("maquina_fontes", {"y": 240}), "modelos_reais", "precos_maquina", "manuais_maquina"],
-            [("etapas", {"y": 0}), ("maquinas_catalogo", {"y": 200})],
-            [("fabrica_maquinas", {"y": 200}), "conexoes", "cenario_maquinas"],
+            [("etapas", {"y": 0}), ("maquinas_catalogo", {"y": 200}), "documentos_maquina"],
+            [("fabrica_maquinas", {"y": 200}), "conexoes", "cenario_maquinas", "manutencoes"],
             [("fabricas", {"y": 200}), ("cenarios", {"com": "cenario_maquinas"}), "plano_passos"],
             [("usuarios", {"y": 0}), ("simulacoes", {"y": 300}), "eventos_registro", ("planos_objetivo", {"com": "plano_passos"}), "mensagens_chat"],
+            [("simulacao_pontos", {"y": 300}), "simulacao_pontos_maquina"],
         ],
         "lados": {
             ("usuarios", "fabricas"): ("left", "top"),
@@ -65,9 +67,9 @@ LAYOUTS = {
         "gap": 60,
         "colunas": [
             [("usuarios", {"y": 150})],
-            ["fabricas", "simulacoes", "planos_objetivo", "eventos_registro", "mensagens_chat"],
+            ["fabricas", "simulacoes", "planos_objetivo", "eventos_registro", "mensagens_chat", "documentos_maquina", "manutencoes"],
         ],
-        "fantasmas": ["fabricas", "simulacoes", "planos_objetivo", "eventos_registro", "mensagens_chat"],
+        "fantasmas": ["fabricas", "simulacoes", "planos_objetivo", "eventos_registro", "mensagens_chat", "documentos_maquina", "manutencoes"],
     },
     "modulo2": {
         "arquivo": "DER-modulo-2-catalogo.png",
@@ -79,10 +81,10 @@ LAYOUTS = {
         "colunas": [
             [("fontes", {"y": 330})],
             [("categorias", {"y": 0}), ("maquina_fontes", {"y": 240}), "modelos_reais", "precos_maquina", "manuais_maquina"],
-            [("etapas", {"y": 0}), "maquinas_catalogo"],
-            ["fabrica_maquinas", "cenario_maquinas", "plano_passos", "simulacoes"],
+            [("etapas", {"y": 0}), "maquinas_catalogo", "documentos_maquina"],
+            ["fabrica_maquinas", "cenario_maquinas", "plano_passos", "simulacoes", "usuarios"],
         ],
-        "fantasmas": ["fabrica_maquinas", "cenario_maquinas", "plano_passos", "simulacoes"],
+        "fantasmas": ["fabrica_maquinas", "cenario_maquinas", "plano_passos", "simulacoes", "usuarios"],
     },
     "modulo3": {
         "arquivo": "DER-modulo-3-apoio.png",
@@ -107,7 +109,7 @@ LAYOUTS = {
         "gap": 90,
         "colunas": [
             [("usuarios", {"y": 0}), ("fabricas", {"y": 220})],
-            [("maquinas_catalogo", {"y": 0}), "fabrica_maquinas", "conexoes"],
+            [("maquinas_catalogo", {"y": 0}), "fabrica_maquinas", "conexoes", "manutencoes"],
         ],
         "fantasmas": ["usuarios", "maquinas_catalogo"],
     },
@@ -123,6 +125,7 @@ LAYOUTS = {
             [("cenarios", {"y": 0}), ("cenario_maquinas", {"y": 330})],
             [("fabricas", {"y": 0}), ("maquinas_catalogo", {"y": 200}), ("fabrica_maquinas", {"y": 380})],
             [("simulacoes", {"y": 0}), "eventos_registro", "planos_objetivo", "plano_passos"],
+            [("simulacao_pontos", {"y": 0}), "simulacao_pontos_maquina"],
             [("usuarios", {"y": 0})],
         ],
         "fantasmas": ["fabricas", "usuarios", "fabrica_maquinas", "maquinas_catalogo"],

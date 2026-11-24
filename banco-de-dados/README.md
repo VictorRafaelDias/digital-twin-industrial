@@ -24,7 +24,7 @@ Como o PostgreSQL precisa de um servidor, a entrega traz também uma **cópia po
 ## Ver rapidamente (3 passos)
 
 1. **Ver o DER:** abra as imagens em [`der/`](der/). Comece por `DER-visao-geral.png`; para ler as colunas, use os diagramas por módulo (`DER-modulo-1-acesso.png` a `DER-modulo-5-simulacao.png`).
-2. **Ver o banco:** abra `digital_twin.db` no [DB Browser for SQLite](https://sqlitebrowser.org/) (gratuito). Na aba *Estrutura de Banco de Dados* estão as 21 tabelas e as 4 views; em *Navegar nos Dados* dá para ver e editar as linhas; em *Executar SQL* dá para rodar qualquer comando.
+2. **Ver o banco:** abra `digital_twin.db` no [DB Browser for SQLite](https://sqlitebrowser.org/) (gratuito). Na aba *Estrutura de Banco de Dados* estão as 25 tabelas e as 4 views; em *Navegar nos Dados* dá para ver e editar as linhas; em *Executar SQL* dá para rodar qualquer comando.
 3. **Ver o CRUD funcionando** (precisa só do Python 3.9 ou mais novo, sem instalar nada):
    ```bash
    cd banco-de-dados
