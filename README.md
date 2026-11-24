@@ -2,7 +2,7 @@
 
 Simulador de fábrica de bebidas no estilo **Cisco Packet Tracer**: você monta o mapa da fábrica arrastando máquinas, liga uma na outra, ajusta o ritmo de cada uma e vê, em números e em palavras simples, a produção, o **gargalo**, o risco de falha, o consumo de energia e como melhorar o desempenho (e quanto custaria).
 
-Este repositório tem o **front-end** (React + TypeScript, Sprint 0) e a **base de dados** (21 tabelas, DER e CRUD, Sprint 1). A simulação do front roda no próprio navegador, então não precisa de servidor.
+Este repositório tem o **front-end** (React + TypeScript, Sprint 0) e a **base de dados** (25 tabelas, DER e CRUD). A simulação do front roda no próprio navegador, então não precisa de servidor.
 
 ---
 
@@ -27,7 +27,7 @@ Tudo está na pasta **[`banco-de-dados/`](banco-de-dados/)**. O [README dela](ba
 | O que | Onde |
 |---|---|
 | **DER** (diagrama entidade-relacionamento) | [`banco-de-dados/der/`](banco-de-dados/der/): comece por `DER-visao-geral.png` |
-| **Banco pronto, com as 21 tabelas criadas e populadas** | [`banco-de-dados/digital_twin.db`](banco-de-dados/digital_twin.db) (abre no [DB Browser for SQLite](https://sqlitebrowser.org/)) e scripts em [`banco-de-dados/sql/`](banco-de-dados/sql/) |
+| **Banco pronto, com as 25 tabelas criadas e populadas** | [`banco-de-dados/digital_twin.db`](banco-de-dados/digital_twin.db) (abre no [DB Browser for SQLite](https://sqlitebrowser.org/)) e scripts em [`banco-de-dados/sql/`](banco-de-dados/sql/) |
 | **CRUD** (Create, Read, Update, Delete) | `python banco-de-dados/scripts/crud_demo.py` mostra os comandos e os resultados em todas as tabelas |
 | Dicionário de dados e decisões de modelagem | [`banco-de-dados/docs/`](banco-de-dados/docs/) |
 
@@ -44,7 +44,7 @@ Na pasta do projeto há quatro atalhos para Windows:
 | **`INICIAR_DOCKER.bat`** | sobe **banco PostgreSQL + servidor + site** em contêineres (abre o Docker Desktop se estiver fechado). Site em **http://localhost:8080**, API em http://127.0.0.1:8000/docs. Na primeira vez baixa as imagens e demora vários minutos. | Docker Desktop |
 | **`PARAR_DOCKER.bat`** | desliga os contêineres (o banco fica guardado; `docker compose down -v` apaga tudo). | |
 
-O arquivo [`docker-compose.yml`](docker-compose.yml) da raiz descreve os três serviços (`banco`, `api`, `site`); o da pasta `backend/` sobe só o banco e a API.
+O arquivo [`docker-compose.yml`](docker-compose.yml) da raiz descreve os três serviços (`banco`, `api`, `site`). O **site não é compilado no Docker**: o nginx entrega o arquivo pronto de [`ABRIR_AQUI/`](ABRIR_AQUI/) (depois de mudar o código do site, rode `npm run build:single` em `app/`), então ligar o sistema não depende de npm. Se outro contêiner ou programa estiver usando a porta 8000 ou 8080, o atalho avisa. Há ainda outro compose: o da pasta `backend/` sobe só o banco e a API.
 
 > **Se o Docker Desktop abrir e mostrar "unexpected error" citando um arquivo `.sock`:** sobraram arquivos temporários de uma sessão anterior que o Windows não consegue renomear. Feche o Docker Desktop, rode `wsl --shutdown` e renomeie as pastas `%LOCALAPPDATA%\Docker\run` e `%LOCALAPPDATA%\docker-secrets-engine` (por exemplo, acrescentando `.old`); o Docker recria as pastas limpas. Testado em 09/11/2026: depois disso o `INICIAR_DOCKER.bat` subiu banco, API e site (a API respondeu com PostgreSQL e 25 tabelas).
 
@@ -58,7 +58,7 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app
 ```
 
-Abra **http://127.0.0.1:8000/docs** (documentação interativa): clique em **Authorize**, entre com `victor.dias` / `senha1234` e teste qualquer rota. O servidor cria sozinho o banco com as 21 tabelas e os dados iniciais.
+Abra **http://127.0.0.1:8000/docs** (documentação interativa): clique em **Authorize**, entre com `victor.dias` / `senha1234` e teste qualquer rota. O servidor cria sozinho o banco com as 25 tabelas e os dados iniciais.
 
 | O que | Onde |
 |---|---|

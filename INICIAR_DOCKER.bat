@@ -45,15 +45,35 @@ exit /b 1
 
 :docker_ok
 
-echo  Construindo e ligando. Na primeira vez baixa as imagens e demora varios minutos...
+rem ---------- A porta 8000 (servidor) e a 8080 (site) estao livres?
+call :porta_livre 8000
+if errorlevel 1 goto :porta_ocupada
+call :porta_livre 8080
+if errorlevel 1 goto :porta_ocupada
+
+echo  Ligando banco, servidor e site. Na primeira vez baixa as imagens e demora varios minutos...
 echo.
-docker compose up --build -d
-if errorlevel 1 (
-  echo.
-  echo  [ERRO] O Docker nao conseguiu subir. Veja a mensagem acima.
-  pause
-  exit /b 1
-)
+docker compose up -d --build --remove-orphans
+if not errorlevel 1 goto :subiu
+
+echo.
+echo  [AVISO] Nao consegui atualizar as imagens - talvez sem internet. Tentando ligar com as que ja existem...
+echo.
+docker compose up -d --remove-orphans
+if not errorlevel 1 goto :subiu
+
+echo.
+echo  [ERRO] O Docker nao conseguiu subir. Veja a mensagem acima.
+pause
+exit /b 1
+
+:porta_ocupada
+echo.
+echo  Nao liguei o sistema porque a porta esta ocupada. Libere a porta e de duplo clique de novo.
+pause
+exit /b 1
+
+:subiu
 
 echo.
 echo  Aguardando ficar pronto...
@@ -87,3 +107,27 @@ echo  Para desligar: PARAR_DOCKER.bat
 start "" http://localhost:8080
 timeout /t 8 >nul
 exit /b 0
+
+rem ============================================================
+rem  Confere se outro conteiner ou programa ocupa a porta %1.
+rem  Sai com erro 1 se continuar ocupada.
+rem ============================================================
+:porta_livre
+set "OUTRO="
+for /f "usebackq delims=" %%c in (`docker ps --filter "publish=%1" --format "{{.Names}}"`) do (
+  echo %%c| findstr /b /c:"digital-twin-industrial" >nul || set "OUTRO=%%c"
+)
+if not defined OUTRO goto :ver_programa
+echo  [ATENCAO] O conteiner "%OUTRO%", de outro projeto, esta usando a porta %1.
+choice /c SN /m "  Posso parar esse conteiner agora? Ele nao e apagado."
+if errorlevel 2 exit /b 1
+docker stop %OUTRO% >nul
+echo  Conteiner "%OUTRO%" parado.
+:ver_programa
+set "PROG="
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort %1 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName } | Where-Object { $_ -notmatch 'docker|wslrelay|vpnkit' } | Select-Object -First 1"`) do set "PROG=%%p"
+if not defined PROG exit /b 0
+echo  [ATENCAO] O programa "%PROG%" esta usando a porta %1.
+echo  Se voce ligou o sistema pelo INICIAR.bat, de duplo clique em PARAR.bat antes.
+exit /b 1
+
